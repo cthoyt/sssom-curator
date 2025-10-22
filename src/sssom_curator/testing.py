@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from .repository import Repository
 
 __all__ = [
-    "GetterIntegrityTestCase",
     "IntegrityTestCase",
     "MappingGetter",
     "PathIntegrityTestCase",
@@ -196,23 +195,6 @@ class IntegrityTestCase(unittest.TestCase):
         self.assert_no_internal_redundancies(self.unsure)
 
 
-class GetterIntegrityTestCase(IntegrityTestCase):
-    """Data integrity tests."""
-
-    positive_mappings_getter: ClassVar[MappingGetter]
-    predictions_getter: ClassVar[MappingGetter]
-    negative_mappings_getter: ClassVar[MappingGetter]
-    unsure_mappings_getter: ClassVar[MappingGetter]
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        """Set up the test case."""
-        cls.mappings = cls.positive_mappings_getter()
-        cls.predictions = cls.predictions_getter()
-        cls.incorrect = cls.negative_mappings_getter()
-        cls.unsure = cls.unsure_mappings_getter()
-
-
 class PathIntegrityTestCase(IntegrityTestCase):
     """A test case that can be configured with paths.
 
@@ -243,10 +225,11 @@ class PathIntegrityTestCase(IntegrityTestCase):
         """Set up the test case."""
         import sssom_pydantic
 
-        cls.predictions = sssom_pydantic.read(cls.predictions_path)[0]
-        cls.mappings = sssom_pydantic.read(cls.positives_path)[0]
-        cls.incorrect = sssom_pydantic.read(cls.negatives_path)[0]
-        cls.unsure = sssom_pydantic.read(cls.unsure_path)[0]
+        cls.mappings, c1, _ = sssom_pydantic.read(cls.positives_path)
+        cls.predictions, c2, _ = sssom_pydantic.read(cls.predictions_path)
+        cls.incorrect, c3, _ = sssom_pydantic.read(cls.negatives_path)
+        cls.unsure, c4, _ = sssom_pydantic.read(cls.unsure_path)
+        cls.converter = curies.chain([c1, c2, c3, c4])
 
 
 class RepositoryTestCase(IntegrityTestCase):
@@ -257,7 +240,14 @@ class RepositoryTestCase(IntegrityTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         """Set up the test case."""
-        cls.predictions = cls.repository.read_predicted_mappings()
-        cls.mappings = cls.repository.read_positive_mappings()
-        cls.incorrect = cls.repository.read_negative_mappings()
-        cls.unsure = cls.repository.read_unsure_mappings()
+        import sssom_pydantic
+
+        cls.mappings, c1, _ = sssom_pydantic.read(cls.repository.positives_path)
+        cls.predictions, c2, _ = sssom_pydantic.read(cls.repository.predictions_path)
+        cls.incorrect, c3, _ = sssom_pydantic.read(cls.repository.negatives_path)
+        cls.unsure, c4, _ = sssom_pydantic.read(cls.repository.unsure_path)
+
+        # If the converter wasn't set, then chain together the
+        # converters loaded from the individual SSSOM files
+        if not getattr(cls, "converter", None):
+            cls.converter = curies.chain([c1, c2, c3, c4])

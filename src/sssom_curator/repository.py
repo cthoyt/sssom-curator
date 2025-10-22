@@ -6,7 +6,7 @@ import sys
 import typing
 from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, TypeAlias
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeAlias
 
 import click
 import sssom_pydantic
@@ -14,10 +14,11 @@ from pydantic import BaseModel
 from sssom_pydantic import MappingSet
 from typing_extensions import Self
 
-from .constants import DEFAULT_RESOLVER_BASE
+from .constants import DEFAULT_RESOLVER_BASE, ensure_converter
 
 if TYPE_CHECKING:
     import curies
+    from curies import Converter
     from sssom_pydantic import MappingTool, SemanticMapping
 
     from .testing import IntegrityTestCase
@@ -35,8 +36,18 @@ UserGetter: TypeAlias = Callable[[], "curies.Reference"]
 #: A function that returns a dictionary from ORCID to name
 OrcidNameGetter: TypeAlias = Callable[[], dict[str, str]]
 
+#: How to decide what converter to use
+ConverterStrategy: TypeAlias = Literal["bioregistry", "bioregistry-preferred", "passthrough"]
+
 #: Configuration file
 NAME = "sssom-curator.json"
+
+strategy_option = click.option(
+    "--strategy",
+    type=click.Choice(list(typing.get_args(ConverterStrategy))),
+    default="passthrough",
+    show_default=True,
+)
 
 
 class Repository(BaseModel):
@@ -236,16 +247,42 @@ class Repository(BaseModel):
             **kwargs,
         )
 
-    def get_test_class(self) -> type[IntegrityTestCase]:
+    def get_test_class(
+        self,
+        converter_strategy: Literal["bioregistry", "bioregistry-preferred", "passthrough"]
+        | None = None,
+    ) -> type[IntegrityTestCase]:
         """Get a test case class."""
         from .testing import RepositoryTestCase
 
-        class TestCurator(RepositoryTestCase):
-            """A test case for this repository."""
+        if converter_strategy is None or converter_strategy == "passthrough":
 
-            repository: ClassVar[Repository] = self
+            class PassthroughTestCurator(RepositoryTestCase):
+                """A test case for this repository."""
 
-        return TestCurator
+                repository: ClassVar[Repository] = self
+
+            return PassthroughTestCurator
+        elif converter_strategy == "bioregistry":
+
+            class BioregistryTestCurator(RepositoryTestCase):
+                """A test case for this repository."""
+
+                repository: ClassVar[Repository] = self
+                converter: ClassVar[Converter] = ensure_converter(preferred=False)
+
+            return BioregistryTestCurator
+        elif converter_strategy == "bioregistry-preferred":
+
+            class BioregistryPreferredTestCurator(RepositoryTestCase):
+                """A test case for this repository."""
+
+                repository: ClassVar[Repository] = self
+                converter: ClassVar[Converter] = ensure_converter(preferred=True)
+
+            return BioregistryPreferredTestCurator
+        else:
+            raise ValueError(f"invalid converter strategy: {converter_strategy}")
 
 
 def add_commands(
@@ -356,17 +393,21 @@ def get_lint_command(converter: curies.Converter | None = None) -> click.Command
     """Get the lint command."""
 
     @click.command()
+    @strategy_option
     @click.pass_obj
-    def lint(obj: Repository) -> None:
+    def lint(obj: Repository, strategy: ConverterStrategy) -> None:
         """Sort files and remove duplicates."""
         import sssom_pydantic
-
-        from .constants import ensure_converter
 
         # nonlocal lets us mess with the variable even though
         # it comes from an outside scope
         nonlocal converter
-        converter = ensure_converter(converter)
+        if strategy == "passthrough":
+            pass
+        else:
+            from .constants import ensure_converter
+
+            converter = ensure_converter(preferred=strategy == "bioregistry-preferred")
 
         exclude_mappings = []
         for path in obj.curated_paths:
@@ -548,13 +589,15 @@ def get_test_command() -> click.Command:
     """Get a command to run tests."""
 
     @click.command()
+    @strategy_option
     @click.pass_obj
-    def test(obj: Repository) -> None:
+    def test(obj: Repository, strategy: ConverterStrategy) -> None:
         """Test the repository."""
         import unittest
 
+        test_case_class = obj.get_test_class(converter_strategy=strategy)
         loader = unittest.TestLoader()
-        suite = loader.loadTestsFromTestCase(obj.get_test_class())
+        suite = loader.loadTestsFromTestCase(test_case_class)
 
         runner = unittest.TextTestRunner(verbosity=2)
         result = runner.run(suite)

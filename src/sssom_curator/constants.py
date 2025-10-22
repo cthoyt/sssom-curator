@@ -45,14 +45,10 @@ def ensure_converter(
 def _get_preferred() -> curies.Converter:
     import bioregistry
 
-    prefix_map = {}
-    for resource in bioregistry.resources():
-        prefix = resource.get_preferred_prefix() or resource.prefix
-        uri_prefix = resource.get_rdf_uri_prefix() or resource.get_uri_prefix()
-        if uri_prefix:
-            prefix_map[prefix] = uri_prefix
-
-    return curies.Converter.from_prefix_map(prefix_map)
+    return bioregistry.get_converter(
+        uri_prefix_priority=["rdf", "default"],
+        prefix_priority=["preferred", "default"],
+    )
 
 
 def get_prefix_map(prefixes: Collection[str]) -> dict[str, str]:
