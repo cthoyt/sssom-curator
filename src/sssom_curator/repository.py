@@ -14,7 +14,14 @@ from pydantic import BaseModel
 from sssom_pydantic import MappingSet
 from typing_extensions import Self
 
-from .constants import DEFAULT_RESOLVER_BASE, ensure_converter
+from .constants import (
+    DEFAULT_RESOLVER_BASE,
+    NEGATIVES_NAME,
+    POSITIVES_NAME,
+    PREDICTIONS_NAME,
+    UNSURE_NAME,
+    ensure_converter,
+)
 
 if TYPE_CHECKING:
     import curies
@@ -93,10 +100,10 @@ class Repository(BaseModel):
         if path.is_file():
             return cls.from_path(path)
 
-        positives_path = directory.joinpath("positive.sssom.tsv")
-        negatives_path = directory.joinpath("negative.sssom.tsv")
-        predictions_path = directory.joinpath("predictions.sssom.tsv")
-        unsure_path = directory.joinpath("unsure.sssom.tsv")
+        positives_path = directory.joinpath(POSITIVES_NAME)
+        negatives_path = directory.joinpath(NEGATIVES_NAME)
+        predictions_path = directory.joinpath(PREDICTIONS_NAME)
+        unsure_path = directory.joinpath(UNSURE_NAME)
 
         if (
             positives_path.is_file()

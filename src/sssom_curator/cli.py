@@ -27,20 +27,27 @@ __all__ = [
 @click.pass_context
 def main(ctx: click.Context, path: Path) -> None:
     """Run the CLI."""
-    ctx.obj = _get_repository(path)
+    if ctx.invoked_subcommand != "init":
+        ctx.obj = _get_repository(path)
 
 
-@main.command()
-@click.option("--directory", type=click.Path(file_okay=False, dir_okay=True, exists=True))
+@main.command(name="init")
 @click.option(
-    "--strategy", type=click.Choice(list(typing.get_args(InitializationStrategy))), required=True
+    "--directory", type=click.Path(file_okay=False, dir_okay=True, exists=True), default=os.getcwd
 )
-def initialize(directory: Path, strategy: InitializationStrategy) -> None:
+@click.option(
+    "--strategy",
+    type=click.Choice(list(typing.get_args(InitializationStrategy))),
+    required=True,
+    default="folder",
+)
+@click.option("--purl-base", prompt=True, default="http://example.org/")
+def initialize(directory: Path, strategy: InitializationStrategy, purl_base: str) -> None:
     """Initialize a repository."""
     from .init import initialize_folder, initialize_package
 
     if strategy == "folder":
-        initialize_folder(directory)
+        initialize_folder(directory, purl_base=purl_base)
     elif strategy == "package":
         initialize_package(directory)
     else:

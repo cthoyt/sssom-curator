@@ -50,3 +50,21 @@ def _get_preferred() -> curies.Converter:
         uri_prefix_priority=["rdf", "default"],
         prefix_priority=["preferred", "default"],
     )
+
+
+PREDICTIONS_NAME = "predictions.sssom.tsv"
+POSITIVES_NAME = "positive.sssom.tsv"
+NEGATIVES_NAME = "negative.sssom.tsv"
+UNSURE_NAME = "unsure.sssom.tsv"
+
+STUB_SSSOM_COLUMNS = [
+    "subject_id",
+    "subject_label",
+    "predicate_id",
+    "object_id",
+    "object_label",
+    "mapping_justification",
+    "author_id",
+    "mapping_tool",
+    "predicate_modifier",
+]
