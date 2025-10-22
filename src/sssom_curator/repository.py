@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import typing
 from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypeAlias
@@ -137,8 +138,6 @@ class Repository(BaseModel):
             get_orcid_to_name=get_orcid_to_name,
         )
 
-        main.add_command(self.get_predict_command())
-
         @main.command()
         @click.pass_context
         def update(ctx: click.Context) -> None:
@@ -151,15 +150,6 @@ class Repository(BaseModel):
             ctx.invoke(main.commands["charts"])
 
         return main
-
-    def get_predict_command(self) -> click.Command:
-        """Get the predict command."""
-        from .predict import lexical
-
-        return lexical.get_predict_command(
-            path=self.predictions_path,
-            curated_paths=self.curated_paths,
-        )
 
     def lexical_prediction_cli(
         self,
@@ -261,13 +251,16 @@ def get_summary_command(
     @click.command()
     @click.option(
         "--output",
-        type=Path,
+        type=click.Path(file_okay=True, dir_okay=False, exists=True),
         default=output_directory.joinpath("summary.yml") if output_directory else None,
         required=True,
     )
     @click.pass_obj
-    def summary(obj: Repository, output: Path) -> None:
+    def summary(obj: Repository, output: Path | None) -> None:
         """Create export data file."""
+        if output is None:
+            click.secho("--output is required")
+            raise sys.exit(1)
         summarize(obj, output, get_orcid_to_name=get_orcid_to_name)
 
     return summary
@@ -315,7 +308,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             "--resolver-base",
             help="A custom resolver base URL, instead of the Bioregistry.",
         )
-        @click.option("--orcid")
+        @click.option("--orcid", help="Your ORCID, if not automatically loadable")
         @click.pass_obj
         def web(obj: Repository, resolver_base: str | None, orcid: str) -> None:
             """Run the semantic mappings curation app."""
@@ -371,8 +364,6 @@ def get_ndex_command() -> click.Command:
     def ndex(obj: Repository, username: str | None, password: str | None) -> None:
         """Upload to NDEx."""
         if not obj.ndex_uuid:
-            import sys
-
             click.secho("can not upload to NDEx, no NDEx UUID is set in the curator configuration.")
             raise sys.exit(1)
 
@@ -412,3 +403,75 @@ def add_commands(
     main.add_command(
         get_charts_command(output_directory=output_directory, image_directory=image_directory)
     )
+    main.add_command(get_predict_command())
+
+
+def get_predict_command(
+    *,
+    source_prefix: str | None = None,
+    target_prefix: str | None | list[str] = None,
+) -> click.Command:
+    """Create a prediction command."""
+    from more_click import verbose_option
+
+    from .constants import PredictionMethod
+
+    if source_prefix is None:
+        source_prefix_argument = click.argument("source_prefix")
+    else:
+        source_prefix_argument = click.option("--source-prefix", default=source_prefix)
+
+    if target_prefix is None:
+        target_prefix_argument = click.argument("target_prefix", nargs=-1)
+    else:
+        target_prefix_argument = click.option(
+            "--target-prefix", multiple=True, default=[target_prefix]
+        )
+
+    @click.command()
+    @verbose_option
+    @source_prefix_argument
+    @target_prefix_argument
+    @click.option("--relation", help="the predicate to assign to semantic mappings")
+    @click.option(
+        "--method",
+        type=click.Choice(list(typing.get_args(PredictionMethod))),
+        help="The prediction method to use",
+    )
+    @click.option(
+        "--cutoff",
+        type=float,
+        help="The cosine similarity cutoff to use for calling mappings when "
+        "using embedding predictions",
+    )
+    @click.option(
+        "--filter-mutual-mappings",
+        is_flag=True,
+        help="Remove predictions that correspond to already existing mappings "
+        "in either the subject or object resource",
+    )
+    @click.pass_obj
+    def predict(
+        obj: Repository,
+        source_prefix: str,
+        target_prefix: str,
+        relation: str | None,
+        method: PredictionMethod | None,
+        cutoff: float | None,
+        filter_mutual_mappings: bool,
+    ) -> None:
+        """Predict semantic mappings."""
+        from .predict.lexical import append_lexical_predictions
+
+        append_lexical_predictions(
+            source_prefix,
+            target_prefix,
+            path=obj.predictions_path,
+            curated_paths=obj.curated_paths,
+            filter_mutual_mappings=filter_mutual_mappings,
+            relation=relation,
+            method=method,
+            cutoff=cutoff,
+        )
+
+    return predict
