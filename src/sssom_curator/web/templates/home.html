@@ -3,7 +3,7 @@
 {% import "bootstrap4/form.html" as wtf %}
 {% import "bootstrap4/utils.html" as util %}
 
-{% block title %}Biomappings ({{ "{:,d}".format(remaining_rows) }}){% endblock %}
+{% block title %}{{ title }} ({{ "{:,d}".format(remaining_rows) }}){% endblock %}
 
 {% macro progress_color(confidence) -%}
     {% if confidence > 85 %}
@@ -25,7 +25,7 @@
                        href="{{ url_for_state(".summary", state=state) }}">
                         Summarize
                     </a>
-                    Biomappings Curation Interface
+                    {{ title }}
                 </h5>
                 <div class="card-body">
                     {% if controller.total_curated %}
