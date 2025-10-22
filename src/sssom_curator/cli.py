@@ -29,6 +29,8 @@ def main(ctx: click.Context, path: Path) -> None:
     """Run the CLI."""
     from .repository import Repository
 
+    path = path.expanduser().resolve()
+
     if path.is_dir():
         path = path.joinpath(NAME)
         if not path.is_file():
