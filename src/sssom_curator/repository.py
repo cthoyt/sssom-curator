@@ -32,6 +32,9 @@ UserGetter: TypeAlias = Callable[[], "NormalizedNamedReference"]
 #: A function that returns a dictionary from ORCID to name
 OrcidNameGetter: TypeAlias = Callable[[], dict[str, str]]
 
+#: Configuration file
+NAME = "sssom-curator.json"
+
 
 class Repository(BaseModel):
     """A data structure containing information about a SSSOM repository."""
@@ -67,6 +70,37 @@ class Repository(BaseModel):
         repository = cls.model_validate_json(path.read_text())
         repository.update_relative_paths(directory=path.parent)
         return repository
+
+    @classmethod
+    def from_directory(cls, directory: str | Path) -> Self:
+        """Load an implicit configuration from a directory."""
+        directory = Path(directory).expanduser().resolve()
+        path = directory.joinpath(NAME)
+        if path.is_file():
+            return cls.from_path(path)
+
+        positives_path = directory.joinpath("positive.sssom.tsv")
+        negatives_path = directory.joinpath("negative.sssom.tsv")
+        predictions_path = directory.joinpath("predictions.sssom.tsv")
+        unsure_path = directory.joinpath("unsure.sssom.tsv")
+
+        if (
+            positives_path.is_file()
+            and negatives_path.is_file()
+            and predictions_path.is_file()
+            and unsure_path.is_file()
+        ):
+            return cls(
+                positives_path=positives_path,
+                negatives_path=negatives_path,
+                predictions_path=predictions_path,
+                unsure_path=unsure_path,
+            )
+
+        raise FileNotFoundError(
+            f"could not automatically construct a sssom-curator "
+            f"repository from directory {directory}"
+        )
 
     @property
     def curated_paths(self) -> list[Path]:

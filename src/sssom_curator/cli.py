@@ -6,13 +6,11 @@ from pathlib import Path
 
 import click
 
-from .repository import Repository, add_commands
+from .repository import NAME, Repository, add_commands
 
 __all__ = [
     "main",
 ]
-
-NAME = "sssom-curator.json"
 
 
 @click.group(help="A CLI for managing SSSOM repositories.")
@@ -42,35 +40,13 @@ def _get_repository(path: str | Path | None) -> Repository:
         return Repository.from_path(path)
 
     if path.is_dir():
-        directory = path
-        path = directory.joinpath(NAME)
-        if path.is_file():
-            return Repository.from_path(path)
-
-        positives_path = directory.joinpath("positive.sssom.tsv")
-        negatives_path = directory.joinpath("negative.sssom.tsv")
-        predictions_path = directory.joinpath("predictions.sssom.tsv")
-        unsure_path = directory.joinpath("unsure.sssom.tsv")
-
-        if (
-            positives_path.is_file()
-            and negatives_path.is_file()
-            and predictions_path.is_file()
-            and unsure_path.is_file()
-        ):
-            from sssom_pydantic import MappingSet
-
-            r = Repository(
-                positives_path=positives_path,
-                negatives_path=negatives_path,
-                predictions_path=predictions_path,
-                unsure_path=unsure_path,
-                mapping_set=MappingSet(mapping_set_id=""),
-            )
-            return r
-
-        click.secho(f"no {NAME} found in directory {path}")
-        sys.exit(1)
+        try:
+            repository = Repository.from_directory(path)
+        except FileNotFoundError as e:
+            click.secho(e.args[0])
+            sys.exit(1)
+        else:
+            return repository
 
     click.secho(f"bad path: {path}")
     sys.exit(1)
