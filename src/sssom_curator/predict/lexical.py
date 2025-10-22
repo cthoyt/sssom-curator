@@ -262,7 +262,7 @@ def _r(prefix: str, identifier: str) -> NormalizedNamableReference:
     )
 
 
-def predict_lexical_mappings(
+def predict_lexical_mappings(  # noqa:C901
     prefix: str,
     *,
     predicate: str | curies.Reference | None = None,
@@ -395,7 +395,9 @@ def _get_entity_to_mapped_prefixes(prefixes: Iterable[str]) -> dict[curies.Refer
 
 
 def _get_mutual_mapping_filter(prefix: str, targets: str | Iterable[str]) -> NestedMappingDict:
-    """Get a custom filter dictionary induced over the mutual mapping graph with all target prefixes.
+    """Get a custom filter dictionary.
+
+    This is induced over the mutual mapping graph with all target prefixes.
 
     :param prefix: The source prefix
     :param targets: All potential target prefixes
@@ -601,12 +603,14 @@ def get_predict_command(
     @click.option(
         "--cutoff",
         type=float,
-        help="The cosine similarity cutoff to use for calling mappings when using embedding predictions",
+        help="The cosine similarity cutoff to use for calling mappings when "
+        "using embedding predictions",
     )
     @click.option(
         "--filter-mutual-mappings",
         is_flag=True,
-        help="Remove predictions that correspond to already existing mappings in either the subject or object resource",
+        help="Remove predictions that correspond to already existing mappings "
+        "in either the subject or object resource",
     )
     def predict(
         source_prefix: str,

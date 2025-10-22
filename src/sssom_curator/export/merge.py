@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     import pandas as pd
     from sssom import MappingSetDataFrame
 
-    from biomappings.curator.repo import Repository
+    from ..repository import Repository
 
 __all__ = [
     "merge",

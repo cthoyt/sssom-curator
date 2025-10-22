@@ -312,7 +312,7 @@ class Controller:
         )
         return sum(1 for _ in it)
 
-    def _help_it_predictions(
+    def _help_it_predictions(  # noqa:C901
         self,
         query: str | None = None,
         source_query: str | None = None,
@@ -421,7 +421,8 @@ class Controller:
         """
         if line > len(self._predictions):
             raise IndexError(
-                f"given line {line} is larger than the number of predictions {len(self._predictions):,}"
+                f"given line {line} is larger than the number of "
+                f"predictions {len(self._predictions):,}"
             )
         if line not in self._marked:
             self.total_curated += 1
@@ -451,7 +452,7 @@ class Controller:
     def _insert(self, mappings: Iterable[SemanticMapping], path: Path) -> None:
         insert(path=path, converter=self.converter, include_mappings=mappings)
 
-    def persist(self) -> None:
+    def persist(self) -> None:  # noqa:C901
         """Save the current markings to the source files."""
         if not self._marked:
             # no need to persist if there are no marks
@@ -466,7 +467,8 @@ class Controller:
                 mapping = self._predictions.pop(line)
             except IndexError:
                 raise IndexError(
-                    f"you tried popping the {line} element from the predictions list, which only has {len(self._predictions):,} elements"
+                    f"you tried popping the {line} element from the predictions list, "
+                    f"which only has {len(self._predictions):,} elements"
                 ) from None
 
             update: dict[str, Any] = {

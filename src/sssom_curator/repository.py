@@ -229,7 +229,7 @@ class Repository:
         **kwargs: Any,
     ) -> None:
         """Append lexical predictions."""
-        from . import lexical
+        from .predict import lexical
 
         return lexical.append_lexical_predictions(
             prefix,

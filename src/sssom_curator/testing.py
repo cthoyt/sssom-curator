@@ -61,7 +61,8 @@ class IntegrityTestCase(unittest.TestCase):
             self.assertEqual(
                 "semapv",
                 mapping.justification.prefix,
-                msg=f"[{label}] The 'mapping_justification' column should be annotated with semapv on line {line}",
+                msg=f"[{label}] The 'mapping_justification' column should "
+                f"be annotated with semapv on line {line}",
             )
             self.assertIn(mapping.justification, matching_processes)
 

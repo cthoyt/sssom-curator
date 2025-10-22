@@ -17,8 +17,9 @@ maintainers = [
 # See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#classifiers
 # Search tags using the controlled vocabulary at https://pypi.org/classifiers
 classifiers = [
-    "Development Status :: 1 - Planning",
+    "Development Status :: 4 - Beta",
     "Environment :: Console",
+    "Intended Audience :: Science/Research",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
@@ -33,12 +34,17 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3 :: Only",
     "Typing :: Typed",
-    # TODO add your topics from the Trove controlled vocabulary (see https://pypi.org/classifiers)
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 keywords = [
     "snekpack", # please keep this keyword to credit the cookiecutter-snekpack template
     "cookiecutter",
-    # TODO add your own free-text keywords
+    "sssom",
+    "semantic mappings",
+    "mapping alignment",
+    "ontology alignment",
+    "semantic web",
 ]
 
 # License Information.
@@ -49,11 +55,15 @@ license-files = [
 
 requires-python = ">=3.10"
 dependencies = [
-    "more_itertools", # missing from itertools in stdlib
-    "tqdm", # progress bars
+    "networkx",
+    "requests",
     "click",
-    "more_click",
-    "typing-extensions",
+    "pyyaml",
+    "tqdm",
+    "curies>=0.12.1",
+    "pystow>=0.7.11",
+    "bioregistry>=0.12.43",
+    "sssom-pydantic>=0.0.9",
 ]
 
 # see https://peps.python.org/pep-0735/ and https://docs.astral.sh/uv/concepts/dependencies/#dependency-groups
@@ -64,13 +74,9 @@ tests = [
 ]
 docs = [
     "sphinx>=8",
-    "sphinx-rtd-theme>=3.0","sphinx-click", 
+    "sphinx-rtd-theme>=3.0",
+    "sphinx-click",
     "sphinx_automodapi",
-    # Include if your project uses Pydantic:
-    # "autodoc_pydantic",
-    # To include LaTeX comments easily in your docs.
-    # If you uncomment this, don't forget to do the same in docs/conf.py
-    # texext
 ]
 lint = [
     "ruff",
@@ -80,7 +86,10 @@ typing = [
     "mypy",
     "pydantic",
     "click-types",
-    # You will probably have to add additional type stubs here, especially if you're using tox-uv
+    "types-PyYAML",
+    "types-tabulate",
+    "types-flask",
+    "types-wtforms",
 ]
 docs-lint = [
     { include-group = "docs" },
@@ -113,8 +122,36 @@ release = [
 ]
 
 # see https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#dependencies-optional-dependencies
-# [project.optional-dependencies]
-
+[project.optional-dependencies]
+charts = [
+    "matplotlib",
+    "seaborn",
+]
+pyobo = [
+    "pyobo>=0.12.11",
+]
+web = [
+    "flask",
+    "bootstrap-flask",
+    "flask-wtf",
+]
+gilda = [
+    "pyobo[gilda]>=0.12.8",
+]
+gilda-slim = [
+    "pyobo[gilda-slim]>=0.12.8",
+]
+ndex = [
+    "ndex2",
+]
+exports = [
+    "sssom",
+    "pandas",
+]
+embedding = [
+    "sentence-transformers",
+    "torch",
+]
 
 # See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#urls
 # and also https://packaging.python.org/en/latest/specifications/well-known-project-urls/
