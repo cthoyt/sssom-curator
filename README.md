@@ -37,10 +37,11 @@ SSSOM Curator is a suite of tools for curating semantic mappings encoded in the
 [Simple Standard for Sharing Ontological Mappings (SSSOM)](https://mapping-commons.github.io/sssom/).
 It has three major components:
 
-1. Predictions workflow with implementations for lexical matching and lexical
-   embedding similarity
-2. Curation interface for local curation
-3. Export and summarization tools
+1. A semantic mapping predictions workflow, with implementations for lexical
+   matching and lexical embedding similarity
+2. A (local) web-based curation interface for quick triage of predicted semantic
+   mappings that supports full curator provenance
+3. A set of tols for export and summarization
 
 The SSSOM Curator evolved from the
 [Biomappings](https://github.com/biopragmatics/biomappings) semi-automated
