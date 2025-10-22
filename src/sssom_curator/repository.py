@@ -6,7 +6,7 @@ import sys
 import typing
 from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, TypeAlias
+from typing import TYPE_CHECKING, Any, ClassVar, TypeAlias
 
 import click
 import sssom_pydantic
@@ -196,7 +196,14 @@ class Repository(BaseModel):
 
     def get_test_class(self) -> type[IntegrityTestCase]:
         """Get a test case class."""
-        raise NotImplementedError
+        from .testing import RepositoryTestCase
+
+        class TestCurator(RepositoryTestCase):
+            """A test case for this repository."""
+
+            repository: ClassVar[Repository] = self
+
+        return TestCurator
 
 
 def add_commands(
@@ -491,8 +498,15 @@ def get_test_command() -> click.Command:
     @click.pass_obj
     def test(obj: Repository) -> None:
         """Test the repository."""
-        obj.get_test_class()
+        import unittest
 
-        raise NotImplementedError
+        loader = unittest.TestLoader()
+        suite = loader.loadTestsFromTestCase(obj.get_test_class())
+
+        runner = unittest.TextTestRunner(verbosity=2)
+        result = runner.run(suite)
+
+        # Exit with code 1 if tests failed, 0 otherwise
+        sys.exit(not result.wasSuccessful())
 
     return test

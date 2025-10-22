@@ -12,11 +12,14 @@ if TYPE_CHECKING:
     from curies import Reference
     from sssom_pydantic import SemanticMapping
 
+    from .repository import Repository
+
 __all__ = [
     "GetterIntegrityTestCase",
     "IntegrityTestCase",
     "MappingGetter",
     "PathIntegrityTestCase",
+    "RepositoryTestCase",
 ]
 
 X = TypeVar("X")
@@ -246,3 +249,17 @@ class PathIntegrityTestCase(IntegrityTestCase):
         cls.mappings = sssom_pydantic.read(cls.positives_path)[0]
         cls.incorrect = sssom_pydantic.read(cls.negatives_path)[0]
         cls.unsure = sssom_pydantic.read(cls.unsure_path)[0]
+
+
+class RepositoryTestCase(IntegrityTestCase):
+    """A test case that can be configured with a repository."""
+
+    repository: ClassVar[Repository]
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        """Set up the test case."""
+        cls.predictions = cls.repository.read_predicted_mappings()
+        cls.mappings = cls.repository.read_positive_mappings()
+        cls.incorrect = cls.repository.read_negative_mappings()
+        cls.unsure = cls.repository.read_unsure_mappings()
