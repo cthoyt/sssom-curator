@@ -129,6 +129,8 @@ def get_merged_sssom(
             prefixes.add(_prefix_from_curie(author_id))
         # TODO add justification:
 
+    converter = converter.get_subconverter(prefixes)
+
     from sssom.constants import DEFAULT_VALIDATION_TYPES
     from sssom.parsers import from_sssom_dataframe
     from sssom.validators import validate
