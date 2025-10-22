@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
-import dataclasses
 from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypeAlias
 
 import click
 import sssom_pydantic
+from pydantic import BaseModel
+from sssom_pydantic import MappingSet
 
 if TYPE_CHECKING:
     import curies
     from bioregistry import NormalizedNamedReference
-    from sssom_pydantic import MappingSet, MappingTool, SemanticMapping
+    from sssom_pydantic import MappingTool, SemanticMapping
 
 __all__ = [
     "OrcidNameGetter",
@@ -28,8 +29,7 @@ UserGetter: TypeAlias = Callable[[], "NormalizedNamedReference"]
 OrcidNameGetter: TypeAlias = Callable[[], dict[str, str]]
 
 
-@dataclasses.dataclass
-class Repository:
+class Repository(BaseModel):
     """A quadruple of paths."""
 
     predictions_path: Path
@@ -40,6 +40,17 @@ class Repository:
     mapping_set: MappingSet
     basename: str | None = None
     ndex_uuid: str | None = None
+
+    def update_relative_paths(self, directory: Path) -> None:
+        """Update paths relative to the directory."""
+        if not self.predictions_path.is_file():
+            self.predictions_path = directory.joinpath(self.predictions_path).resolve()
+        if not self.positives_path.is_file():
+            self.positives_path = directory.joinpath(self.positives_path).resolve()
+        if not self.negatives_path.is_file():
+            self.negatives_path = directory.joinpath(self.negatives_path).resolve()
+        if not self.unsure_path.is_file():
+            self.unsure_path = directory.joinpath(self.unsure_path).resolve()
 
     @property
     def curated_paths(self) -> list[Path]:
