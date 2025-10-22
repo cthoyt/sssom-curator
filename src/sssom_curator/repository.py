@@ -18,6 +18,8 @@ if TYPE_CHECKING:
     from bioregistry import NormalizedNamedReference
     from sssom_pydantic import MappingTool, SemanticMapping
 
+    from .testing import IntegrityTestCase
+
 __all__ = [
     "OrcidNameGetter",
     "Repository",
@@ -192,6 +194,10 @@ class Repository(BaseModel):
             **kwargs,
         )
 
+    def get_test_class(self) -> type[IntegrityTestCase]:
+        """Get a test case class."""
+        raise NotImplementedError
+
 
 def add_commands(
     main: click.Group,
@@ -215,6 +221,7 @@ def add_commands(
         get_charts_command(output_directory=output_directory, image_directory=image_directory)
     )
     main.add_command(get_predict_command())
+    main.add_command(get_test_command())
 
 
 def get_charts_command(
@@ -475,3 +482,17 @@ def get_predict_command(
         )
 
     return predict
+
+
+def get_test_command() -> click.Command:
+    """Get a command to run tests."""
+
+    @click.command()
+    @click.pass_obj
+    def test(obj: Repository) -> None:
+        """Test the repository."""
+        obj.get_test_class()
+
+        raise NotImplementedError
+
+    return test
