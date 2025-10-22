@@ -9,66 +9,56 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypedDict
 
-import click
 from sssom_pydantic import SemanticMapping
 
 if TYPE_CHECKING:
-    from .repo import Repository
+    from ..repository import Repository
+
+__all__ = [
+    "summarize",
+]
 
 
-def get_summary_command(
+def summarize(
     repository: Repository,
-    output_directory: Path | None = None,
+    output: Path,
     get_orcid_to_name: typing.Callable[[], dict[str, str]] | None = None,
-) -> click.Command:
-    """Get the export command."""
+) -> None:
+    """Do summary."""
+    import yaml
 
-    @click.command()
-    @click.option(
-        "--output",
-        type=Path,
-        default=output_directory.joinpath("summary.yml") if output_directory else None,
-    )
-    def summary(output: Path) -> None:
-        """Create export data file."""
-        import yaml
+    positive_mappings = repository.read_positive_mappings()
+    negative_mappings = repository.read_negative_mappings()
+    unsure_mappings = repository.read_unsure_mappings()
+    predicted_mappings = repository.read_predicted_mappings()
 
-        positive_mappings = repository.read_positive_mappings()
-        negative_mappings = repository.read_negative_mappings()
-        unsure_mappings = repository.read_unsure_mappings()
-        predicted_mappings = repository.read_predicted_mappings()
+    rv: dict[str, Any] = {
+        "contributors": _get_contributors(
+            itt.chain(positive_mappings, negative_mappings, unsure_mappings),
+            get_orcid_to_name() if get_orcid_to_name is not None else {},
+        ),
+    }
 
-        rv: dict[str, Any] = {
-            "contributors": _get_contributors(
-                itt.chain(positive_mappings, negative_mappings, unsure_mappings),
-                get_orcid_to_name() if get_orcid_to_name is not None else {},
-            ),
-        }
-
-        for key, mappings in [
-            ("positive", positive_mappings),
-            ("negative", negative_mappings),
-            ("unsure", unsure_mappings),
-            ("predictions", predicted_mappings),
-        ]:
-            count_records = _get_count_records(mappings)
-            rv[key] = count_records
-            rv[f"{key}_mapping_count"] = sum(
-                count_record["count"] for count_record in count_records
-            )
-            rv[f"{key}_prefix_count"] = len(
-                set(
-                    itt.chain.from_iterable(
-                        (count_record["source"], count_record["target"])
-                        for count_record in count_records
-                    )
+    for key, mappings in [
+        ("positive", positive_mappings),
+        ("negative", negative_mappings),
+        ("unsure", unsure_mappings),
+        ("predictions", predicted_mappings),
+    ]:
+        count_records = _get_count_records(mappings)
+        rv[key] = count_records
+        rv[f"{key}_mapping_count"] = sum(count_record["count"] for count_record in count_records)
+        rv[f"{key}_prefix_count"] = len(
+            set(
+                itt.chain.from_iterable(
+                    (count_record["source"], count_record["target"])
+                    for count_record in count_records
                 )
             )
+        )
 
-        with open(output, "w") as file:
-            yaml.safe_dump(rv, file, indent=2)
-
-    return summary
+    with open(output, "w") as file:
+        yaml.safe_dump(rv, file, indent=2)
 
 
 class CountRecord(TypedDict):

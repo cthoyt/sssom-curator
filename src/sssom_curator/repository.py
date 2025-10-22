@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypeAlias
@@ -20,6 +21,7 @@ __all__ = [
     "OrcidNameGetter",
     "Repository",
     "UserGetter",
+    "add_commands",
 ]
 
 #: A function that returns the current user
@@ -120,24 +122,22 @@ class Repository(BaseModel):
         """Get a CLI."""
 
         @click.group()
-        def main() -> None:
+        @click.pass_context
+        def main(ctx: click.Context) -> None:
             """Run the CLI."""
+            ctx.obj = self
+
+        add_commands(
+            main,
+            enable_web=enable_web,
+            get_user=get_user,
+            output_directory=output_directory,
+            sssom_directory=sssom_directory,
+            image_directory=image_directory,
+            get_orcid_to_name=get_orcid_to_name,
+        )
 
         main.add_command(self.get_predict_command())
-        main.add_command(self.get_lint_command())
-        main.add_command(self.get_web_command(enable=enable_web, get_user=get_user))
-        main.add_command(self.get_merge_command(sssom_directory=sssom_directory))
-        main.add_command(self.get_ndex_cli())
-        main.add_command(
-            self.get_summary_command(
-                output_directory=output_directory, get_orcid_to_name=get_orcid_to_name
-            )
-        )
-        main.add_command(
-            self.get_charts_command(
-                output_directory=output_directory, image_directory=image_directory
-            )
-        )
 
         @main.command()
         @click.pass_context
@@ -149,55 +149,6 @@ class Repository(BaseModel):
             ctx.invoke(main.commands["merge"])
             click.secho("Generating charts", fg="green")
             ctx.invoke(main.commands["charts"])
-
-        return main
-
-    def get_charts_command(
-        self, output_directory: Path | None = None, image_directory: Path | None = None
-    ) -> click.Command:
-        """Get the charts command."""
-
-        @click.command()
-        @click.option(
-            "--directory", type=click.Path(dir_okay=True, file_okay=False), default=output_directory
-        )
-        @click.option(
-            "--image-directory",
-            type=click.Path(dir_okay=True, file_okay=False),
-            default=image_directory,
-        )
-        def charts(directory: Path, image_directory: Path) -> None:
-            """Make charts."""
-            from .export.charts import make_charts
-
-            make_charts(self, directory, image_directory)
-
-        return charts
-
-    def get_summary_command(
-        self,
-        output_directory: Path | None = None,
-        get_orcid_to_name: OrcidNameGetter | None = None,
-    ) -> click.Command:
-        """Get the summary command."""
-        from .export.summary import get_summary_command
-
-        return get_summary_command(
-            self, output_directory=output_directory, get_orcid_to_name=get_orcid_to_name
-        )
-
-    def get_merge_command(self, sssom_directory: Path | None = None) -> click.Command:
-        """Get the merge command."""
-
-        @click.command(name="merge")
-        @click.option(
-            "--directory", type=click.Path(dir_okay=True, file_okay=False), default=sssom_directory
-        )
-        def main(sssom_directory: Path) -> None:
-            """Merge files together to a single SSSOM."""
-            from .export.merge import merge
-
-            merge(self, directory=sssom_directory)
 
         return main
 
@@ -251,118 +202,213 @@ class Repository(BaseModel):
             **kwargs,
         )
 
-    def get_lint_command(self, converter: curies.Converter | None = None) -> click.Command:
-        """Get the lint command."""
+
+def get_charts_command(
+    output_directory: Path | None = None, image_directory: Path | None = None
+) -> click.Command:
+    """Get the charts command."""
+
+    @click.command()
+    @click.option(
+        "--directory", type=click.Path(dir_okay=True, file_okay=False), default=output_directory
+    )
+    @click.option(
+        "--image-directory",
+        type=click.Path(dir_okay=True, file_okay=False),
+        default=image_directory,
+    )
+    @click.pass_obj
+    def charts(obj: Repository, directory: Path, image_directory: Path) -> None:
+        """Make charts."""
+        from .export.charts import make_charts
+
+        make_charts(obj, directory, image_directory)
+
+    return charts
+
+
+def get_merge_command(sssom_directory: Path | None = None) -> click.Command:
+    """Get the merge command."""
+
+    @click.command(name="merge")
+    @click.option(
+        "--sssom-directory",
+        type=click.Path(dir_okay=True, file_okay=False, exists=True),
+        default=sssom_directory,
+        required=True,
+    )
+    @click.pass_obj
+    def main(obj: Repository, sssom_directory: Path) -> None:
+        """Merge files together to a single SSSOM."""
+        if sssom_directory is None:
+            click.secho("--sssom-directory is required", fg="red")
+            raise sys.exit(1)
+
+        from .export.merge import merge
+
+        merge(obj, directory=sssom_directory)
+
+    return main
+
+
+def get_summary_command(
+    output_directory: Path | None = None,
+    get_orcid_to_name: OrcidNameGetter | None = None,
+) -> click.Command:
+    """Get the summary command."""
+    from .export.summary import summarize
+
+    @click.command()
+    @click.option(
+        "--output",
+        type=Path,
+        default=output_directory.joinpath("summary.yml") if output_directory else None,
+        required=True,
+    )
+    @click.pass_obj
+    def summary(obj: Repository, output: Path) -> None:
+        """Create export data file."""
+        summarize(obj, output, get_orcid_to_name=get_orcid_to_name)
+
+    return summary
+
+
+def get_lint_command(converter: curies.Converter | None = None) -> click.Command:
+    """Get the lint command."""
+
+    @click.command()
+    @click.pass_obj
+    def lint(obj: Repository) -> None:
+        """Sort files and remove duplicates."""
+        import sssom_pydantic
+
+        nonlocal converter
+        if converter is None:
+            import bioregistry
+
+            # use the full bioregistry converter instead of re-using the
+            # prefix maps inside since this makes sure we cover everything.
+            # it automatically contracts the prefix map to what's relevant
+            # at the end
+            converter = bioregistry.get_converter()
+
+        exclude_mappings = []
+        for path in obj.curated_paths:
+            sssom_pydantic.lint(path, converter=converter)
+            exclude_mappings.extend(sssom_pydantic.read(path)[0])
+
+        sssom_pydantic.lint(
+            obj.predictions_path,
+            exclude_mappings=exclude_mappings,
+            drop_duplicates=True,
+        )
+
+    return lint
+
+
+def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) -> click.Command:
+    """Get the web command."""
+    if enable:
 
         @click.command()
-        def lint() -> None:
-            """Sort files and remove duplicates."""
-            import sssom_pydantic
+        @click.option(
+            "--resolver-base",
+            help="A custom resolver base URL, instead of the Bioregistry.",
+        )
+        @click.option("--orcid")
+        @click.pass_obj
+        def web(obj: Repository, resolver_base: str | None, orcid: str) -> None:
+            """Run the semantic mappings curation app."""
+            import webbrowser
 
-            nonlocal converter
-            if converter is None:
-                import bioregistry
+            from bioregistry import NormalizedNamedReference
+            from more_click import run_app
 
-                # use the full bioregistry converter instead of re-using the
-                # prefix maps inside since this makes sure we cover everything.
-                # it automatically contracts the prefix map to what's relevant
-                # at the end
-                converter = bioregistry.get_converter()
+            from .web.wsgi import get_app
 
-            exclude_mappings = []
-            for path in self.curated_paths:
-                sssom_pydantic.lint(path, converter=converter)
-                exclude_mappings.extend(sssom_pydantic.read(path)[0])
+            if orcid is not None:
+                user = NormalizedNamedReference(prefix="orcid", identifier=orcid)
+            else:
+                user = get_user()
 
-            sssom_pydantic.lint(
-                self.predictions_path,
-                exclude_mappings=exclude_mappings,
-                drop_duplicates=True,
+            app = get_app(
+                predictions_path=obj.predictions_path,
+                positives_path=obj.positives_path,
+                negatives_path=obj.negatives_path,
+                unsure_path=obj.unsure_path,
+                resolver_base=resolver_base,
+                user=user,
             )
 
-        return lint
+            webbrowser.open_new_tab("http://localhost:5000")
 
-    def get_web_command(
-        self, *, enable: bool = True, get_user: UserGetter | None = None
-    ) -> click.Command:
-        """Get the web command."""
-        if enable:
+            run_app(app, with_gunicorn=False)
 
-            @click.command()
-            @click.option(
-                "--resolver-base",
-                help="A custom resolver base URL, instead of the Bioregistry.",
-            )
-            @click.option("--orcid")
-            def web(resolver_base: str | None, orcid: str) -> None:
-                """Run the semantic mappings curation app."""
-                import webbrowser
-
-                from bioregistry import NormalizedNamedReference
-                from more_click import run_app
-
-                from .web.wsgi import get_app
-
-                if orcid is not None:
-                    user = NormalizedNamedReference(prefix="orcid", identifier=orcid)
-                else:
-                    user = get_user()
-
-                app = get_app(
-                    predictions_path=self.predictions_path,
-                    positives_path=self.positives_path,
-                    negatives_path=self.negatives_path,
-                    unsure_path=self.unsure_path,
-                    resolver_base=resolver_base,
-                    user=user,
-                )
-
-                webbrowser.open_new_tab("http://localhost:5000")
-
-                run_app(app, with_gunicorn=False)
-
-        else:
-
-            @click.command()
-            def web() -> None:
-                """Show an error for the web interface."""
-                click.secho(
-                    "You are not running biomappings from a development installation.\n"
-                    "Please run the following to install in development mode:\n"
-                    "  $ git clone https://github.com/biomappings/biomappings.git\n"
-                    "  $ cd biomappings\n"
-                    "  $ pip install -e .[web]",
-                    fg="red",
-                )
-
-        return web
-
-    def get_ndex_cli(self) -> click.Command:
-        """Get a CLI for uploading to NDEx."""
+    else:
 
         @click.command()
-        @click.option("--username", help="NDEx username, also looks in pystow configuration")
-        @click.option("--password", help="NDEx password, also looks in pystow configuration")
-        def ndex(username: str | None, password: str | None) -> None:
-            """Upload to NDEx, see https://www.ndexbio.org/viewer/networks/402d1fd6-49d6-11eb-9e72-0ac135e8bacf."""
-            if not self.ndex_uuid:
-                import sys
-
-                click.secho(
-                    "can not upload to NDEx, no NDEx UUID is set in the curator configuration."
-                )
-                raise sys.exit(1)
-
-            from sssom_pydantic.contrib.ndex import update_ndex
-
-            mappings = self.read_positive_mappings()
-            update_ndex(
-                uuid=self.ndex_uuid,
-                mappings=mappings,
-                metadata=self.mapping_set,
-                username=username,
-                password=password,
+        def web() -> None:
+            """Show an error for the web interface."""
+            click.secho(
+                "You are not running biomappings from a development installation.\n"
+                "Please run the following to install in development mode:\n"
+                "  $ git clone https://github.com/biomappings/biomappings.git\n"
+                "  $ cd biomappings\n"
+                "  $ pip install -e .[web]",
+                fg="red",
             )
-            click.echo(f"Uploaded to https://bioregistry.io/ndex:{self.ndex_uuid}")
 
-        return ndex
+    return web
+
+
+def get_ndex_command() -> click.Command:
+    """Get a CLI for uploading to NDEx."""
+
+    @click.command()
+    @click.option("--username", help="NDEx username, also looks in pystow configuration")
+    @click.option("--password", help="NDEx password, also looks in pystow configuration")
+    @click.pass_obj
+    def ndex(obj: Repository, username: str | None, password: str | None) -> None:
+        """Upload to NDEx."""
+        if not obj.ndex_uuid:
+            import sys
+
+            click.secho("can not upload to NDEx, no NDEx UUID is set in the curator configuration.")
+            raise sys.exit(1)
+
+        from sssom_pydantic.contrib.ndex import update_ndex
+
+        mappings = obj.read_positive_mappings()
+        update_ndex(
+            uuid=obj.ndex_uuid,
+            mappings=mappings,
+            metadata=obj.mapping_set,
+            username=username,
+            password=password,
+        )
+        click.echo(f"Uploaded to https://bioregistry.io/ndex:{obj.ndex_uuid}")
+
+    return ndex
+
+
+def add_commands(
+    main: click.Group,
+    *,
+    enable_web: bool = True,
+    get_user: UserGetter | None = None,
+    output_directory: Path | None = None,
+    sssom_directory: Path | None = None,
+    image_directory: Path | None = None,
+    get_orcid_to_name: OrcidNameGetter | None = None,
+) -> None:
+    """Add parametrized commands."""
+    main.add_command(get_lint_command())
+    main.add_command(get_web_command(enable=enable_web, get_user=get_user))
+    main.add_command(get_merge_command(sssom_directory=sssom_directory))
+    main.add_command(get_ndex_command())
+    main.add_command(
+        get_summary_command(output_directory=output_directory, get_orcid_to_name=get_orcid_to_name)
+    )
+    main.add_command(
+        get_charts_command(output_directory=output_directory, image_directory=image_directory)
+    )
