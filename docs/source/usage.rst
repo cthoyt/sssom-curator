@@ -1,5 +1,4 @@
 Usage
 =====
 
-.. automodule:: sssom_curator.api
-    :members:
+.. automodapi:: sssom_curator

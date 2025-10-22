@@ -33,7 +33,7 @@ OrcidNameGetter: TypeAlias = Callable[[], dict[str, str]]
 
 
 class Repository(BaseModel):
-    """A quadruple of paths."""
+    """A data structure containing information about a SSSOM repository."""
 
     predictions_path: Path
     positives_path: Path
