@@ -43,6 +43,7 @@ class Repository(BaseModel):
     purl_base: str | None = None
     basename: str | None = None
     ndex_uuid: str | None = None
+
     web_title: str | None = None
     web_disabled_message: str | None = None
     web_footer: str | None = None
