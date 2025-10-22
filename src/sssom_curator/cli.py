@@ -2,10 +2,12 @@
 
 import os
 import sys
+import typing
 from pathlib import Path
 
 import click
 
+from .constants import InitializationStrategy
 from .repository import NAME, Repository, add_commands
 
 __all__ = [
@@ -26,6 +28,24 @@ __all__ = [
 def main(ctx: click.Context, path: Path) -> None:
     """Run the CLI."""
     ctx.obj = _get_repository(path)
+
+
+@main.command()
+@click.option("--directory", type=click.Path(file_okay=False, dir_okay=True, exists=True))
+@click.option(
+    "--strategy", type=click.Choice(list(typing.get_args(InitializationStrategy))), required=True
+)
+def initialize(directory: Path, strategy: InitializationStrategy) -> None:
+    """Initialize a repository."""
+    from .init import initialize_folder, initialize_package
+
+    if strategy == "folder":
+        initialize_folder(directory)
+    elif strategy == "package":
+        initialize_package(directory)
+    else:
+        click.secho(f"invalid strategy: {strategy}", fg="red")
+        sys.exit(1)
 
 
 def _get_repository(path: str | Path | None) -> Repository:

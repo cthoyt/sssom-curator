@@ -9,6 +9,7 @@ import curies
 
 __all__ = [
     "DEFAULT_RESOLVER_BASE",
+    "InitializationStrategy",
     "PredictionMethod",
     "RecognitionMethod",
     "ensure_converter",
@@ -16,6 +17,7 @@ __all__ = [
 
 RecognitionMethod: TypeAlias = Literal["ner", "grounding"]
 PredictionMethod: TypeAlias = Literal["ner", "grounding", "embedding"]
+InitializationStrategy: TypeAlias = Literal["folder", "package"]
 
 DEFAULT_RESOLVER_BASE = "https://bioregistry.io"
 
