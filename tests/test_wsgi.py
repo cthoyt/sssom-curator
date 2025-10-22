@@ -6,17 +6,19 @@ from pathlib import Path
 
 import curies
 import sssom_pydantic
-from bioregistry import NormalizedNamableReference as Reference
+from curies import NamableReference
 from sssom_pydantic import MappingSet, MappingTool, SemanticMapping
 
 from sssom_curator import Repository
 from sssom_curator.web.wsgi import Controller, State, get_app
 
-TEST_USER = Reference(prefix="orcid", identifier="0000-0000-0000-0000", name="Max Mustermann")
+TEST_USER = NamableReference(
+    prefix="orcid", identifier="0000-0000-0000-0000", name="Max Mustermann"
+)
 TEST_MAPPING = SemanticMapping(
-    subject=Reference.from_curie("chebi:131408", name="glyoxime"),
+    subject=NamableReference.from_curie("chebi:131408", name="glyoxime"),
     predicate="skos:exactMatch",
-    object=Reference.from_curie("mesh:C018305", name="glyoxal dioxime"),
+    object=NamableReference.from_curie("mesh:C018305", name="glyoxal dioxime"),
     justification="semapv:ManualMappingCuration",
     confidence=0.95,
     mapping_tool=MappingTool(name="test", version=None),
