@@ -1,0 +1,31 @@
+{
+  "template": "https://github.com/cthoyt/cookiecutter-snekpack",
+  "commit": "9e91376bfbc5bb2cd59e325ef1dc289a961e5aa4",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "package_name": "sssom_curator",
+      "package_name_stylized": "SSSOM Curator",
+      "short_description": "Tools for predicting and curating semantic mappings",
+      "author_name": "Charles Tapley Hoyt",
+      "author_github": "cthoyt",
+      "author_email": "cthoyt@gmail.com",
+      "github_organization_name": "cthoyt",
+      "github_repository_name": "sssom-curator",
+      "command_line_interface": true,
+      "gitlab": false,
+      "runner": "tox",
+      "__not_charlie": "",
+      "__runner": "tox -e",
+      "__runner_uv": "--with tox-uv tox -e",
+      "__runner_pip": "tox tox-uv",
+      "__runner_install_uv": "uv tool install tox --with tox-uv",
+      "__runner_install_pip": "python3 -m pip install tox tox-uv",
+      "__runner_tests": "py",
+      "__gh_slug": "cthoyt/sssom-curator",
+      "_template": "https://github.com/cthoyt/cookiecutter-snekpack",
+      "_commit": "9e91376bfbc5bb2cd59e325ef1dc289a961e5aa4"
+    }
+  },
+  "directory": null
+}
