@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Collection
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, NamedTuple
+from typing import TYPE_CHECKING, Any
 
 import click
+import curies
 from sssom_pydantic import MappingSet
 
 if TYPE_CHECKING:
@@ -33,14 +33,6 @@ columns = [
 ]
 
 
-class SSSOMReturnTuple(NamedTuple):
-    """A package for SSSOM coalation."""
-
-    prefix_map: dict[str, str]
-    df: pd.DataFrame
-    msdf: MappingSetDataFrame
-
-
 def _sssom_dump(mapping_set: MappingSet) -> dict[str, Any]:
     metadata = mapping_set.model_dump(exclude_none=True, exclude_unset=True)
     # fix dumping
@@ -58,9 +50,9 @@ def merge(repository: Repository, directory: Path) -> None:
     import yaml
     from sssom.writers import write_json, write_owl
 
-    prefix_map, df, msdf = get_merged_sssom(repository)
+    converter, df, msdf = get_merged_sssom(repository)
 
-    tsv_meta = {**_sssom_dump(repository.mapping_set), "curie_map": prefix_map}
+    tsv_meta = {**_sssom_dump(repository.mapping_set), "curie_map": converter.bimap}
 
     if repository.basename:
         fname = repository.basename
@@ -99,16 +91,20 @@ def merge(repository: Repository, directory: Path) -> None:
             write_owl(msdf, file)
 
 
-def get_merged_sssom(repository: Repository, *, use_tqdm: bool = False) -> SSSOMReturnTuple:
+def get_merged_sssom(
+    repository: Repository, *, use_tqdm: bool = False, converter: curies.Converter | None = None
+) -> tuple[curies.Converter, pd.DataFrame, MappingSetDataFrame]:
     """Get an SSSOM dataframe."""
     if repository.mapping_set is None:
         raise ValueError
 
-    import bioregistry
     import pandas as pd
     from curies.utils import _prefix_from_curie
     from tqdm.auto import tqdm
 
+    from ..constants import ensure_converter
+
+    converter = ensure_converter(converter, preferred=True)
     prefixes: set[str] = {"semapv"}
 
     # NEW WAY: load all DFs, concat them, reorder columns
@@ -120,7 +116,7 @@ def get_merged_sssom(repository: Repository, *, use_tqdm: bool = False) -> SSSOM
     df = df[columns]
 
     for column in ["subject_id", "object_id", "predicate_id"]:
-        df[column] = df[column].map(lambda p: bioregistry.normalize_curie(p, use_preferred=True))
+        converter.pd_standardize_curie(df, column=column, strict=True)
 
     for _, mapping in tqdm(
         df.iterrows(), desc="tabulating prefixes & authors", disable=not use_tqdm
@@ -137,11 +133,9 @@ def get_merged_sssom(repository: Repository, *, use_tqdm: bool = False) -> SSSOM
     from sssom.parsers import from_sssom_dataframe
     from sssom.validators import validate
 
-    prefix_map = get_prefix_map(prefixes)
-
     try:
         msdf = from_sssom_dataframe(
-            df, prefix_map=prefix_map, meta=_sssom_dump(repository.mapping_set)
+            df, prefix_map=converter, meta=_sssom_dump(repository.mapping_set)
         )
     except Exception as e:
         click.secho(f"SSSOM Export failed...\n{e}", fg="red")
@@ -155,21 +149,4 @@ def get_merged_sssom(repository: Repository, *, use_tqdm: bool = False) -> SSSOM
                 click.secho(f"- {result}", fg="red")
             click.echo("")
 
-    return SSSOMReturnTuple(prefix_map, df, msdf)
-
-
-def get_prefix_map(prefixes: Collection[str]) -> dict[str, str]:
-    """Get a CURIE map containing only the relevant prefixes."""
-    import bioregistry
-
-    prefix_map = {}
-    for prefix in sorted(prefixes, key=str.casefold):
-        resource = bioregistry.get_resource(prefix)
-        if resource is None:
-            raise KeyError
-        uri_prefix = resource.get_rdf_uri_prefix() or resource.get_uri_prefix()
-        if uri_prefix is None:
-            raise ValueError(f"could not look up URI prefix for {prefix}")
-        preferred_prefix = resource.get_preferred_prefix() or prefix
-        prefix_map[preferred_prefix] = uri_prefix
-    return prefix_map
+    return converter, df, msdf

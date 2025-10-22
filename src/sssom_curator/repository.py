@@ -468,7 +468,7 @@ def get_ndex_command() -> click.Command:
             username=username,
             password=password,
         )
-        click.echo(f"Uploaded to https://bioregistry.io/ndex:{obj.ndex_uuid}")
+        click.echo(f"Uploaded to {DEFAULT_RESOLVER_BASE}/ndex:{obj.ndex_uuid}")
 
     return ndex
 

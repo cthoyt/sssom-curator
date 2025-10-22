@@ -13,7 +13,8 @@ import click
 from curies import Reference
 from sssom_pydantic import SemanticMapping
 
-from ..repo import Repository
+from ..constants import DEFAULT_RESOLVER_BASE
+from ..repository import Repository
 
 __all__ = [
     "make_charts",
@@ -62,7 +63,7 @@ def make_charts(repository: Repository, output_directory: Path, image_directory:
 
         nodes_data = {
             reference.curie: {
-                "link": f"https://bioregistry.io/{reference.curie}",
+                "link": f"{DEFAULT_RESOLVER_BASE}/{reference.curie}",
                 "prefix": str(reference.prefix),
                 "identifier": reference.identifier,
                 "name": getattr(reference, "name", None),
