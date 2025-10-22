@@ -7,12 +7,57 @@ from pathlib import Path
 import curies
 import sssom_pydantic
 from bioregistry import NormalizedNamableReference as Reference
-from sssom_pydantic import MappingTool, SemanticMapping
+from sssom_pydantic import MappingSet, MappingTool, SemanticMapping
 
 from sssom_curator import Repository
 from sssom_curator.web.wsgi import Controller, State, get_app
 
 TEST_USER = Reference(prefix="orcid", identifier="0000-0000-0000-0000", name="Max Mustermann")
+TEST_MAPPING = SemanticMapping(
+    subject=Reference.from_curie("chebi:131408", name="glyoxime"),
+    predicate="skos:exactMatch",
+    object=Reference.from_curie("mesh:C018305", name="glyoxal dioxime"),
+    justification="semapv:ManualMappingCuration",
+    confidence=0.95,
+    mapping_tool=MappingTool(name="test", version=None),
+)
+
+TEST_CONVERTER = curies.Converter.from_prefix_map(
+    {
+        "chebi": "http://purl.obolibrary.org/obo/CHEBI_",
+        "mesh": "http://id.nlm.nih.gov/mesh/",
+        "semapv": "https://w3id.org/semapv/vocab/",
+        "skos": "http://www.w3.org/2004/02/skos/core#",
+    }
+)
+
+
+def make_repository(directory: str | Path) -> Repository:
+    """Make a dummy repository."""
+    directory = Path(directory).resolve()
+    repository = Repository(
+        positives_path=directory.joinpath("positive.tsv"),
+        predictions_path=directory.joinpath("predictions.tsv"),
+        negatives_path=directory.joinpath("negative.tsv"),
+        unsure_path=directory.joinpath("usure.tsv"),
+        mapping_set=MappingSet(mapping_set_id="https://example.org/positive.tsv"),
+        purl_base="https://example.org/",
+    )
+    sssom_pydantic.write(
+        [TEST_MAPPING],
+        path=repository.predictions_path,
+        metadata={"mapping_set_id": f"https://example.org/{repository.predictions_path.name}"},
+        converter=TEST_CONVERTER,
+    )
+    for path in repository.curated_paths:
+        with path.open("w") as file:
+            print("#curie_map:", file=file)
+            print("#  chebi: http://purl.obolibrary.org/obo/CHEBI_", file=file)
+            print("#  mesh:  http://id.nlm.nih.gov/mesh/", file=file)
+            print(f"#mapping_set_id: https://example.org/{path.name}", file=file)
+            print(*COLUMNS, sep="\t", file=file)
+
+    return repository
 
 
 class TestWeb(unittest.TestCase):
@@ -21,7 +66,7 @@ class TestWeb(unittest.TestCase):
     def setUp(self) -> None:
         """Set up the test case with a controller."""
         self.directory = tempfile.TemporaryDirectory()
-        repository = Repository()
+        repository = make_repository(self.directory.name)
 
         self.controller = Controller(
             user=TEST_USER,
@@ -29,6 +74,7 @@ class TestWeb(unittest.TestCase):
             negatives_path=repository.negatives_path,
             unsure_path=repository.unsure_path,
             predictions_path=repository.predictions_path,
+            converter=TEST_CONVERTER,
         )
 
     def tearDown(self) -> None:
@@ -80,49 +126,16 @@ class TestFull(unittest.TestCase):
         """Set up the test case."""
         self.temporary_directory = tempfile.TemporaryDirectory()
 
-        predictions = [
-            SemanticMapping(
-                subject=Reference.from_curie("chebi:131408", name="glyoxime"),
-                predicate="skos:exactMatch",
-                object=Reference.from_curie("mesh:C018305", name="glyoxal dioxime"),
-                justification="semapv:ManualMappingCuration",
-                confidence=0.95,
-                mapping_tool=MappingTool(name="test", version=None),
-            )
-        ]
         directory = Path(self.temporary_directory.name)
-        predictions_path = directory.joinpath("predictions.tsv")
-        positives_path = directory.joinpath("positives.tsv")
-        negatives_path = directory.joinpath("negatives.tsv")
-        unsure_path = directory.joinpath("unsure.tsv")
-
-        sssom_pydantic.write(
-            predictions,
-            path=predictions_path,
-            metadata={"mapping_set_id": f"https://example.org/{predictions_path.name}"},
-            converter=curies.Converter.from_prefix_map(
-                {
-                    "chebi": "http://purl.obolibrary.org/obo/CHEBI_",
-                    "mesh": "http://id.nlm.nih.gov/mesh/",
-                    "semapv": "https://w3id.org/semapv/vocab/",
-                    "skos": "http://www.w3.org/2004/02/skos/core#",
-                }
-            ),
-        )
-        for path in [positives_path, negatives_path, unsure_path]:
-            with path.open("w") as file:
-                print("#curie_map:", file=file)
-                print("#  chebi: http://purl.obolibrary.org/obo/CHEBI_", file=file)
-                print("#  mesh:  http://id.nlm.nih.gov/mesh/", file=file)
-                print(f"#mapping_set_id: https://example.org/{path.name}", file=file)
-                print(*COLUMNS, sep="\t", file=file)
+        repository = make_repository(directory)
 
         self.controller = Controller(
-            predictions_path=predictions_path,
-            positives_path=positives_path,
-            negatives_path=negatives_path,
-            unsure_path=unsure_path,
+            predictions_path=repository.predictions_path,
+            positives_path=repository.positives_path,
+            negatives_path=repository.negatives_path,
+            unsure_path=repository.unsure_path,
             user=TEST_USER,
+            converter=TEST_CONVERTER,
         )
         self.app = get_app(controller=self.controller)
         self.app.testing = True
