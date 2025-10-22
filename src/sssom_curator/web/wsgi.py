@@ -18,7 +18,7 @@ import pydantic
 import sssom_pydantic
 import werkzeug
 from bioregistry import NormalizedNamableReference
-from curies import NamableReference, Reference
+from curies import Reference
 from curies.vocabulary import broad_match, exact_match, manual_mapping_curation, narrow_match
 from flask import current_app
 from flask_wtf import FlaskForm
@@ -96,8 +96,10 @@ def get_app(
     negatives_path: Path | None = None,
     unsure_path: Path | None = None,
     controller: Controller | None = None,
-    user: NormalizedNamableReference | None = None,
+    user: Reference | None = None,
     resolver_base: str | None = None,
+    title: str | None = None,
+    footer: str | None = None,
 ) -> flask.Flask:
     """Get a curation flask app."""
     app_ = flask.Flask(__name__)
@@ -135,6 +137,8 @@ def get_app(
         controller=controller,
         url_for_state=url_for_state,
         resolver_base=resolver_base,
+        title=title,
+        footer=footer,
     )
     return app_
 
@@ -142,7 +146,7 @@ def get_app(
 class Controller:
     """A module for interacting with the predictions and mappings."""
 
-    _user: NamableReference
+    _user: Reference
     _predictions: list[SemanticMapping]
     converter: curies.Converter
 
@@ -154,7 +158,7 @@ class Controller:
         positives_path: Path,
         negatives_path: Path,
         unsure_path: Path,
-        user: NamableReference,
+        user: Reference,
         converter: curies.Converter | None = None,
     ) -> None:
         """Instantiate the web controller.
@@ -189,7 +193,7 @@ class Controller:
 
         self._current_author = user
 
-    def _get_current_author(self) -> NamableReference:
+    def _get_current_author(self) -> Reference:
         return self._current_author
 
     def predictions_from_state(self, state: State) -> Iterable[tuple[int, SemanticMapping]]:

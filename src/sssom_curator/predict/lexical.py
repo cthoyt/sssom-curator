@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 NestedMappingDict: TypeAlias = Mapping[str, Mapping[str, Mapping[str, str]]]
 
 #: The name of the lexical mapping tool
-TOOL_NAME = "biomappings"
+TOOL_NAME = "SSSOM Curator"
 
 
 def _resolve_tool(mapping_tool: str | MappingTool | None) -> MappingTool:

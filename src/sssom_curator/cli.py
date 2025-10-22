@@ -6,13 +6,11 @@ from pathlib import Path
 
 import click
 
-from .repository import add_commands
+from .repository import NAME, Repository, add_commands
 
 __all__ = [
     "main",
 ]
-
-NAME = "sssom-curator.json"
 
 
 @click.group(help="A CLI for managing SSSOM repositories.")
@@ -27,20 +25,31 @@ NAME = "sssom-curator.json"
 @click.pass_context
 def main(ctx: click.Context, path: Path) -> None:
     """Run the CLI."""
-    from .repository import Repository
+    ctx.obj = _get_repository(path)
 
-    path = path.expanduser().resolve()
+
+def _get_repository(path: str | Path | None) -> Repository:
+    if path is None:
+        raise ValueError("path not given")
+
+    path = Path(path).expanduser().resolve()
+    if not path.exists():
+        raise FileNotFoundError
+
+    if path.is_file():
+        return Repository.from_path(path)
 
     if path.is_dir():
-        path = path.joinpath(NAME)
-        if not path.is_file():
-            click.secho(f"no {NAME} found in directory {path}")
+        try:
+            repository = Repository.from_directory(path)
+        except FileNotFoundError as e:
+            click.secho(e.args[0])
             sys.exit(1)
+        else:
+            return repository
 
-    repository = Repository.model_validate_json(path.read_text())
-    repository.update_relative_paths(directory=path.parent)
-
-    ctx.obj = repository
+    click.secho(f"bad path: {path}")
+    sys.exit(1)
 
 
 add_commands(main)
