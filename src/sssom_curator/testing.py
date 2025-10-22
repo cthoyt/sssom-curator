@@ -6,7 +6,9 @@ import unittest
 from collections import defaultdict
 from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, TypeAlias, TypeVar, cast
+from typing import TYPE_CHECKING, Any, ClassVar, TypeAlias, TypeVar
+
+import curies
 
 if TYPE_CHECKING:
     from curies import Reference
@@ -45,6 +47,7 @@ class IntegrityTestCase(unittest.TestCase):
     predictions: ClassVar[list[SemanticMapping]]
     incorrect: ClassVar[list[SemanticMapping]]
     unsure: ClassVar[list[SemanticMapping]]
+    converter: ClassVar[curies.Converter]
 
     def _iter_groups(self) -> Iterable[tuple[str, int, SemanticMapping]]:
         for group, label in [
@@ -79,7 +82,7 @@ class IntegrityTestCase(unittest.TestCase):
             )
 
     def test_valid_curies(self) -> None:
-        """Test that all mappings use canonical bioregistry prefixes."""
+        """Test that all mappings use canonical prefixes."""
         for label, line, mapping in self._iter_groups():
             self.assert_valid(label, line, mapping.subject)
             self.assert_valid(label, line, mapping.predicate)
@@ -89,10 +92,8 @@ class IntegrityTestCase(unittest.TestCase):
                 self.assert_valid(label, line, mapping.author)
 
     def assert_valid(self, label: str, line: int, reference: Reference) -> None:
-        """Assert a reference is valid and normalized to the Bioregistry."""
-        import bioregistry
-
-        norm_prefix = bioregistry.normalize_prefix(reference.prefix)
+        """Assert a reference is valid and normalized."""
+        norm_prefix = self.converter.standardize_prefix(reference.prefix)
         self.assertIsNotNone(
             norm_prefix, msg=f"Unknown prefix: {reference.prefix} on {label}:{line}"
         )
@@ -102,15 +103,13 @@ class IntegrityTestCase(unittest.TestCase):
             msg=f"Non-normalized prefix: {reference.prefix} on {label}:{line}",
         )
         self.assertEqual(
-            bioregistry.standardize_identifier(reference.prefix, reference.identifier),
+            self.converter.standardize_identifier(reference.prefix, reference.identifier),
             reference.identifier,
             msg=f"Invalid identifier: {reference.curie} on {label}:{line}",
         )
 
     def test_contributors(self) -> None:
         """Test all contributors have an entry in the curators.tsv file."""
-        from bioregistry import NormalizedNamableReference
-
         files = [
             ("positive", self.mappings),
             ("negative", self.incorrect),
@@ -118,13 +117,12 @@ class IntegrityTestCase(unittest.TestCase):
         ]
         for label, mappings in files:
             for mapping in mappings:
-                self.assertIsNotNone(mapping.author)
-                author = cast(NormalizedNamableReference, mapping.author)
-                self.assertEqual(
-                    "orcid",
-                    author.prefix,
-                    msg=f"ORCID prefixes are required for authors in the {label} group",
-                )
+                for author in mapping.authors or []:
+                    self.assertEqual(
+                        "orcid",
+                        author.prefix,
+                        msg=f"ORCID prefixes are required for authors in the {label} group",
+                    )
 
     def test_cross_redundancy(self) -> None:
         """Test the redundancy of manually curated mappings and predicted mappings."""

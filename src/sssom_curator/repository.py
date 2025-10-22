@@ -14,9 +14,10 @@ from pydantic import BaseModel
 from sssom_pydantic import MappingSet
 from typing_extensions import Self
 
+from .constants import DEFAULT_RESOLVER_BASE
+
 if TYPE_CHECKING:
     import curies
-    from bioregistry import NormalizedNamedReference
     from sssom_pydantic import MappingTool, SemanticMapping
 
     from .testing import IntegrityTestCase
@@ -29,7 +30,7 @@ __all__ = [
 ]
 
 #: A function that returns the current user
-UserGetter: TypeAlias = Callable[[], "NormalizedNamedReference"]
+UserGetter: TypeAlias = Callable[[], "curies.Reference"]
 
 #: A function that returns a dictionary from ORCID to name
 OrcidNameGetter: TypeAlias = Callable[[], dict[str, str]]
@@ -129,13 +130,10 @@ class Repository(BaseModel):
         self, mappings: Iterable[SemanticMapping], *, converter: curies.Converter | None = None
     ) -> None:
         """Append new lines to the positive mappings document."""
+        from .constants import ensure_converter
         from .web.wsgi_utils import insert
 
-        if converter is None:
-            import bioregistry
-
-            converter = bioregistry.get_converter()
-
+        converter = ensure_converter(converter)
         insert(
             self.positives_path,
             converter=converter,
@@ -146,13 +144,10 @@ class Repository(BaseModel):
         self, mappings: Iterable[SemanticMapping], *, converter: curies.Converter | None = None
     ) -> None:
         """Append new lines to the negative mappings document."""
+        from .constants import ensure_converter
         from .web.wsgi_utils import insert
 
-        if converter is None:
-            import bioregistry
-
-            converter = bioregistry.get_converter()
-
+        converter = ensure_converter(converter)
         insert(
             self.negatives_path,
             converter=converter,
@@ -366,15 +361,12 @@ def get_lint_command(converter: curies.Converter | None = None) -> click.Command
         """Sort files and remove duplicates."""
         import sssom_pydantic
 
-        nonlocal converter
-        if converter is None:
-            import bioregistry
+        from .constants import ensure_converter
 
-            # use the full bioregistry converter instead of re-using the
-            # prefix maps inside since this makes sure we cover everything.
-            # it automatically contracts the prefix map to what's relevant
-            # at the end
-            converter = bioregistry.get_converter()
+        # nonlocal lets us mess with the variable even though
+        # it comes from an outside scope
+        nonlocal converter
+        converter = ensure_converter(converter)
 
         exclude_mappings = []
         for path in obj.curated_paths:
@@ -397,7 +389,9 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
         @click.command()
         @click.option(
             "--resolver-base",
-            help="A custom resolver base URL, instead of the Bioregistry.",
+            help="A custom resolver base URL. Defaults to the Bioregistry.",
+            default=DEFAULT_RESOLVER_BASE,
+            show_default=True,
         )
         @click.option("--orcid", help="Your ORCID, if not automatically loadable")
         @click.option("--port", type=int, default=5003, show_default=True)
