@@ -12,6 +12,7 @@ import click
 import sssom_pydantic
 from pydantic import BaseModel
 from sssom_pydantic import MappingSet
+from typing_extensions import Self
 
 if TYPE_CHECKING:
     import curies
@@ -60,7 +61,7 @@ class Repository(BaseModel):
             self.unsure_path = directory.joinpath(self.unsure_path).resolve()
 
     @classmethod
-    def from_path(cls, path: str | Path) -> typing.Self:
+    def from_path(cls, path: str | Path) -> Self:
         """Load a configuration at a path."""
         path = Path(path).expanduser().resolve()
         repository = cls.model_validate_json(path.read_text())
