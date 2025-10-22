@@ -8,7 +8,7 @@ import typing
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, TypeAlias, cast
+from typing import TYPE_CHECKING, TypeAlias, cast
 
 import click
 import curies
@@ -23,18 +23,17 @@ from pyobo import get_grounder
 from sssom_pydantic import MappingTool, SemanticMapping
 from tqdm.auto import tqdm
 
+from ..constants import PredictionMethod, RecognitionMethod
+
 if TYPE_CHECKING:
     import pandas as pd
 
 __all__ = [
     "TOOL_NAME",
-    "PredictionMethod",
-    "RecognitionMethod",
     "append_lexical_predictions",
     "append_predictions",
     "filter_custom",
     "filter_existing_xrefs",
-    "get_predict_command",
     "get_predictions",
     "lexical_prediction_cli",
     "predict_embedding_mappings",
@@ -42,9 +41,6 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
-
-RecognitionMethod: TypeAlias = Literal["ner", "grounding"]
-PredictionMethod: TypeAlias = Literal["ner", "grounding", "embedding"]
 
 #: A filter 3-dictionary of source prefix to target prefix to source identifier to target identifier
 NestedMappingDict: TypeAlias = Mapping[str, Mapping[str, Mapping[str, str]]]
@@ -568,68 +564,3 @@ def lexical_prediction_cli(
         )
 
     main()
-
-
-def get_predict_command(
-    *,
-    source_prefix: str | None = None,
-    target_prefix: str | None | list[str] = None,
-    path: Path,
-    curated_paths: list[Path] | None = None,
-) -> click.Command:
-    """Create a prediction command."""
-    if source_prefix is None:
-        source_prefix_argument = click.argument("source_prefix")
-    else:
-        source_prefix_argument = click.option("--source-prefix", default=source_prefix)
-
-    if target_prefix is None:
-        target_prefix_argument = click.argument("target_prefix", nargs=-1)
-    else:
-        target_prefix_argument = click.option(
-            "--target-prefix", multiple=True, default=[target_prefix]
-        )
-
-    @click.command()
-    @verbose_option
-    @source_prefix_argument
-    @target_prefix_argument
-    @click.option("--relation", help="the predicate to assign to semantic mappings")
-    @click.option(
-        "--method",
-        type=click.Choice(list(typing.get_args(PredictionMethod))),
-        help="The prediction method to use",
-    )
-    @click.option(
-        "--cutoff",
-        type=float,
-        help="The cosine similarity cutoff to use for calling mappings when "
-        "using embedding predictions",
-    )
-    @click.option(
-        "--filter-mutual-mappings",
-        is_flag=True,
-        help="Remove predictions that correspond to already existing mappings "
-        "in either the subject or object resource",
-    )
-    def predict(
-        source_prefix: str,
-        target_prefix: str,
-        relation: str | None,
-        method: PredictionMethod | None,
-        cutoff: float | None,
-        filter_mutual_mappings: bool,
-    ) -> None:
-        """Predict semantic mapping between the source and target prefixes."""
-        append_lexical_predictions(
-            source_prefix,
-            target_prefix,
-            path=path,
-            curated_paths=curated_paths,
-            filter_mutual_mappings=filter_mutual_mappings,
-            relation=relation,
-            method=method,
-            cutoff=cutoff,
-        )
-
-    return predict
