@@ -107,6 +107,12 @@ with a configuration file like the following (using Biomappings as an example):
 }
 ```
 
+Run data integrity tests (exits with 0 on success and 1 on errors):
+
+```console
+$ sssom_curator test
+```
+
 Run a local web-based curation application:
 
 ```console

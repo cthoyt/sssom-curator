@@ -6,7 +6,7 @@ import sys
 import typing
 from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, TypeAlias
+from typing import TYPE_CHECKING, Any, ClassVar, TypeAlias
 
 import click
 import sssom_pydantic
@@ -18,6 +18,8 @@ if TYPE_CHECKING:
     import curies
     from bioregistry import NormalizedNamedReference
     from sssom_pydantic import MappingTool, SemanticMapping
+
+    from .testing import IntegrityTestCase
 
 __all__ = [
     "OrcidNameGetter",
@@ -239,6 +241,17 @@ class Repository(BaseModel):
             **kwargs,
         )
 
+    def get_test_class(self) -> type[IntegrityTestCase]:
+        """Get a test case class."""
+        from .testing import RepositoryTestCase
+
+        class TestCurator(RepositoryTestCase):
+            """A test case for this repository."""
+
+            repository: ClassVar[Repository] = self
+
+        return TestCurator
+
 
 def add_commands(
     main: click.Group,
@@ -262,6 +275,7 @@ def add_commands(
         get_charts_command(output_directory=output_directory, image_directory=image_directory)
     )
     main.add_command(get_predict_command())
+    main.add_command(get_test_command())
 
 
 def get_charts_command(
@@ -534,3 +548,24 @@ def get_predict_command(
         )
 
     return predict
+
+
+def get_test_command() -> click.Command:
+    """Get a command to run tests."""
+
+    @click.command()
+    @click.pass_obj
+    def test(obj: Repository) -> None:
+        """Test the repository."""
+        import unittest
+
+        loader = unittest.TestLoader()
+        suite = loader.loadTestsFromTestCase(obj.get_test_class())
+
+        runner = unittest.TextTestRunner(verbosity=2)
+        result = runner.run(suite)
+
+        # Exit with code 1 if tests failed, 0 otherwise
+        sys.exit(not result.wasSuccessful())
+
+    return test
