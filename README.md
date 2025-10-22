@@ -17,8 +17,8 @@
         <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/sssom_curator" /></a>
     <a href="https://github.com/cthoyt/sssom-curator/blob/main/LICENSE">
         <img alt="PyPI - License" src="https://img.shields.io/pypi/l/sssom_curator" /></a>
-    <a href='https://sssom_curator.readthedocs.io/en/latest/?badge=latest'>
-        <img src='https://readthedocs.org/projects/sssom_curator/badge/?version=latest' alt='Documentation Status' /></a>
+    <a href='https://sssom-curator.readthedocs.io/en/latest/?badge=latest'>
+        <img src='https://readthedocs.org/projects/sssom-curator/badge/?version=latest' alt='Documentation Status' /></a>
     <a href="https://codecov.io/gh/cthoyt/sssom-curator/branch/main">
         <img src="https://codecov.io/gh/cthoyt/sssom-curator/branch/main/graph/badge.svg" alt="Codecov status" /></a>  
     <a href="https://github.com/cthoyt/cookiecutter-python-package">
@@ -33,15 +33,17 @@
     -->
 </p>
 
-SSSOM Curator is a suite of tools for curating semantic mappings encoded in the
+SSSOM Curator is a suite of tools for predicting and curating semantic mappings
+encoded in the
 [Simple Standard for Sharing Ontological Mappings (SSSOM)](https://mapping-commons.github.io/sssom/).
 It has three major components:
 
-1. A semantic mapping predictions workflow, with implementations for lexical
-   matching and lexical embedding similarity
+1. A semantic mappings prediction workflow, with implementations for lexical
+   matching and lexical embedding similarity and extensibility for additional
+   implementations
 2. A (local) web-based curation interface for quick triage of predicted semantic
    mappings that supports full curator provenance
-3. A set of tols for export and summarization
+3. A set of tools for export and summarization
 
 The SSSOM Curator evolved from the
 [Biomappings](https://github.com/biopragmatics/biomappings) semi-automated
