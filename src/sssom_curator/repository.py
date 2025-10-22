@@ -39,10 +39,13 @@ class Repository(BaseModel):
     positives_path: Path
     negatives_path: Path
     unsure_path: Path
-    purl_base: str
-    mapping_set: MappingSet
+    mapping_set: MappingSet | None = None
+    purl_base: str | None = None
     basename: str | None = None
     ndex_uuid: str | None = None
+    web_title: str | None = None
+    web_disabled_message: str | None = None
+    web_footer: str | None = None
 
     def update_relative_paths(self, directory: Path) -> None:
         """Update paths relative to the directory."""
@@ -54,6 +57,14 @@ class Repository(BaseModel):
             self.negatives_path = directory.joinpath(self.negatives_path).resolve()
         if not self.unsure_path.is_file():
             self.unsure_path = directory.joinpath(self.unsure_path).resolve()
+
+    @classmethod
+    def from_path(cls, path: str | Path) -> typing.Self:
+        """Load a configuration at a path."""
+        path = Path(path).expanduser().resolve()
+        repository = cls.model_validate_json(path.read_text())
+        repository.update_relative_paths(directory=path.parent)
+        return repository
 
     @property
     def curated_paths(self) -> list[Path]:
@@ -257,6 +268,12 @@ def get_merge_command(sssom_directory: Path | None = None) -> click.Command:
         if sssom_directory is None:
             click.secho("--sssom-directory is required", fg="red")
             raise sys.exit(1)
+        if obj.mapping_set is None:
+            click.secho("repository doesn't configure ``mapping_set``", fg="red")
+            raise sys.exit(1)
+        if obj.purl_base is None:
+            click.secho("repository doesn't configure ``purl_base``", fg="red")
+            raise sys.exit(1)
 
         from .export.merge import merge
 
@@ -333,20 +350,24 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             help="A custom resolver base URL, instead of the Bioregistry.",
         )
         @click.option("--orcid", help="Your ORCID, if not automatically loadable")
+        @click.option("--port", type=int, default=5003, show_default=True)
         @click.pass_obj
-        def web(obj: Repository, resolver_base: str | None, orcid: str) -> None:
+        def web(obj: Repository, resolver_base: str | None, orcid: str, port: int) -> None:
             """Run the semantic mappings curation app."""
             import webbrowser
 
-            from bioregistry import NormalizedNamedReference
+            from curies import NamableReference
             from more_click import run_app
 
             from .web.wsgi import get_app
 
             if orcid is not None:
-                user = NormalizedNamedReference(prefix="orcid", identifier=orcid)
-            else:
+                user = NamableReference(prefix="orcid", identifier=orcid)
+            elif get_user is not None:
                 user = get_user()
+            else:
+                orcid = click.prompt("What's your ORCID?")
+                user = NamableReference(prefix="orcid", identifier=orcid)
 
             app = get_app(
                 predictions_path=obj.predictions_path,
@@ -355,25 +376,27 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
                 unsure_path=obj.unsure_path,
                 resolver_base=resolver_base,
                 user=user,
+                title=obj.web_title or "Semantic Mapping Curator",
+                footer=obj.web_footer,
             )
 
-            webbrowser.open_new_tab("http://localhost:5000")
+            webbrowser.open_new_tab(f"http://localhost:{port}")
 
-            run_app(app, with_gunicorn=False)
+            run_app(app, with_gunicorn=False, port=str(port))
 
     else:
 
         @click.command()
-        def web() -> None:
+        @click.pass_obj
+        def web(obj: Repository) -> None:
             """Show an error for the web interface."""
             click.secho(
-                "You are not running biomappings from a development installation.\n"
-                "Please run the following to install in development mode:\n"
-                "  $ git clone https://github.com/biomappings/biomappings.git\n"
-                "  $ cd biomappings\n"
-                "  $ pip install -e .[web]",
+                obj.web_disabled_message
+                or "web-based curator is not enabled, maybe because you're not in an editable "
+                "installation of a package that build on SSSOM-Curator?",
                 fg="red",
             )
+            sys.exit(1)
 
     return web
 

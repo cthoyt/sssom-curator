@@ -3,7 +3,7 @@
 {% import "bootstrap4/form.html" as wtf %}
 {% import "bootstrap4/utils.html" as util %}
 
-{% block title %}Biomappings Summary{% endblock %}
+{% block title %}{{ title }} Summary{% endblock %}
 
 {% block content %}
     <div class="container" style="margin-top: 50px; margin-bottom: 50px">
@@ -11,7 +11,7 @@
         <div class="row justify-content-md-center">
             <div class="col-lg-6">
                 <div class="card">
-                    <h5 class="card-header text-center">Biomappings Summary</h5>
+                    <h5 class="card-header text-center">Summary</h5>
                     <div class="card-body">
                         <p>
                             This page creates a top-level summary of the current query,

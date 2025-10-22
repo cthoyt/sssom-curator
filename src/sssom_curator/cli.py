@@ -6,7 +6,7 @@ from pathlib import Path
 
 import click
 
-from .repository import add_commands
+from .repository import Repository, add_commands
 
 __all__ = [
     "main",
@@ -27,20 +27,53 @@ NAME = "sssom-curator.json"
 @click.pass_context
 def main(ctx: click.Context, path: Path) -> None:
     """Run the CLI."""
-    from .repository import Repository
+    ctx.obj = _get_repository(path)
 
-    path = path.expanduser().resolve()
+
+def _get_repository(path: str | Path | None) -> Repository:
+    if path is None:
+        raise ValueError("path not given")
+
+    path = Path(path).expanduser().resolve()
+    if not path.exists():
+        raise FileNotFoundError
+
+    if path.is_file():
+        return Repository.from_path(path)
 
     if path.is_dir():
-        path = path.joinpath(NAME)
-        if not path.is_file():
-            click.secho(f"no {NAME} found in directory {path}")
-            sys.exit(1)
+        directory = path
+        path = directory.joinpath(NAME)
+        if path.is_file():
+            return Repository.from_path(path)
 
-    repository = Repository.model_validate_json(path.read_text())
-    repository.update_relative_paths(directory=path.parent)
+        positives_path = directory.joinpath("positive.sssom.tsv")
+        negatives_path = directory.joinpath("negative.sssom.tsv")
+        predictions_path = directory.joinpath("predictions.sssom.tsv")
+        unsure_path = directory.joinpath("unsure.sssom.tsv")
 
-    ctx.obj = repository
+        if (
+            positives_path.is_file()
+            and negatives_path.is_file()
+            and predictions_path.is_file()
+            and unsure_path.is_file()
+        ):
+            from sssom_pydantic import MappingSet
+
+            r = Repository(
+                positives_path=positives_path,
+                negatives_path=negatives_path,
+                predictions_path=predictions_path,
+                unsure_path=unsure_path,
+                mapping_set=MappingSet(mapping_set_id=""),
+            )
+            return r
+
+        click.secho(f"no {NAME} found in directory {path}")
+        sys.exit(1)
+
+    click.secho(f"bad path: {path}")
+    sys.exit(1)
 
 
 add_commands(main)

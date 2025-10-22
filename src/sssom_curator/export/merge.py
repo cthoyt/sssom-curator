@@ -52,6 +52,9 @@ def _sssom_dump(mapping_set: MappingSet) -> dict[str, Any]:
 
 def merge(repository: Repository, directory: Path) -> None:
     """Merge the SSSOM files together and output to a directory."""
+    if repository.mapping_set is None:
+        raise ValueError
+
     import yaml
     from sssom.writers import write_json, write_owl
 
@@ -80,18 +83,27 @@ def merge(repository: Repository, directory: Path) -> None:
     with open(metadata_path, "w") as file:
         yaml.safe_dump(tsv_meta, file)
 
-    click.echo("Writing JSON")
-    with json_path.open("w") as file:
-        msdf.metadata["mapping_set_id"] = f"{repository.purl_base}/{fname}.sssom.json"
-        write_json(msdf, file)
-    click.echo("Writing OWL")
-    with owl_path.open("w") as file:
-        msdf.metadata["mapping_set_id"] = f"{repository.purl_base}/{fname}.sssom.owl"
-        write_owl(msdf, file)
+    if not repository.purl_base:
+        click.secho(
+            "can not output JSON nor OWL because ``purl_base`` was not defined", fg="yellow"
+        )
+    else:
+        _base = repository.purl_base.rstrip("/")
+        click.echo("Writing JSON")
+        with json_path.open("w") as file:
+            msdf.metadata["mapping_set_id"] = f"{_base}/{fname}.sssom.json"
+            write_json(msdf, file)
+        click.echo("Writing OWL")
+        with owl_path.open("w") as file:
+            msdf.metadata["mapping_set_id"] = f"{_base}/{fname}.sssom.owl"
+            write_owl(msdf, file)
 
 
 def get_merged_sssom(repository: Repository, *, use_tqdm: bool = False) -> SSSOMReturnTuple:
     """Get an SSSOM dataframe."""
+    if repository.mapping_set is None:
+        raise ValueError
+
     import bioregistry
     import pandas as pd
     from curies.utils import _prefix_from_curie
