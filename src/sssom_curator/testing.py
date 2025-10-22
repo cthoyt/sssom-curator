@@ -6,7 +6,9 @@ import unittest
 from collections import defaultdict
 from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, TypeAlias, TypeVar, cast
+from typing import TYPE_CHECKING, Any, ClassVar, TypeAlias, TypeVar
+
+import curies
 
 if TYPE_CHECKING:
     from curies import Reference
@@ -15,7 +17,6 @@ if TYPE_CHECKING:
     from .repository import Repository
 
 __all__ = [
-    "GetterIntegrityTestCase",
     "IntegrityTestCase",
     "MappingGetter",
     "PathIntegrityTestCase",
@@ -45,6 +46,7 @@ class IntegrityTestCase(unittest.TestCase):
     predictions: ClassVar[list[SemanticMapping]]
     incorrect: ClassVar[list[SemanticMapping]]
     unsure: ClassVar[list[SemanticMapping]]
+    converter: ClassVar[curies.Converter]
 
     def _iter_groups(self) -> Iterable[tuple[str, int, SemanticMapping]]:
         for group, label in [
@@ -79,7 +81,7 @@ class IntegrityTestCase(unittest.TestCase):
             )
 
     def test_valid_curies(self) -> None:
-        """Test that all mappings use canonical bioregistry prefixes."""
+        """Test that all mappings use canonical prefixes."""
         for label, line, mapping in self._iter_groups():
             self.assert_valid(label, line, mapping.subject)
             self.assert_valid(label, line, mapping.predicate)
@@ -89,10 +91,8 @@ class IntegrityTestCase(unittest.TestCase):
                 self.assert_valid(label, line, mapping.author)
 
     def assert_valid(self, label: str, line: int, reference: Reference) -> None:
-        """Assert a reference is valid and normalized to the Bioregistry."""
-        import bioregistry
-
-        norm_prefix = bioregistry.normalize_prefix(reference.prefix)
+        """Assert a reference is valid and normalized."""
+        norm_prefix = self.converter.standardize_prefix(reference.prefix)
         self.assertIsNotNone(
             norm_prefix, msg=f"Unknown prefix: {reference.prefix} on {label}:{line}"
         )
@@ -102,15 +102,13 @@ class IntegrityTestCase(unittest.TestCase):
             msg=f"Non-normalized prefix: {reference.prefix} on {label}:{line}",
         )
         self.assertEqual(
-            bioregistry.standardize_identifier(reference.prefix, reference.identifier),
+            self.converter.standardize_identifier(reference.prefix, reference.identifier),
             reference.identifier,
             msg=f"Invalid identifier: {reference.curie} on {label}:{line}",
         )
 
     def test_contributors(self) -> None:
         """Test all contributors have an entry in the curators.tsv file."""
-        from bioregistry import NormalizedNamableReference
-
         files = [
             ("positive", self.mappings),
             ("negative", self.incorrect),
@@ -118,13 +116,12 @@ class IntegrityTestCase(unittest.TestCase):
         ]
         for label, mappings in files:
             for mapping in mappings:
-                self.assertIsNotNone(mapping.author)
-                author = cast(NormalizedNamableReference, mapping.author)
-                self.assertEqual(
-                    "orcid",
-                    author.prefix,
-                    msg=f"ORCID prefixes are required for authors in the {label} group",
-                )
+                for author in mapping.authors or []:
+                    self.assertEqual(
+                        "orcid",
+                        author.prefix,
+                        msg=f"ORCID prefixes are required for authors in the {label} group",
+                    )
 
     def test_cross_redundancy(self) -> None:
         """Test the redundancy of manually curated mappings and predicted mappings."""
@@ -198,23 +195,6 @@ class IntegrityTestCase(unittest.TestCase):
         self.assert_no_internal_redundancies(self.unsure)
 
 
-class GetterIntegrityTestCase(IntegrityTestCase):
-    """Data integrity tests."""
-
-    positive_mappings_getter: ClassVar[MappingGetter]
-    predictions_getter: ClassVar[MappingGetter]
-    negative_mappings_getter: ClassVar[MappingGetter]
-    unsure_mappings_getter: ClassVar[MappingGetter]
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        """Set up the test case."""
-        cls.mappings = cls.positive_mappings_getter()
-        cls.predictions = cls.predictions_getter()
-        cls.incorrect = cls.negative_mappings_getter()
-        cls.unsure = cls.unsure_mappings_getter()
-
-
 class PathIntegrityTestCase(IntegrityTestCase):
     """A test case that can be configured with paths.
 
@@ -245,10 +225,11 @@ class PathIntegrityTestCase(IntegrityTestCase):
         """Set up the test case."""
         import sssom_pydantic
 
-        cls.predictions = sssom_pydantic.read(cls.predictions_path)[0]
-        cls.mappings = sssom_pydantic.read(cls.positives_path)[0]
-        cls.incorrect = sssom_pydantic.read(cls.negatives_path)[0]
-        cls.unsure = sssom_pydantic.read(cls.unsure_path)[0]
+        cls.mappings, c1, _ = sssom_pydantic.read(cls.positives_path)
+        cls.predictions, c2, _ = sssom_pydantic.read(cls.predictions_path)
+        cls.incorrect, c3, _ = sssom_pydantic.read(cls.negatives_path)
+        cls.unsure, c4, _ = sssom_pydantic.read(cls.unsure_path)
+        cls.converter = curies.chain([c1, c2, c3, c4])
 
 
 class RepositoryTestCase(IntegrityTestCase):
@@ -259,7 +240,14 @@ class RepositoryTestCase(IntegrityTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         """Set up the test case."""
-        cls.predictions = cls.repository.read_predicted_mappings()
-        cls.mappings = cls.repository.read_positive_mappings()
-        cls.incorrect = cls.repository.read_negative_mappings()
-        cls.unsure = cls.repository.read_unsure_mappings()
+        import sssom_pydantic
+
+        cls.mappings, c1, _ = sssom_pydantic.read(cls.repository.positives_path)
+        cls.predictions, c2, _ = sssom_pydantic.read(cls.repository.predictions_path)
+        cls.incorrect, c3, _ = sssom_pydantic.read(cls.repository.negatives_path)
+        cls.unsure, c4, _ = sssom_pydantic.read(cls.repository.unsure_path)
+
+        # If the converter wasn't set, then chain together the
+        # converters loaded from the individual SSSOM files
+        if not getattr(cls, "converter", None):
+            cls.converter = curies.chain([c1, c2, c3, c4])

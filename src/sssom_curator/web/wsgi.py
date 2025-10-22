@@ -10,15 +10,13 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any, Literal, TypeAlias, cast, get_args
 
-import bioregistry
 import curies
 import flask
 import flask_bootstrap
 import pydantic
 import sssom_pydantic
 import werkzeug
-from bioregistry import NormalizedNamableReference
-from curies import Reference
+from curies import NamableReference, Reference
 from curies.vocabulary import broad_match, exact_match, manual_mapping_curation, narrow_match
 from flask import current_app
 from flask_wtf import FlaskForm
@@ -28,6 +26,7 @@ from werkzeug.local import LocalProxy
 from wtforms import StringField, SubmitField
 
 from .wsgi_utils import commit, get_branch, insert, not_main, push
+from ..constants import DEFAULT_RESOLVER_BASE, ensure_converter
 
 __all__ = [
     "get_app",
@@ -100,6 +99,7 @@ def get_app(
     resolver_base: str | None = None,
     title: str | None = None,
     footer: str | None = None,
+    converter: curies.Converter | None = None,
 ) -> flask.Flask:
     """Get a curation flask app."""
     app_ = flask.Flask(__name__)
@@ -123,6 +123,7 @@ def get_app(
             negatives_path=negatives_path,
             unsure_path=unsure_path,
             user=user,
+            converter=converter,
         )
     if not controller._predictions and predictions_path is not None:
         raise RuntimeError(f"There are no predictions to curate in {predictions_path}")
@@ -131,7 +132,7 @@ def get_app(
     app_.register_blueprint(blueprint)
 
     if not resolver_base:
-        resolver_base = "https://bioregistry.io"
+        resolver_base = DEFAULT_RESOLVER_BASE
 
     app_.jinja_env.globals.update(
         controller=controller,
@@ -185,11 +186,7 @@ class Controller:
         self.total_curated = 0
         self._added_mappings: list[SemanticMapping] = []
         self.target_references = set(target_references or [])
-
-        if converter:
-            self.converter = converter
-        else:
-            self.converter = bioregistry.get_converter()
+        self.converter = ensure_converter(converter)
 
         self._current_author = user
 
@@ -436,8 +433,8 @@ class Controller:
 
     def add_mapping(
         self,
-        subject: NormalizedNamableReference,
-        obj: NormalizedNamableReference,
+        subject: Reference,
+        obj: Reference,
     ) -> None:
         """Add manually curated new mappings."""
         self._added_mappings.append(
@@ -547,20 +544,26 @@ class MappingForm(FlaskForm):  # type:ignore[misc]
     target_name = StringField("Target Name", id="target_name")
     submit = SubmitField("Add")
 
-    def get_subject(self) -> NormalizedNamableReference:
+    def get_subject(self) -> NamableReference:
         """Get the subject."""
-        return NormalizedNamableReference(
-            prefix=self.data["source_prefix"],
-            identifier=self.data["source_id"],
-            name=self.data["source_name"],
+        return NamableReference.model_validate(
+            {
+                "prefix": self.data["source_prefix"],
+                "identifier": self.data["source_id"],
+                "name": self.data["source_name"],
+            },
+            context=CONTROLLER.converter,
         )
 
-    def get_object(self) -> NormalizedNamableReference:
+    def get_object(self) -> NamableReference:
         """Get the object."""
-        return NormalizedNamableReference(
-            prefix=self.data["target_prefix"],
-            identifier=self.data["target_id"],
-            name=self.data["target_name"],
+        return NamableReference.model_validate(
+            {
+                "prefix": self.data["target_prefix"],
+                "identifier": self.data["target_id"],
+                "name": self.data["target_name"],
+            },
+            context=CONTROLLER.converter,
         )
 
 
