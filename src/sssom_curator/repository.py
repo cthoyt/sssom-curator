@@ -193,6 +193,30 @@ class Repository(BaseModel):
         )
 
 
+def add_commands(
+    main: click.Group,
+    *,
+    enable_web: bool = True,
+    get_user: UserGetter | None = None,
+    output_directory: Path | None = None,
+    sssom_directory: Path | None = None,
+    image_directory: Path | None = None,
+    get_orcid_to_name: OrcidNameGetter | None = None,
+) -> None:
+    """Add parametrized commands."""
+    main.add_command(get_lint_command())
+    main.add_command(get_web_command(enable=enable_web, get_user=get_user))
+    main.add_command(get_merge_command(sssom_directory=sssom_directory))
+    main.add_command(get_ndex_command())
+    main.add_command(
+        get_summary_command(output_directory=output_directory, get_orcid_to_name=get_orcid_to_name)
+    )
+    main.add_command(
+        get_charts_command(output_directory=output_directory, image_directory=image_directory)
+    )
+    main.add_command(get_predict_command())
+
+
 def get_charts_command(
     output_directory: Path | None = None, image_directory: Path | None = None
 ) -> click.Command:
@@ -380,30 +404,6 @@ def get_ndex_command() -> click.Command:
         click.echo(f"Uploaded to https://bioregistry.io/ndex:{obj.ndex_uuid}")
 
     return ndex
-
-
-def add_commands(
-    main: click.Group,
-    *,
-    enable_web: bool = True,
-    get_user: UserGetter | None = None,
-    output_directory: Path | None = None,
-    sssom_directory: Path | None = None,
-    image_directory: Path | None = None,
-    get_orcid_to_name: OrcidNameGetter | None = None,
-) -> None:
-    """Add parametrized commands."""
-    main.add_command(get_lint_command())
-    main.add_command(get_web_command(enable=enable_web, get_user=get_user))
-    main.add_command(get_merge_command(sssom_directory=sssom_directory))
-    main.add_command(get_ndex_command())
-    main.add_command(
-        get_summary_command(output_directory=output_directory, get_orcid_to_name=get_orcid_to_name)
-    )
-    main.add_command(
-        get_charts_command(output_directory=output_directory, image_directory=image_directory)
-    )
-    main.add_command(get_predict_command())
 
 
 def get_predict_command(
