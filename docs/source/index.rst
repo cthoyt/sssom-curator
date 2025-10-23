@@ -9,6 +9,7 @@ SSSOM Curator |release| Documentation
     installation
     usage
     cli
+    projects
 
 Indices and Tables
 ------------------

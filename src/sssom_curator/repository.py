@@ -14,7 +14,14 @@ from pydantic import BaseModel
 from sssom_pydantic import MappingSet
 from typing_extensions import Self
 
-from .constants import DEFAULT_RESOLVER_BASE, ensure_converter
+from .constants import (
+    DEFAULT_RESOLVER_BASE,
+    NEGATIVES_NAME,
+    POSITIVES_NAME,
+    PREDICTIONS_NAME,
+    UNSURE_NAME,
+    ensure_converter,
+)
 
 if TYPE_CHECKING:
     import curies
@@ -40,7 +47,7 @@ OrcidNameGetter: TypeAlias = Callable[[], dict[str, str]]
 ConverterStrategy: TypeAlias = Literal["bioregistry", "bioregistry-preferred", "passthrough"]
 
 #: Configuration file
-NAME = "sssom-curator.json"
+CONFIGURATION_FILENAME = "sssom-curator.json"
 
 strategy_option = click.option(
     "--strategy",
@@ -89,14 +96,14 @@ class Repository(BaseModel):
     def from_directory(cls, directory: str | Path) -> Self:
         """Load an implicit configuration from a directory."""
         directory = Path(directory).expanduser().resolve()
-        path = directory.joinpath(NAME)
+        path = directory.joinpath(CONFIGURATION_FILENAME)
         if path.is_file():
             return cls.from_path(path)
 
-        positives_path = directory.joinpath("positive.sssom.tsv")
-        negatives_path = directory.joinpath("negative.sssom.tsv")
-        predictions_path = directory.joinpath("predictions.sssom.tsv")
-        unsure_path = directory.joinpath("unsure.sssom.tsv")
+        positives_path = directory.joinpath(POSITIVES_NAME)
+        negatives_path = directory.joinpath(NEGATIVES_NAME)
+        predictions_path = directory.joinpath(PREDICTIONS_NAME)
+        unsure_path = directory.joinpath(UNSURE_NAME)
 
         if (
             positives_path.is_file()
@@ -165,6 +172,25 @@ class Repository(BaseModel):
             include_mappings=mappings,
         )
 
+    def append_predicted_mappings(
+        self, mappings: Iterable[SemanticMapping], *, converter: curies.Converter | None = None
+    ) -> None:
+        """Append new lines to the predicted mappings document."""
+        from .constants import ensure_converter
+        from .web.wsgi_utils import insert
+
+        converter = ensure_converter(converter)
+        insert(
+            self.predictions_path,
+            converter=converter,
+            include_mappings=mappings,
+        )
+
+    def run_cli(self, *args: Any, **kwargs: Any) -> None:
+        """Run the CLI."""
+        _cli = self.get_cli()
+        _cli(*args, *kwargs)
+
     def get_cli(
         self,
         *,
@@ -197,12 +223,10 @@ class Repository(BaseModel):
         @click.pass_context
         def update(ctx: click.Context) -> None:
             """Run all summary, merge, and chart exports."""
-            click.secho("Building general exports", fg="green")
-            ctx.invoke(main.commands["summary"])
-            click.secho("Building SSSOM export", fg="green")
+            click.secho("Generating summaries", fg="green")
+            ctx.invoke(main.commands["summarize"])
+            click.secho("Exporting SSSOM", fg="green")
             ctx.invoke(main.commands["merge"])
-            click.secho("Generating charts", fg="green")
-            ctx.invoke(main.commands["charts"])
 
         return main
 
@@ -238,6 +262,7 @@ class Repository(BaseModel):
         """Append lexical predictions."""
         from .predict import lexical
 
+        # TODO this should reuse repository function for appending
         return lexical.append_lexical_predictions(
             prefix,
             target_prefixes,
@@ -301,37 +326,14 @@ def add_commands(
     main.add_command(get_merge_command(sssom_directory=sssom_directory))
     main.add_command(get_ndex_command())
     main.add_command(
-        get_summary_command(output_directory=output_directory, get_orcid_to_name=get_orcid_to_name)
-    )
-    main.add_command(
-        get_charts_command(output_directory=output_directory, image_directory=image_directory)
+        get_summarize_command(
+            output_directory=output_directory,
+            image_directory=image_directory,
+            get_orcid_to_name=get_orcid_to_name,
+        )
     )
     main.add_command(get_predict_command())
     main.add_command(get_test_command())
-
-
-def get_charts_command(
-    output_directory: Path | None = None, image_directory: Path | None = None
-) -> click.Command:
-    """Get the charts command."""
-
-    @click.command()
-    @click.option(
-        "--directory", type=click.Path(dir_okay=True, file_okay=False), default=output_directory
-    )
-    @click.option(
-        "--image-directory",
-        type=click.Path(dir_okay=True, file_okay=False),
-        default=image_directory,
-    )
-    @click.pass_obj
-    def charts(obj: Repository, directory: Path, image_directory: Path) -> None:
-        """Make charts."""
-        from .export.charts import make_charts
-
-        make_charts(obj, directory, image_directory)
-
-    return charts
 
 
 def get_merge_command(sssom_directory: Path | None = None) -> click.Command:
@@ -364,29 +366,43 @@ def get_merge_command(sssom_directory: Path | None = None) -> click.Command:
     return main
 
 
-def get_summary_command(
+def get_summarize_command(
     output_directory: Path | None = None,
+    image_directory: Path | None = None,
     get_orcid_to_name: OrcidNameGetter | None = None,
 ) -> click.Command:
     """Get the summary command."""
-    from .export.summary import summarize
 
     @click.command()
     @click.option(
-        "--output",
-        type=click.Path(file_okay=True, dir_okay=False, exists=True),
+        "--output-directory",
+        type=click.Path(file_okay=False, dir_okay=True, exists=True),
         default=output_directory.joinpath("summary.yml") if output_directory else None,
         required=True,
     )
+    @click.option(
+        "--image-directory",
+        type=click.Path(dir_okay=True, file_okay=False),
+        default=image_directory,
+    )
     @click.pass_obj
-    def summary(obj: Repository, output: Path | None) -> None:
-        """Create export data file."""
-        if output is None:
-            click.secho("--output is required")
+    def summarize(
+        obj: Repository, output_directory: Path | None, image_directory: Path | None
+    ) -> None:
+        """Generate summary charts and tables."""
+        if output_directory is None:
+            click.secho("--output-directory is required", fg="red")
             raise sys.exit(1)
-        summarize(obj, output, get_orcid_to_name=get_orcid_to_name)
+        from .export.charts import make_charts
+        from .export.summary import summarize
 
-    return summary
+        output_directory = Path(output_directory).expanduser().resolve()
+        summarize(
+            obj, output_directory.joinpath("summary.yml"), get_orcid_to_name=get_orcid_to_name
+        )
+        make_charts(obj, output_directory, image_directory=image_directory)
+
+    return summarize
 
 
 def get_lint_command(converter: curies.Converter | None = None) -> click.Command:
@@ -451,7 +467,9 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             elif get_user is not None:
                 user = get_user()
             else:
-                orcid = click.prompt("What's your ORCID?")
+                orcid = (
+                    click.prompt("What's your ORCID?").removeprefix("https://orcid.org").rstrip("/")
+                )
                 user = NamableReference(prefix="orcid", identifier=orcid)
 
             app = get_app(

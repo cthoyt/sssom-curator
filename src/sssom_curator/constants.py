@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Literal, TypeAlias
+from typing import TYPE_CHECKING, Literal, TypeAlias
 
-import curies
+if TYPE_CHECKING:
+    import curies
 
 __all__ = [
     "DEFAULT_RESOLVER_BASE",
@@ -13,6 +14,7 @@ __all__ = [
     "RecognitionMethod",
     "ensure_converter",
 ]
+
 
 RecognitionMethod: TypeAlias = Literal["ner", "grounding"]
 PredictionMethod: TypeAlias = Literal["ner", "grounding", "embedding"]
@@ -48,3 +50,21 @@ def _get_preferred() -> curies.Converter:
         uri_prefix_priority=["rdf", "default"],
         prefix_priority=["preferred", "default"],
     )
+
+
+PREDICTIONS_NAME = "predictions.sssom.tsv"
+POSITIVES_NAME = "positive.sssom.tsv"
+NEGATIVES_NAME = "negative.sssom.tsv"
+UNSURE_NAME = "unsure.sssom.tsv"
+
+STUB_SSSOM_COLUMNS = [
+    "subject_id",
+    "subject_label",
+    "predicate_id",
+    "object_id",
+    "object_label",
+    "mapping_justification",
+    "author_id",
+    "mapping_tool",
+    "predicate_modifier",
+]

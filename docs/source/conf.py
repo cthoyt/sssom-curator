@@ -237,9 +237,11 @@ texinfo_documents = [
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "pandas": ("https://pandas.pydata.org/docs", None),
-    "sklearn": ("https://scikit-learn.org/stable", None),
-    "numpy": ("https://numpy.org/doc/stable", None),
-    "scipy": ("https://docs.scipy.org/doc/scipy", None),
+    "curies": ("https://curies.readthedocs.io/en/latest", None),
+    "bioregistry": ("https://bioregistry.readthedocs.io/en/latest", None),
+    "pyobo": ("https://pyobo.readthedocs.io/en/latest", None),
+    "sssom_pydantic": ("https://sssom-pydantic.readthedocs.io/en/latest", None),
+    "pydantic": ("https://docs.pydantic.dev/latest/", None),
 }
 
 autoclass_content = "both"

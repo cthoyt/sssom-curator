@@ -10,6 +10,7 @@ from curies import NamableReference
 from sssom_pydantic import MappingSet, MappingTool, SemanticMapping
 
 from sssom_curator import Repository
+from sssom_curator.constants import STUB_SSSOM_COLUMNS
 from sssom_curator.web.wsgi import Controller, State, get_app
 
 TEST_USER = NamableReference(
@@ -57,7 +58,7 @@ def make_repository(directory: str | Path) -> Repository:
             print("#  chebi: http://purl.obolibrary.org/obo/CHEBI_", file=file)
             print("#  mesh:  http://id.nlm.nih.gov/mesh/", file=file)
             print(f"#mapping_set_id: https://example.org/{path.name}", file=file)
-            print(*COLUMNS, sep="\t", file=file)
+            print(*STUB_SSSOM_COLUMNS, sep="\t", file=file)
 
     return repository
 
@@ -106,19 +107,6 @@ class TestWeb(unittest.TestCase):
         self.controller.count_predictions_from_state(State(limit=5_000_000))
         self.controller.count_predictions_from_state(State(offset=0))
         self.controller.count_predictions_from_state(State(offset=5_000_000))
-
-
-COLUMNS = [
-    "subject_id",
-    "subject_label",
-    "predicate_id",
-    "object_id",
-    "object_label",
-    "mapping_justification",
-    "author_id",
-    "mapping_tool",
-    "predicate_modifier",
-]
 
 
 class TestFull(unittest.TestCase):
