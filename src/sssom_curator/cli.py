@@ -2,13 +2,10 @@
 
 import os
 import sys
-import typing
-import uuid
 from pathlib import Path
 
 import click
 
-from .constants import InitializationStrategy
 from .repository import CONFIGURATION_FILENAME, Repository, add_commands
 
 __all__ = [
@@ -36,42 +33,40 @@ def main(ctx: click.Context, path: Path) -> None:
 @click.option(
     "-d",
     "--directory",
-    type=click.Path(file_okay=False, dir_okay=True, exists=True),
+    type=click.Path(file_okay=False, dir_okay=True),
     default=os.getcwd,
 )
-@click.option(
-    "--strategy",
-    type=click.Choice(list(typing.get_args(InitializationStrategy))),
-    required=True,
-    default="folder",
-)
-@click.option(
-    "--purl-base",
-    prompt=True,
-    help="The PURL for the exported mapping set",
-    default=lambda: f"https://w3id.org/sssom/mapping/stub/{uuid.uuid4()}",
-)
-@click.option("--mapping-set-title", prompt=True, help="The title for the mapping set")
-def initialize(
-    directory: Path, strategy: InitializationStrategy, purl_base: str, mapping_set_title: str
-) -> None:
+@click.option("--purl-base", help="The PURL for the exported mapping set")
+@click.option("--mapping-set-title", help="The title for the mapping set")
+def initialize(directory: Path, purl_base: str, mapping_set_title: str | None) -> None:
     """Initialize a repository."""
     from sssom_pydantic import MappingSet
 
-    from .initialize import initialize_folder, initialize_package
+    from .initialize import initialize_folder, normalize_name
 
-    if strategy == "folder":
-        mapping_set = MappingSet(
-            mapping_set_id=f"{purl_base}/sssom.tsv",
-            mapping_set_title=mapping_set_title,
-            mapping_set_version="1",
+    directory = Path(directory).resolve()
+    directory.mkdir(exist_ok=True, parents=True)
+
+    if mapping_set_title is None:
+        mapping_set_title = directory.name
+
+    click.echo(f"initialized SSSOM project `{mapping_set_title}` at `{directory.resolve()}`")
+
+    if purl_base is None:
+        norm_title = normalize_name(mapping_set_title)
+        purl_base = click.prompt(
+            "PURL base?", default=f"https://w3id.org/sssom/mappings/{norm_title}"
         )
-        initialize_folder(directory, mapping_set=mapping_set, purl_base=purl_base)
-    elif strategy == "package":
-        initialize_package(directory)
-    else:
-        click.secho(f"invalid strategy: {strategy}", fg="red")
-        sys.exit(1)
+
+    # always have the PURL end with a trailing slash
+    purl_base = purl_base.rstrip("/") + "/"
+
+    mapping_set = MappingSet(
+        mapping_set_id=f"{purl_base}sssom.tsv",
+        mapping_set_title=mapping_set_title,
+        mapping_set_version="1",
+    )
+    initialize_folder(directory, mapping_set=mapping_set, purl_base=purl_base)
 
 
 def _get_repository(path: str | Path | None) -> Repository:

@@ -1,5 +1,7 @@
 """Initialize repositories."""
 
+import os
+import stat
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -8,23 +10,22 @@ import curies
 import sssom_pydantic
 from curies.vocabulary import charlie, lexical_matching_process, manual_mapping_curation
 from sssom_pydantic import MappingSet, SemanticMapping
-import stat
+
 from sssom_curator.constants import NEGATIVES_NAME, POSITIVES_NAME, PREDICTIONS_NAME, UNSURE_NAME
 from sssom_curator.repository import CONFIGURATION_FILENAME, Repository
-import os
 
 if TYPE_CHECKING:
     import jinja2
 
 __all__ = [
     "initialize_folder",
-    "initialize_package",
 ]
 
 HERE = Path(__file__).parent.resolve()
 SCRIPT_NAME = "main.py"
 README_NAME = "README.md"
 CC0_CURIE = "spdx:CC0-1.0"
+DATA_DIR_NAME = "data"
 SKIPS = {
     "mapping_set": {
         "extension_definitions",
@@ -35,6 +36,11 @@ SKIPS = {
         "other",
     }
 }
+
+
+def normalize_name(name: str) -> str:
+    """Normalize a name by replacing spaces and underscores with dashes."""
+    return name.replace(" ", "-").replace("_", "-").lower()
 
 
 def initialize_folder(
@@ -68,11 +74,16 @@ def initialize_folder(
     if mapping_set is None and mapping_set_id is None:
         raise ValueError("either a mapping set or a mapping set ID should be given")
 
+    directory = Path(directory).expanduser().resolve()
+
     if mapping_set is None:
         mapping_set = MappingSet(
             mapping_set_id=mapping_set_id,
             mapping_set_version="1",
         )
+
+    if mapping_set.mapping_set_title is None:
+        mapping_set = mapping_set.model_copy(update={"mapping_set_title": directory.name})
 
     if mapping_set.license is None and add_license:
         mapping_set = mapping_set.model_copy(update={"license": CC0_CURIE})
@@ -83,6 +94,7 @@ def initialize_folder(
             f"`purl_base` was not given. Inferring from mapping set ID to be: {purl_base}",
             fg="yellow",
         )
+        purl_base = purl_base.rstrip("/") + "/"
 
     converter = curies.Converter.from_prefix_map(
         {
@@ -120,20 +132,23 @@ def initialize_folder(
         ),
     }
 
-    directory = Path(directory).expanduser().resolve()
+    # Create the SSSOM files in a nested directory
+    data_directory = directory.joinpath(DATA_DIR_NAME)
+    data_directory.mkdir(exist_ok=True)
     for name, mapping in name_to_example.items():
-        path = directory.joinpath(name)
+        path = data_directory.joinpath(name)
         if path.exists():
             raise FileExistsError(f"{path} already exists. cowardly refusing to overwrite.")
 
-        metadata = MappingSet(mapping_set_id=f"{purl_base}/{name}")
+        metadata = MappingSet(mapping_set_id=f"{purl_base}{name}")
         sssom_pydantic.write([mapping], path, metadata=metadata, converter=converter)
 
+    data_directory_stub = Path(DATA_DIR_NAME)
     repository = Repository(
-        positives_path=positive_mappings_filename,
-        negatives_path=negative_mappings_filename,
-        predictions_path=predicted_mappings_filename,
-        unsure_path=unsure_mappings_filename,
+        positives_path=data_directory_stub / positive_mappings_filename,
+        negatives_path=data_directory_stub / negative_mappings_filename,
+        predictions_path=data_directory_stub / predicted_mappings_filename,
+        unsure_path=data_directory_stub / unsure_mappings_filename,
         mapping_set=mapping_set,
         purl_base=purl_base,
     )
@@ -175,11 +190,6 @@ def _get_jinja2_environment() -> jinja2.Environment:
         autoescape=True, loader=FileSystemLoader(HERE), trim_blocks=True, lstrip_blocks=True
     )
     return environment
-
-
-def initialize_package(directory: Path) -> None:
-    """Initialize a package."""
-    raise NotImplementedError
 
 
 if __name__ == "__main__":

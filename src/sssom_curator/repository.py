@@ -172,6 +172,20 @@ class Repository(BaseModel):
             include_mappings=mappings,
         )
 
+    def append_predicted_mappings(
+        self, mappings: Iterable[SemanticMapping], *, converter: curies.Converter | None = None
+    ) -> None:
+        """Append new lines to the predicted mappings document."""
+        from .constants import ensure_converter
+        from .web.wsgi_utils import insert
+
+        converter = ensure_converter(converter)
+        insert(
+            self.predictions_path,
+            converter=converter,
+            include_mappings=mappings,
+        )
+
     def run_cli(self, *args: Any, **kwargs: Any) -> None:
         """Run the CLI."""
         _cli = self.get_cli()
@@ -248,6 +262,7 @@ class Repository(BaseModel):
         """Append lexical predictions."""
         from .predict import lexical
 
+        # TODO this should reuse repository function for appending
         return lexical.append_lexical_predictions(
             prefix,
             target_prefixes,
