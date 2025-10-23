@@ -458,7 +458,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             elif get_user is not None:
                 user = get_user()
             else:
-                orcid = click.prompt("What's your ORCID?")
+                orcid = click.prompt("What's your ORCID?").removeprefix("https://orcid.org").rstrip("/")
                 user = NamableReference(prefix="orcid", identifier=orcid)
 
             app = get_app(

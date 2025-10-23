@@ -13,6 +13,20 @@ and the Medical Actions Ontology (MaxO) with:
 $ uv run main.py predict mesh maxo
 ```
 
+Test the integrity of mappings with:
+
+```console
+$ uv run main.py test
+```
+
+{% if mapping_set %}Merge the positive, negative, and predicted mappings together with:
+
+```console
+$ mkdir output/
+$ uv run main.py merge --sssom-directory output/
+```
+{% endif -%}
+
 ## Colophon
 
 This repository was generated using SSSOM-Curator.

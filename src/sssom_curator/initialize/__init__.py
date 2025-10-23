@@ -77,7 +77,7 @@ def initialize_folder(
     for name, mapping in name_to_example.items():
         path = directory.joinpath(name)
         if path.exists():
-            raise FileExistsError(f'{path} already exists. cowardly refusing to overwrite.')
+            raise FileExistsError(f"{path} already exists. cowardly refusing to overwrite.")
 
         metadata = MappingSet(mapping_set_id=f"{internal_base_purl}/{name}")
         sssom_pydantic.write([mapping], path, metadata=metadata, converter=converter)
