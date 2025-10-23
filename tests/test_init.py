@@ -5,7 +5,8 @@ import unittest
 from pathlib import Path
 from textwrap import dedent
 
-from sssom_curator.initialize import POSITIVES_NAME, PREDICTIONS_NAME, initialize_folder
+from sssom_curator.constants import POSITIVES_NAME, PREDICTIONS_NAME
+from sssom_curator.initialize import initialize_folder
 
 TEST_PURL_BASE = "https://example.com/test/"
 
