@@ -85,3 +85,12 @@ class TestInitializeFolder(unittest.TestCase):
             """).rstrip(),
             readme_path.read_text().rstrip(),
         )
+
+        predictions_path = self.directory.joinpath("predictions.sssom.tsv")
+        self.assertTrue(predictions_path.is_file())
+        self.assertEqual(
+            dedent("""\
+            subject_id\tsubject_label\tpredicate_id\tobject_id\tobject_label\tmapping_justification\tauthor_id\tmapping_tool\tpredicate_modifier
+        """).rstrip(),
+            predictions_path.read_text().rstrip(),
+        )

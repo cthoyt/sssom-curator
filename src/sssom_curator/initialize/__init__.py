@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import curies
+import sssom_pydantic
 from sssom_pydantic import MappingSet
 
 from ..constants import (
@@ -10,7 +12,6 @@ from ..constants import (
     PREDICTIONS_NAME,
     STUB_SSSOM_COLUMNS,
     UNSURE_NAME,
-    sssom_mapping_set_model_dump,
 )
 
 __all__ = [
@@ -47,18 +48,19 @@ def initialize_folder(
     3. A README.md file with explanation about how the code was generated, how to use
        it, etc.
     """
-    import yaml
     from jinja2 import Environment, FileSystemLoader
+
+    # TODO decide on default prefix map
+    converter = curies.Converter()
 
     directory = Path(directory).expanduser().resolve()
     for name in [positive_name, negatives_name, unsure_name, predictions_name]:
         path = directory.joinpath(name)
         if path.exists():
             raise FileExistsError
-        with path.open("w") as file:
-            if mapping_set is not None:
-                for line in yaml.safe_dump(sssom_mapping_set_model_dump(mapping_set)).splitlines():
-                    print(line, file=file)
+
+        sssom_pydantic.write([], path, metadata=mapping_set, converter=converter)
+        with path.open("a") as file:
             print(*STUB_SSSOM_COLUMNS, sep="\t", file=file)
 
     environment = Environment(
