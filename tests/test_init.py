@@ -27,7 +27,7 @@ class TestInitializeFolder(unittest.TestCase):
         """Test initializing a SSSOM curation folder."""
         initialize_folder(
             self.directory,
-            base_purl="https://example.org/ms/components/",
+            purl_base="https://example.org/ms/components/",
             mapping_set_id="https://example.org/ms/test.sssom.tsv",
         )
 

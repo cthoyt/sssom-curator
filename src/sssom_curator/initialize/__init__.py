@@ -1,14 +1,20 @@
 """Initialize repositories."""
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
+import click
 import curies
 import sssom_pydantic
 from curies.vocabulary import charlie, lexical_matching_process, manual_mapping_curation
 from sssom_pydantic import MappingSet, SemanticMapping
-
-from sssom_curator import Repository
+import stat
 from sssom_curator.constants import NEGATIVES_NAME, POSITIVES_NAME, PREDICTIONS_NAME, UNSURE_NAME
+from sssom_curator.repository import CONFIGURATION_FILENAME, Repository
+import os
+
+if TYPE_CHECKING:
+    import jinja2
 
 __all__ = [
     "initialize_folder",
@@ -16,17 +22,18 @@ __all__ = [
 ]
 
 HERE = Path(__file__).parent.resolve()
-MAPPING_SET_FILE_NAME = "sssom-curator.json"
 SCRIPT_NAME = "main.py"
 README_NAME = "README.md"
 CC0_CURIE = "spdx:CC0-1.0"
 SKIPS = {
-    "extension_definitions",
-    "creator_label",
-    "publication_date",
-    "sssom_version",
-    "issue_tracker",
-    "other",
+    "mapping_set": {
+        "extension_definitions",
+        "creator_label",
+        "publication_date",
+        "sssom_version",
+        "issue_tracker",
+        "other",
+    }
 }
 
 
@@ -37,9 +44,9 @@ def initialize_folder(
     unsure_mappings_filename: str = UNSURE_NAME,
     predicted_mappings_filename: str = PREDICTIONS_NAME,
     negative_mappings_filename: str = NEGATIVES_NAME,
-    repository_filename: str = MAPPING_SET_FILE_NAME,
+    repository_filename: str = CONFIGURATION_FILENAME,
     mapping_set: MappingSet | None = None,
-    base_purl: str | None = None,
+    purl_base: str | None = None,
     script_filename: str = SCRIPT_NAME,
     readme_filename: str = README_NAME,
     add_license: bool = True,
@@ -61,7 +68,21 @@ def initialize_folder(
     if mapping_set is None and mapping_set_id is None:
         raise ValueError("either a mapping set or a mapping set ID should be given")
 
-    from jinja2 import Environment, FileSystemLoader
+    if mapping_set is None:
+        mapping_set = MappingSet(
+            mapping_set_id=mapping_set_id,
+            mapping_set_version="1",
+        )
+
+    if mapping_set.license is None and add_license:
+        mapping_set = mapping_set.model_copy(update={"license": CC0_CURIE})
+
+    if not purl_base:
+        purl_base, _, _ = mapping_set.mapping_set_id.rpartition("/")
+        click.secho(
+            f"`purl_base` was not given. Inferring from mapping set ID to be: {purl_base}",
+            fg="yellow",
+        )
 
     converter = curies.Converter.from_prefix_map(
         {
@@ -69,7 +90,6 @@ def initialize_folder(
             "skos": "http://www.w3.org/2004/02/skos/core#",
         }
     )
-
     name_to_example = {
         positive_mappings_filename: SemanticMapping(
             subject=curies.NamedReference(prefix="ex", identifier="1", name="1"),
@@ -100,31 +120,14 @@ def initialize_folder(
         ),
     }
 
-    if base_purl:
-        internal_base_purl = base_purl.rstrip("/")
-    else:
-        internal_base_purl = "https://example.org/mapping-set"
     directory = Path(directory).expanduser().resolve()
     for name, mapping in name_to_example.items():
         path = directory.joinpath(name)
         if path.exists():
             raise FileExistsError(f"{path} already exists. cowardly refusing to overwrite.")
 
-        metadata = MappingSet(mapping_set_id=f"{internal_base_purl}/{name}")
+        metadata = MappingSet(mapping_set_id=f"{purl_base}/{name}")
         sssom_pydantic.write([mapping], path, metadata=metadata, converter=converter)
-
-    environment = Environment(
-        autoescape=True, loader=FileSystemLoader(HERE), trim_blocks=True, lstrip_blocks=True
-    )
-
-    if mapping_set is None:
-        mapping_set = MappingSet(
-            mapping_set_id=mapping_set_id,
-            mapping_set_version="1",
-        )
-
-    if mapping_set.license is None and add_license:
-        mapping_set = mapping_set.model_copy(update={"license": CC0_CURIE})
 
     repository = Repository(
         positives_path=positive_mappings_filename,
@@ -132,15 +135,16 @@ def initialize_folder(
         predictions_path=predicted_mappings_filename,
         unsure_path=unsure_mappings_filename,
         mapping_set=mapping_set,
+        purl_base=purl_base,
     )
     repository_path = directory.joinpath(repository_filename)
     repository_path.write_text(repository.model_dump_json(indent=2, exclude=SKIPS) + "\n")
 
-    if mapping_set is not None and mapping_set.mapping_set_title:
-        comment = f"SSSOM Curator for {mapping_set.mapping_set_title}"
-    else:
-        comment = "SSSOM Curator"
+    comment = "SSSOM Curator"
+    if mapping_set.mapping_set_title:
+        comment += f" for {mapping_set.mapping_set_title}"
 
+    environment = _get_jinja2_environment()
     script_template = environment.get_template("main.py.jinja2")
     script_text = script_template.render(
         comment=comment,
@@ -148,6 +152,11 @@ def initialize_folder(
     )
     script_path = directory.joinpath(script_filename)
     script_path.write_text(script_text + "\n")
+
+    # Get current permissions
+    mode = os.stat(script_path).st_mode
+    # Add user, group, and other execute bits
+    os.chmod(script_path, mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
     readme_template = environment.get_template("README.md.jinja2")
     readme_text = readme_template.render(mapping_set=mapping_set, cco_curie=CC0_CURIE)
@@ -157,6 +166,15 @@ def initialize_folder(
     if mapping_set.license == CC0_CURIE:
         license_path = directory.joinpath("LICENSE")
         license_path.write_text(HERE.joinpath("cc0.txt").read_text())
+
+
+def _get_jinja2_environment() -> jinja2.Environment:
+    from jinja2 import Environment, FileSystemLoader
+
+    environment = Environment(
+        autoescape=True, loader=FileSystemLoader(HERE), trim_blocks=True, lstrip_blocks=True
+    )
+    return environment
 
 
 def initialize_package(directory: Path) -> None:

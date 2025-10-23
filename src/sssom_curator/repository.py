@@ -47,7 +47,7 @@ OrcidNameGetter: TypeAlias = Callable[[], dict[str, str]]
 ConverterStrategy: TypeAlias = Literal["bioregistry", "bioregistry-preferred", "passthrough"]
 
 #: Configuration file
-NAME = "sssom-curator.json"
+CONFIGURATION_FILENAME = "sssom-curator.json"
 
 strategy_option = click.option(
     "--strategy",
@@ -96,7 +96,7 @@ class Repository(BaseModel):
     def from_directory(cls, directory: str | Path) -> Self:
         """Load an implicit configuration from a directory."""
         directory = Path(directory).expanduser().resolve()
-        path = directory.joinpath(NAME)
+        path = directory.joinpath(CONFIGURATION_FILENAME)
         if path.is_file():
             return cls.from_path(path)
 

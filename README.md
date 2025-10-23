@@ -43,7 +43,7 @@ It has three major components:
    implementations
 2. A (local) web-based curation interface for quick triage of predicted semantic
    mappings that supports full curator provenance
-3. A set of tools for export and summarization
+3. A set of tools for data integrity testing, summarization, and export
 
 The SSSOM Curator evolved from the
 [Biomappings](https://github.com/biopragmatics/biomappings) semi-automated
