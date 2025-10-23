@@ -55,7 +55,6 @@ license-files = [
 
 requires-python = ">=3.10"
 dependencies = [
-    "networkx",
     "requests",
     "click",
     "pyyaml",
@@ -138,6 +137,7 @@ exports = [
     "ndex2",
     "matplotlib",
     "seaborn",
+    "networkx", # for graph-based queries
 ]
 predict-embeddings = [
     "sentence-transformers",
