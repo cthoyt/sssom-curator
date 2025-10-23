@@ -34,7 +34,6 @@ columns = [
 
 
 def _sssom_dump(mapping_set: MappingSet) -> dict[str, Any]:
-    """Prepare a mapping set for writing SSSOM."""
     metadata = mapping_set.model_dump(exclude_none=True, exclude_unset=True)
     # fix dumping
     metadata["creator_id"] = [
@@ -53,10 +52,7 @@ def merge(repository: Repository, directory: Path) -> None:
 
     converter, df, msdf = get_merged_sssom(repository)
 
-    tsv_meta = {
-        **_sssom_dump(repository.mapping_set),
-        "curie_map": converter.bimap,
-    }
+    tsv_meta = {**_sssom_dump(repository.mapping_set), "curie_map": converter.bimap}
 
     if repository.basename:
         fname = repository.basename
