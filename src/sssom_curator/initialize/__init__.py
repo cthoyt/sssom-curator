@@ -77,7 +77,7 @@ def initialize_folder(
     for name, mapping in name_to_example.items():
         path = directory.joinpath(name)
         if path.exists():
-            raise FileExistsError
+            raise FileExistsError(f'{path} already exists. cowardly refusing to overwrite.')
 
         metadata = MappingSet(mapping_set_id=f"{internal_base_purl}/{name}")
         sssom_pydantic.write([mapping], path, metadata=metadata, converter=converter)
@@ -111,12 +111,12 @@ def initialize_folder(
         base_purl=base_purl,
     )
     script_path = directory.joinpath(script_name)
-    script_path.write_text(script_text)
+    script_path.write_text(script_text + "\n")
 
     readme_template = environment.get_template("README.md.jinja2")
     readme_text = readme_template.render()
     readme_path = directory.joinpath(readme_name)
-    readme_path.write_text(readme_text)
+    readme_path.write_text(readme_text + "\n")
 
 
 def initialize_package(directory: Path) -> None:
