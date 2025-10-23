@@ -1,0 +1,31 @@
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#     "sssom-curator[web,predict-lexical,exports]",
+# ]
+# ///
+
+"""{{ comment }}."""
+
+from sssom_curator import Repository
+{% if mapping_set -%}from sssom_pydantic import MappingSet{% endif %}
+from pathlib import Path
+
+HERE = Path(__file__).parent.resolve()
+
+{% if mapping_set %}mapping_set_path = HERE.joinpath("{{ mapping_set_filename }}")
+mapping_set = MappingSet.model_validate_json(mapping_set_path.read_text())
+{% endif -%}
+
+repository = Repository(
+    positives_path=HERE.joinpath("{{ positive_name }}"),
+    negatives_path=HERE.joinpath("{{ negatives_name }}"),
+    predictions_path=HERE.joinpath("{{ predictions_name }}"),
+    unsure_path=HERE.joinpath("{{ unsure_name }}"),
+    {% if mapping_set %}mapping_set=mapping_set,{% endif %}
+)
+
+main = repository.get_cli()
+
+if __name__ == "__main__":
+    main()

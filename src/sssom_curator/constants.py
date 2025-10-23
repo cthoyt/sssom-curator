@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Literal, TypeAlias
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
-import curies
+if TYPE_CHECKING:
+    import curies
+    from sssom_pydantic import MappingSet
 
 __all__ = [
     "DEFAULT_RESOLVER_BASE",
@@ -14,6 +16,7 @@ __all__ = [
     "RecognitionMethod",
     "ensure_converter",
 ]
+
 
 RecognitionMethod: TypeAlias = Literal["ner", "grounding"]
 PredictionMethod: TypeAlias = Literal["ner", "grounding", "embedding"]
@@ -68,3 +71,13 @@ STUB_SSSOM_COLUMNS = [
     "mapping_tool",
     "predicate_modifier",
 ]
+
+
+def sssom_mapping_set_model_dump(mapping_set: MappingSet) -> dict[str, Any]:
+    """Prepare a mapping set for writing SSSOM."""
+    metadata = mapping_set.model_dump(exclude_none=True, exclude_unset=True)
+    # fix dumping
+    metadata["creator_id"] = [
+        creator["prefix"] + ":" + creator["identifier"] for creator in metadata["creator_id"]
+    ]
+    return metadata

@@ -41,13 +41,12 @@ def main(ctx: click.Context, path: Path) -> None:
     required=True,
     default="folder",
 )
-@click.option("--purl-base", prompt=True, default="http://example.org/")
-def initialize(directory: Path, strategy: InitializationStrategy, purl_base: str) -> None:
+def initialize(directory: Path, strategy: InitializationStrategy) -> None:
     """Initialize a repository."""
-    from .init import initialize_folder, initialize_package
+    from .initialize import initialize_folder, initialize_package
 
     if strategy == "folder":
-        initialize_folder(directory, purl_base=purl_base)
+        initialize_folder(directory)
     elif strategy == "package":
         initialize_package(directory)
     else:

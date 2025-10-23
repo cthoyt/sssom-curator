@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import click
 import curies
-from sssom_pydantic import MappingSet
+
+from ..constants import sssom_mapping_set_model_dump
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -33,15 +34,6 @@ columns = [
 ]
 
 
-def _sssom_dump(mapping_set: MappingSet) -> dict[str, Any]:
-    metadata = mapping_set.model_dump(exclude_none=True, exclude_unset=True)
-    # fix dumping
-    metadata["creator_id"] = [
-        creator["prefix"] + ":" + creator["identifier"] for creator in metadata["creator_id"]
-    ]
-    return metadata
-
-
 def merge(repository: Repository, directory: Path) -> None:
     """Merge the SSSOM files together and output to a directory."""
     if repository.mapping_set is None:
@@ -52,7 +44,10 @@ def merge(repository: Repository, directory: Path) -> None:
 
     converter, df, msdf = get_merged_sssom(repository)
 
-    tsv_meta = {**_sssom_dump(repository.mapping_set), "curie_map": converter.bimap}
+    tsv_meta = {
+        **sssom_mapping_set_model_dump(repository.mapping_set),
+        "curie_map": converter.bimap,
+    }
 
     if repository.basename:
         fname = repository.basename
@@ -137,7 +132,7 @@ def get_merged_sssom(
 
     try:
         msdf = from_sssom_dataframe(
-            df, prefix_map=converter, meta=_sssom_dump(repository.mapping_set)
+            df, prefix_map=converter, meta=sssom_mapping_set_model_dump(repository.mapping_set)
         )
     except Exception as e:
         click.secho(f"SSSOM Export failed...\n{e}", fg="red")

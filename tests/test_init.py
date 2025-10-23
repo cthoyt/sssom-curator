@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from textwrap import dedent
 
-from sssom_curator.init import initialize_folder
+from sssom_curator.initialize import initialize_folder
 
 TEST_PURL_BASE = "https://example.com/test/"
 
@@ -22,9 +22,9 @@ class TestInitializeFolder(unittest.TestCase):
         """Tear down the test case."""
         self.directory_obj.cleanup()
 
-    def test_initialize(self) -> None:
+    def test_initialize_no_mapping_set(self) -> None:
         """Test initializing a SSSOM curation folder."""
-        initialize_folder(self.directory, purl_base=TEST_PURL_BASE)
+        initialize_folder(self.directory)
 
         script_path = self.directory.joinpath("main.py")
         self.assertTrue(script_path.is_file())
@@ -38,7 +38,7 @@ class TestInitializeFolder(unittest.TestCase):
                 # ]
                 # ///
 
-                \"\"\"Hello somthing something\"\"\"
+                \"\"\"SSSOM Curator.\"\"\"
 
                 from sssom_curator import Repository
                 from pathlib import Path
@@ -51,8 +51,13 @@ class TestInitializeFolder(unittest.TestCase):
                     predictions_path=HERE.joinpath("predictions.sssom.tsv"),
                     unsure_path=HERE.joinpath("unsure.sssom.tsv"),
                 )
-            """),
-            script_path.read_text(),
+
+                main = repository.get_cli()
+
+                if __name__ == "__main__":
+                    main()
+            """).rstrip(),
+            script_path.read_text().rstrip(),
         )
 
         readme_path = self.directory.joinpath("README.md")
@@ -77,6 +82,6 @@ class TestInitializeFolder(unittest.TestCase):
             ## Colophon
 
             This repository was generated using SSSOM-Curator.
-            """),
-            readme_path.read_text(),
+            """).rstrip(),
+            readme_path.read_text().rstrip(),
         )
