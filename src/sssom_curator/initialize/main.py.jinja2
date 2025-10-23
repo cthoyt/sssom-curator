@@ -23,6 +23,7 @@ repository = Repository(
     predictions_path=HERE.joinpath("{{ predictions_name }}"),
     unsure_path=HERE.joinpath("{{ unsure_name }}"),
     {% if mapping_set %}mapping_set=mapping_set,{% endif %}
+    {% if mapping_set %}base_purl="{{ base_purl }}",{% endif %}
 )
 
 main = repository.get_cli()

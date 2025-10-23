@@ -29,6 +29,7 @@ def initialize_folder(
     negatives_name: str = NEGATIVES_NAME,
     mapping_set_filename: str = MAPPING_SET_FILE_NAME,
     mapping_set: MappingSet | None = None,
+    base_purl: str | None = None,
     script_name: str = SCRIPT_NAME,
     readme_name: str = README_NAME,
 ) -> None:
@@ -68,13 +69,18 @@ def initialize_folder(
         predictions_name: base_example,
     }
 
+    if base_purl:
+        internal_base_purl = base_purl.rstrip("/")
+    else:
+        internal_base_purl = "https://example.org/mapping-set"
     directory = Path(directory).expanduser().resolve()
     for name, mapping in name_to_example.items():
         path = directory.joinpath(name)
         if path.exists():
             raise FileExistsError
 
-        sssom_pydantic.write([mapping], path, metadata=mapping_set, converter=converter)
+        metadata = MappingSet(mapping_set_id=f"{internal_base_purl}/{name}")
+        sssom_pydantic.write([mapping], path, metadata=metadata, converter=converter)
 
     environment = Environment(
         autoescape=True, loader=FileSystemLoader(HERE), trim_blocks=True, lstrip_blocks=True
@@ -102,6 +108,7 @@ def initialize_folder(
         negatives_name=negatives_name,
         unsure_name=unsure_name,
         predictions_name=predictions_name,
+        base_purl=base_purl,
     )
     script_path = directory.joinpath(script_name)
     script_path.write_text(script_text)

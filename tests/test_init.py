@@ -93,6 +93,7 @@ class TestInitializeFolder(unittest.TestCase):
                 #curie_map:
                 #  ex: https://example.org/
                 #  skos: http://www.w3.org/2004/02/skos/core#
+                #mapping_set_id: https://example.org/mapping-set/predictions.sssom.tsv
                 subject_id\tsubject_label\tpredicate_id\tobject_id\tobject_label\tmapping_justification\tauthor_id
                 ex:1\t1\tskos:exactMatch\tex:2\t2\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370
             """).rstrip(),
