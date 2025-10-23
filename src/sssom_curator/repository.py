@@ -172,6 +172,11 @@ class Repository(BaseModel):
             include_mappings=mappings,
         )
 
+    def run_cli(self, *args: Any, **kwargs: Any) -> None:
+        """Run the CLI."""
+        _cli = self.get_cli()
+        _cli(*args, *kwargs)
+
     def get_cli(
         self,
         *,
@@ -376,6 +381,7 @@ def get_summarize_command(
         from .export.charts import make_charts
         from .export.summary import summarize
 
+        output_directory = Path(output_directory).expanduser().resolve()
         summarize(
             obj, output_directory.joinpath("summary.yml"), get_orcid_to_name=get_orcid_to_name
         )

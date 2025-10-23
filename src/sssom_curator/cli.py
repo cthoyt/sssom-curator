@@ -3,6 +3,7 @@
 import os
 import sys
 import typing
+import uuid
 from pathlib import Path
 
 import click
@@ -33,7 +34,10 @@ def main(ctx: click.Context, path: Path) -> None:
 
 @main.command(name="init")
 @click.option(
-    "--directory", type=click.Path(file_okay=False, dir_okay=True, exists=True), default=os.getcwd
+    "-d",
+    "--directory",
+    type=click.Path(file_okay=False, dir_okay=True, exists=True),
+    default=os.getcwd,
 )
 @click.option(
     "--strategy",
@@ -41,12 +45,28 @@ def main(ctx: click.Context, path: Path) -> None:
     required=True,
     default="folder",
 )
-def initialize(directory: Path, strategy: InitializationStrategy) -> None:
+@click.option(
+    "--base-purl",
+    prompt=True,
+    help="The PURL for the exported mapping set",
+    default=lambda: f"https://w3id.org/sssom/mapping/stub/{uuid.uuid4()}",
+)
+@click.option("--mapping-set-title", prompt=True, help="The title for the mapping set")
+def initialize(
+    directory: Path, strategy: InitializationStrategy, base_purl: str, mapping_set_title: str
+) -> None:
     """Initialize a repository."""
+    from sssom_pydantic import MappingSet
+
     from .initialize import initialize_folder, initialize_package
 
     if strategy == "folder":
-        initialize_folder(directory)
+        mapping_set = MappingSet(
+            mapping_set_id=f"{base_purl}/sssom.tsv",
+            mapping_set_title=mapping_set_title,
+            mapping_set_version="1",
+        )
+        initialize_folder(directory, mapping_set=mapping_set, base_purl=base_purl)
     elif strategy == "package":
         initialize_package(directory)
     else:

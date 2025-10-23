@@ -4,10 +4,11 @@ from pathlib import Path
 
 import curies
 import sssom_pydantic
-from curies.vocabulary import charlie, manual_mapping_curation
+from curies.vocabulary import charlie, lexical_matching_process, manual_mapping_curation
 from sssom_pydantic import MappingSet, SemanticMapping
 
-from ..constants import NEGATIVES_NAME, POSITIVES_NAME, PREDICTIONS_NAME, UNSURE_NAME
+from sssom_curator import Repository
+from sssom_curator.constants import NEGATIVES_NAME, POSITIVES_NAME, PREDICTIONS_NAME, UNSURE_NAME
 
 __all__ = [
     "initialize_folder",
@@ -15,23 +16,34 @@ __all__ = [
 ]
 
 HERE = Path(__file__).parent.resolve()
-MAPPING_SET_FILE_NAME = "mapping_set.json"
+MAPPING_SET_FILE_NAME = "sssom-curator.json"
 SCRIPT_NAME = "main.py"
 README_NAME = "README.md"
+CC0_CURIE = "spdx:CC0-1.0"
+SKIPS = {
+    "extension_definitions",
+    "creator_label",
+    "publication_date",
+    "sssom_version",
+    "issue_tracker",
+    "other",
+}
 
 
 def initialize_folder(
     directory: str | Path,
     *,
-    positive_name: str = POSITIVES_NAME,
-    unsure_name: str = UNSURE_NAME,
-    predictions_name: str = PREDICTIONS_NAME,
-    negatives_name: str = NEGATIVES_NAME,
-    mapping_set_filename: str = MAPPING_SET_FILE_NAME,
+    positive_mappings_filename: str = POSITIVES_NAME,
+    unsure_mappings_filename: str = UNSURE_NAME,
+    predicted_mappings_filename: str = PREDICTIONS_NAME,
+    negative_mappings_filename: str = NEGATIVES_NAME,
+    repository_filename: str = MAPPING_SET_FILE_NAME,
     mapping_set: MappingSet | None = None,
     base_purl: str | None = None,
-    script_name: str = SCRIPT_NAME,
-    readme_name: str = README_NAME,
+    script_filename: str = SCRIPT_NAME,
+    readme_filename: str = README_NAME,
+    add_license: bool = True,
+    mapping_set_id: str | None = None,
 ) -> None:
     """Create a curation repository in a folder.
 
@@ -46,6 +58,9 @@ def initialize_folder(
     3. A README.md file with explanation about how the code was generated, how to use
        it, etc.
     """
+    if mapping_set is None and mapping_set_id is None:
+        raise ValueError("either a mapping set or a mapping set ID should be given")
+
     from jinja2 import Environment, FileSystemLoader
 
     converter = curies.Converter.from_prefix_map(
@@ -55,18 +70,34 @@ def initialize_folder(
         }
     )
 
-    base_example = SemanticMapping(
-        subject=curies.NamedReference(prefix="ex", identifier="1", name="1"),
-        predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
-        object=curies.NamedReference(prefix="ex", identifier="2", name="2"),
-        justification=manual_mapping_curation,
-        authors=[charlie],
-    )
     name_to_example = {
-        positive_name: base_example,
-        negatives_name: base_example,
-        unsure_name: base_example,
-        predictions_name: base_example,
+        positive_mappings_filename: SemanticMapping(
+            subject=curies.NamedReference(prefix="ex", identifier="1", name="1"),
+            predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
+            object=curies.NamedReference(prefix="ex", identifier="2", name="2"),
+            justification=manual_mapping_curation,
+            authors=[charlie],
+        ),
+        negative_mappings_filename: SemanticMapping(
+            subject=curies.NamedReference(prefix="ex", identifier="3", name="3"),
+            predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
+            object=curies.NamedReference(prefix="ex", identifier="4", name="4"),
+            justification=manual_mapping_curation,
+            authors=[charlie],
+        ),
+        unsure_mappings_filename: SemanticMapping(
+            subject=curies.NamedReference(prefix="ex", identifier="5", name="5"),
+            predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
+            object=curies.NamedReference(prefix="ex", identifier="6", name="6"),
+            justification=manual_mapping_curation,
+            authors=[charlie],
+        ),
+        predicted_mappings_filename: SemanticMapping(
+            subject=curies.NamedReference(prefix="ex", identifier="7", name="7"),
+            predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
+            object=curies.NamedReference(prefix="ex", identifier="8", name="8"),
+            justification=lexical_matching_process,
+        ),
     }
 
     if base_purl:
@@ -86,13 +117,24 @@ def initialize_folder(
         autoescape=True, loader=FileSystemLoader(HERE), trim_blocks=True, lstrip_blocks=True
     )
 
-    if mapping_set is not None:
-        mapping_set_path = directory.joinpath(mapping_set_filename)
-        mapping_set_path.write_text(
-            mapping_set.model_dump_json(exclude_none=True, exclude_unset=True)
+    if mapping_set is None:
+        mapping_set = MappingSet(
+            mapping_set_id=mapping_set_id,
+            mapping_set_version="1",
         )
-    else:
-        mapping_set_path = None
+
+    if mapping_set.license is None and add_license:
+        mapping_set = mapping_set.model_copy(update={"license": CC0_CURIE})
+
+    repository = Repository(
+        positives_path=positive_mappings_filename,
+        negatives_path=negative_mappings_filename,
+        predictions_path=predicted_mappings_filename,
+        unsure_path=unsure_mappings_filename,
+        mapping_set=mapping_set,
+    )
+    repository_path = directory.joinpath(repository_filename)
+    repository_path.write_text(repository.model_dump_json(indent=2, exclude=SKIPS) + "\n")
 
     if mapping_set is not None and mapping_set.mapping_set_title:
         comment = f"SSSOM Curator for {mapping_set.mapping_set_title}"
@@ -102,23 +144,36 @@ def initialize_folder(
     script_template = environment.get_template("main.py.jinja2")
     script_text = script_template.render(
         comment=comment,
-        mapping_set=mapping_set,
-        mapping_set_path=mapping_set_path,
-        positive_name=positive_name,
-        negatives_name=negatives_name,
-        unsure_name=unsure_name,
-        predictions_name=predictions_name,
-        base_purl=base_purl,
+        repository_filename=repository_filename,
     )
-    script_path = directory.joinpath(script_name)
+    script_path = directory.joinpath(script_filename)
     script_path.write_text(script_text + "\n")
 
     readme_template = environment.get_template("README.md.jinja2")
-    readme_text = readme_template.render()
-    readme_path = directory.joinpath(readme_name)
+    readme_text = readme_template.render(mapping_set=mapping_set, cco_curie=CC0_CURIE)
+    readme_path = directory.joinpath(readme_filename)
     readme_path.write_text(readme_text + "\n")
+
+    if mapping_set.license == CC0_CURIE:
+        license_path = directory.joinpath("LICENSE")
+        license_path.write_text(HERE.joinpath("cc0.txt").read_text())
 
 
 def initialize_package(directory: Path) -> None:
     """Initialize a package."""
     raise NotImplementedError
+
+
+if __name__ == "__main__":
+    x = HERE.parent.parent.parent.resolve().joinpath("example")
+    if x.is_dir():
+        for p in x.glob("*"):
+            p.unlink()
+        x.rmdir()
+    x.mkdir(exist_ok=True)
+    initialize_folder(
+        x,
+        mapping_set=MappingSet(
+            mapping_set_id="https://example.org/test.tsv", mapping_set_title="Test"
+        ),
+    )

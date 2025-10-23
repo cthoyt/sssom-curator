@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from textwrap import dedent
 
-from sssom_curator.initialize import initialize_folder
+from sssom_curator.initialize import POSITIVES_NAME, PREDICTIONS_NAME, initialize_folder
 
 TEST_PURL_BASE = "https://example.com/test/"
 
@@ -24,7 +24,11 @@ class TestInitializeFolder(unittest.TestCase):
 
     def test_initialize_no_mapping_set(self) -> None:
         """Test initializing a SSSOM curation folder."""
-        initialize_folder(self.directory)
+        initialize_folder(
+            self.directory,
+            base_purl="https://example.org/ms/components/",
+            mapping_set_id="https://example.org/ms/test.sssom.tsv",
+        )
 
         script_path = self.directory.joinpath("main.py")
         self.assertTrue(script_path.is_file())
@@ -45,17 +49,11 @@ class TestInitializeFolder(unittest.TestCase):
 
                 HERE = Path(__file__).parent.resolve()
 
-                repository = Repository(
-                    positives_path=HERE.joinpath("positive.sssom.tsv"),
-                    negatives_path=HERE.joinpath("negative.sssom.tsv"),
-                    predictions_path=HERE.joinpath("predictions.sssom.tsv"),
-                    unsure_path=HERE.joinpath("unsure.sssom.tsv"),
-                )
-
-                main = repository.get_cli()
+                repository_path = HERE.joinpath("sssom-curator.json")
+                repository = Repository.model_validate_json(repository_path.read_text())
 
                 if __name__ == "__main__":
-                    main()
+                    repository.run_cli()
             """).rstrip(),
             script_path.read_text().rstrip(),
         )
@@ -64,38 +62,90 @@ class TestInitializeFolder(unittest.TestCase):
         self.assertTrue(readme_path.is_file())
         self.assertEqual(
             dedent("""\
-            # SSSOM Curator
+        # SSSOM Curator
 
-            Run the curator with:
+        ## Workflows
 
-            ```console
-            $ uv run main.py web
-            ```
+        Run the curator with:
 
-            Predict new mappings, e.g., between Medical Subject Headings (MeSH)
-            and the Medical Actions Ontology (MaxO) with:
+        ```console
+        $ uv run main.py web
+        ```
 
-            ```console
-            $ uv run main.py predict mesh maxo
-            ```
+        Predict new mappings, e.g., between Medical Subject Headings (MeSH)
+        and the Medical Actions Ontology (MaxO) with:
 
-            ## Colophon
+        ```console
+        $ uv run main.py predict mesh maxo
+        ```
 
-            This repository was generated using SSSOM-Curator.
-            """).rstrip(),
-            readme_path.read_text().rstrip(),
+        ### Export
+
+        Output summary charts and tables with:
+
+        ```console
+        $ mkdir output/
+        $ uv run main.py summarize --output-directory output/
+        ```
+
+        Merge the positive, negative, and predicted mappings together
+        and output several SSSOM flavors (TSV, OWL, JSON) in a given directory with:
+
+        ```console
+        $ mkdir sssom/
+        $ uv run main.py merge --sssom-directory sssom/
+        ```
+
+        ### Maintenance
+
+        Format/lint the mappings with:
+
+        ```console
+        $ uv run main.py lint
+        ```
+
+        Test the integrity of mappings with:
+
+        ```console
+        $ uv run main.py test
+        ```
+
+        ## License
+
+        Semantic mappings curated in this directory are licensed under the
+        [Creative Commons Zero v1.0 Universal (CC0-1.0) License](https://creativecommons.org/publicdomain/zero/1.0/legalcode).
+
+        ## Colophon
+
+        This repository was generated using [SSSOM-Curator](https://github.com/cthoyt/sssom-curator).
+            """),
+            readme_path.read_text(),
         )
 
-        predictions_path = self.directory.joinpath("predictions.sssom.tsv")
-        self.assertTrue(predictions_path.is_file())
+        positives_path = self.directory.joinpath(POSITIVES_NAME)
+        self.assertTrue(positives_path.is_file())
         self.assertEqual(
-            dedent("""\
+            dedent(f"""\
                 #curie_map:
                 #  ex: https://example.org/
                 #  skos: http://www.w3.org/2004/02/skos/core#
-                #mapping_set_id: https://example.org/mapping-set/predictions.sssom.tsv
+                #mapping_set_id: https://example.org/ms/components/{POSITIVES_NAME}
                 subject_id\tsubject_label\tpredicate_id\tobject_id\tobject_label\tmapping_justification\tauthor_id
                 ex:1\t1\tskos:exactMatch\tex:2\t2\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370
+            """).rstrip(),
+            positives_path.read_text().rstrip(),
+        )
+
+        predictions_path = self.directory.joinpath(PREDICTIONS_NAME)
+        self.assertTrue(predictions_path.is_file())
+        self.assertEqual(
+            dedent(f"""\
+                #curie_map:
+                #  ex: https://example.org/
+                #  skos: http://www.w3.org/2004/02/skos/core#
+                #mapping_set_id: https://example.org/ms/components/{PREDICTIONS_NAME}
+                subject_id\tsubject_label\tpredicate_id\tobject_id\tobject_label\tmapping_justification
+                ex:7\t7\tskos:exactMatch\tex:8\t8\tsemapv:LexicalMatching
             """).rstrip(),
             predictions_path.read_text().rstrip(),
         )
