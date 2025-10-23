@@ -4,15 +4,10 @@ from pathlib import Path
 
 import curies
 import sssom_pydantic
-from sssom_pydantic import MappingSet
+from curies.vocabulary import charlie, manual_mapping_curation
+from sssom_pydantic import MappingSet, SemanticMapping
 
-from ..constants import (
-    NEGATIVES_NAME,
-    POSITIVES_NAME,
-    PREDICTIONS_NAME,
-    STUB_SSSOM_COLUMNS,
-    UNSURE_NAME,
-)
+from ..constants import NEGATIVES_NAME, POSITIVES_NAME, PREDICTIONS_NAME, UNSURE_NAME
 
 __all__ = [
     "initialize_folder",
@@ -21,6 +16,8 @@ __all__ = [
 
 HERE = Path(__file__).parent.resolve()
 MAPPING_SET_FILE_NAME = "mapping_set.json"
+SCRIPT_NAME = "main.py"
+README_NAME = "README.md"
 
 
 def initialize_folder(
@@ -32,8 +29,8 @@ def initialize_folder(
     negatives_name: str = NEGATIVES_NAME,
     mapping_set_filename: str = MAPPING_SET_FILE_NAME,
     mapping_set: MappingSet | None = None,
-    script_name: str = "main.py",
-    readme_name: str = "README.md",
+    script_name: str = SCRIPT_NAME,
+    readme_name: str = README_NAME,
 ) -> None:
     """Create a curation repository in a folder.
 
@@ -50,18 +47,34 @@ def initialize_folder(
     """
     from jinja2 import Environment, FileSystemLoader
 
-    # TODO decide on default prefix map
-    converter = curies.Converter()
+    converter = curies.Converter.from_prefix_map(
+        {
+            "ex": "https://example.org/",
+            "skos": "http://www.w3.org/2004/02/skos/core#",
+        }
+    )
+
+    base_example = SemanticMapping(
+        subject=curies.NamedReference(prefix="ex", identifier="1", name="1"),
+        predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
+        object=curies.NamedReference(prefix="ex", identifier="2", name="2"),
+        justification=manual_mapping_curation,
+        authors=[charlie],
+    )
+    name_to_example = {
+        positive_name: base_example,
+        negatives_name: base_example,
+        unsure_name: base_example,
+        predictions_name: base_example,
+    }
 
     directory = Path(directory).expanduser().resolve()
-    for name in [positive_name, negatives_name, unsure_name, predictions_name]:
+    for name, mapping in name_to_example.items():
         path = directory.joinpath(name)
         if path.exists():
             raise FileExistsError
 
-        sssom_pydantic.write([], path, metadata=mapping_set, converter=converter)
-        with path.open("a") as file:
-            print(*STUB_SSSOM_COLUMNS, sep="\t", file=file)
+        sssom_pydantic.write([mapping], path, metadata=mapping_set, converter=converter)
 
     environment = Environment(
         autoescape=True, loader=FileSystemLoader(HERE), trim_blocks=True, lstrip_blocks=True
