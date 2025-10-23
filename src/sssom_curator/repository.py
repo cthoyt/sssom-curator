@@ -204,12 +204,10 @@ class Repository(BaseModel):
         @click.pass_context
         def update(ctx: click.Context) -> None:
             """Run all summary, merge, and chart exports."""
-            click.secho("Building general exports", fg="green")
-            ctx.invoke(main.commands["summary"])
-            click.secho("Building SSSOM export", fg="green")
+            click.secho("Generating summaries", fg="green")
+            ctx.invoke(main.commands["summarize"])
+            click.secho("Exporting SSSOM", fg="green")
             ctx.invoke(main.commands["merge"])
-            click.secho("Generating charts", fg="green")
-            ctx.invoke(main.commands["charts"])
 
         return main
 
@@ -308,37 +306,14 @@ def add_commands(
     main.add_command(get_merge_command(sssom_directory=sssom_directory))
     main.add_command(get_ndex_command())
     main.add_command(
-        get_summary_command(output_directory=output_directory, get_orcid_to_name=get_orcid_to_name)
-    )
-    main.add_command(
-        get_charts_command(output_directory=output_directory, image_directory=image_directory)
+        get_summarize_command(
+            output_directory=output_directory,
+            image_directory=image_directory,
+            get_orcid_to_name=get_orcid_to_name,
+        )
     )
     main.add_command(get_predict_command())
     main.add_command(get_test_command())
-
-
-def get_charts_command(
-    output_directory: Path | None = None, image_directory: Path | None = None
-) -> click.Command:
-    """Get the charts command."""
-
-    @click.command()
-    @click.option(
-        "--directory", type=click.Path(dir_okay=True, file_okay=False), default=output_directory
-    )
-    @click.option(
-        "--image-directory",
-        type=click.Path(dir_okay=True, file_okay=False),
-        default=image_directory,
-    )
-    @click.pass_obj
-    def charts(obj: Repository, directory: Path, image_directory: Path) -> None:
-        """Make charts."""
-        from .export.charts import make_charts
-
-        make_charts(obj, directory, image_directory)
-
-    return charts
 
 
 def get_merge_command(sssom_directory: Path | None = None) -> click.Command:
@@ -371,29 +346,42 @@ def get_merge_command(sssom_directory: Path | None = None) -> click.Command:
     return main
 
 
-def get_summary_command(
+def get_summarize_command(
     output_directory: Path | None = None,
+    image_directory: Path | None = None,
     get_orcid_to_name: OrcidNameGetter | None = None,
 ) -> click.Command:
     """Get the summary command."""
-    from .export.summary import summarize
 
     @click.command()
     @click.option(
-        "--output",
-        type=click.Path(file_okay=True, dir_okay=False, exists=True),
+        "--output-directory",
+        type=click.Path(file_okay=False, dir_okay=True, exists=True),
         default=output_directory.joinpath("summary.yml") if output_directory else None,
         required=True,
     )
+    @click.option(
+        "--image-directory",
+        type=click.Path(dir_okay=True, file_okay=False),
+        default=image_directory,
+    )
     @click.pass_obj
-    def summary(obj: Repository, output: Path | None) -> None:
-        """Create export data file."""
-        if output is None:
-            click.secho("--output is required")
+    def summarize(
+        obj: Repository, output_directory: Path | None, image_directory: Path | None
+    ) -> None:
+        """Generate summary charts and tables."""
+        if output_directory is None:
+            click.secho("--output-directory is required", fg="red")
             raise sys.exit(1)
-        summarize(obj, output, get_orcid_to_name=get_orcid_to_name)
+        from .export.charts import make_charts
+        from .export.summary import summarize
 
-    return summary
+        summarize(
+            obj, output_directory.joinpath("summary.yml"), get_orcid_to_name=get_orcid_to_name
+        )
+        make_charts(obj, output_directory, image_directory=image_directory)
+
+    return summarize
 
 
 def get_lint_command(converter: curies.Converter | None = None) -> click.Command:
@@ -458,7 +446,9 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             elif get_user is not None:
                 user = get_user()
             else:
-                orcid = click.prompt("What's your ORCID?").removeprefix("https://orcid.org").rstrip("/")
+                orcid = (
+                    click.prompt("What's your ORCID?").removeprefix("https://orcid.org").rstrip("/")
+                )
                 user = NamableReference(prefix="orcid", identifier=orcid)
 
             app = get_app(

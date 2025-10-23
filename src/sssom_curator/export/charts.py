@@ -27,7 +27,9 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def make_charts(repository: Repository, output_directory: Path, image_directory: Path) -> None:
+def make_charts(  # noqa:C901
+    repository: Repository, output_directory: Path, image_directory: Path | None = None
+) -> None:
     """Make charts."""
     import matplotlib.pyplot as plt
     import networkx as nx
@@ -35,6 +37,9 @@ def make_charts(repository: Repository, output_directory: Path, image_directory:
     import yaml
     from curies.vocabulary import exact_match
     from tqdm import tqdm
+
+    if image_directory is None:
+        image_directory = output_directory
 
     true_mappings = repository.read_positive_mappings()
     true_graph = _graph_from_mappings(true_mappings, include=[exact_match], strata="correct")

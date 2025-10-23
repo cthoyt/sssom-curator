@@ -13,19 +13,38 @@ and the Medical Actions Ontology (MaxO) with:
 $ uv run main.py predict mesh maxo
 ```
 
+
+## Export
+
+Output summary charts and tables with:
+
+```console
+$ mkdir output/
+$ uv run main.py summarize --output-directory output/
+```
+
+{% if mapping_set %}Merge the positive, negative, and predicted mappings together
+and output several SSSOM flavors (TSV, OWL, JSON) in a given directory with:
+
+```console
+$ mkdir sssom/
+$ uv run main.py merge --sssom-directory sssom/
+```
+{% endif -%}
+
+## Maintenance
+
+Format/lint the mappings with:
+
+```console
+$ uv run main.py lint
+``
+
 Test the integrity of mappings with:
 
 ```console
 $ uv run main.py test
 ```
-
-{% if mapping_set %}Merge the positive, negative, and predicted mappings together with:
-
-```console
-$ mkdir output/
-$ uv run main.py merge --sssom-directory output/
-```
-{% endif -%}
 
 ## Colophon
 
