@@ -55,7 +55,6 @@ license-files = [
 
 requires-python = ">=3.10"
 dependencies = [
-    "networkx",
     "requests",
     "click",
     "pyyaml",
@@ -148,6 +147,7 @@ ndex = [
 exports = [
     "sssom",
     "pandas",
+    "networkx", # for graph-based queries
 ]
 embedding = [
     "sentence-transformers",

@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING, TypeAlias, cast
 
 import click
 import curies
-import networkx as nx
 import pyobo
 import ssslm
 import sssom_pydantic
@@ -26,6 +25,7 @@ from tqdm.auto import tqdm
 from ..constants import PredictionMethod, RecognitionMethod
 
 if TYPE_CHECKING:
+    import networkx as nx
     import pandas as pd
 
 __all__ = [
@@ -401,6 +401,13 @@ def _get_mutual_mapping_filter(prefix: str, targets: str | Iterable[str]) -> Nes
     :returns: A filter 3-dictionary of source prefix to target prefix to source
         identifier to target identifier
     """
+    try:
+        import networkx as nx
+    except ImportError as e:
+        raise ImportError(
+            "NetworkX is required for mapping filtering, install with pip install networkx"
+        ) from e
+
     if isinstance(targets, str):
         targets = [targets]
     graph = _mutual_mapping_graph([prefix, *targets])
@@ -422,6 +429,8 @@ def _mutual_mapping_graph(prefixes: Iterable[str]) -> nx.Graph:
     :returns: The undirected mapping graph containing mappings between entries in the
         given namespaces.
     """
+    import networkx as nx
+
     prefixes = set(prefixes)
     graph = nx.Graph()
     for prefix in sorted(prefixes):
