@@ -12,13 +12,11 @@ from typing import TYPE_CHECKING, TypeAlias, cast
 
 import click
 import curies
-import pyobo
 import ssslm
 import sssom_pydantic
 from bioregistry import NormalizedNamableReference, NormalizedNamedReference, NormalizedReference
 from curies.vocabulary import exact_match, lexical_matching_process
 from more_click import verbose_option
-from pyobo import get_grounder
 from sssom_pydantic import MappingTool, SemanticMapping
 from tqdm.auto import tqdm
 
@@ -96,9 +94,11 @@ def get_predictions(
     mapping_tool = _resolve_tool(mapping_tool)
 
     if method is None or method in typing.get_args(RecognitionMethod):
+        import pyobo
+
         # by default, PyOBO wraps a gilda grounder, but
         # can be configured to use other NER/NEN systems
-        grounder = get_grounder(targets)
+        grounder = pyobo.get_grounder(targets)
         predictions = predict_lexical_mappings(
             prefix,
             predicate=relation,
@@ -144,6 +144,7 @@ def predict_embedding_mappings(
     progress: bool = True,
 ) -> list[SemanticMapping]:
     """Predict semantic mappings with embeddings."""
+    import pyobo
     import pyobo.api.embedding
 
     if isinstance(target_prefixes, str):
@@ -253,6 +254,8 @@ def _calculate_similarities_unbatched(
 
 
 def _r(prefix: str, identifier: str) -> NormalizedNamableReference:
+    import pyobo
+
     return NormalizedNamableReference(
         prefix=prefix, identifier=identifier, name=pyobo.get_name(prefix, identifier)
     )
@@ -269,6 +272,8 @@ def predict_lexical_mappings(  # noqa:C901
     mapping_tool: str | MappingTool | None = None,
 ) -> Iterable[SemanticMapping]:
     """Iterate over prediction tuples for a given prefix."""
+    import pyobo
+
     if predicate is None:
         predicate = exact_match
     elif isinstance(predicate, str):
@@ -382,6 +387,8 @@ def filter_existing_xrefs(
 
 
 def _get_entity_to_mapped_prefixes(prefixes: Iterable[str]) -> dict[curies.Reference, set[str]]:
+    import pyobo
+
     entity_to_mapped_prefixes: defaultdict[curies.Reference, set[str]] = defaultdict(set)
     for prefix in prefixes:
         for mapping in pyobo.get_semantic_mappings(prefix):
@@ -430,6 +437,7 @@ def _mutual_mapping_graph(prefixes: Iterable[str]) -> nx.Graph:
         given namespaces.
     """
     import networkx as nx
+    import pyobo
 
     prefixes = set(prefixes)
     graph = nx.Graph()
