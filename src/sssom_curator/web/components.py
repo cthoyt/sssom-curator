@@ -1,39 +1,31 @@
-"""Web curation interface for :mod:`biomappings`."""
+"""Components."""
 
 from __future__ import annotations
 
-import getpass
-import os
-from collections import Counter, defaultdict
+from collections import defaultdict
 from collections.abc import Callable, Iterable, Iterator
-from copy import deepcopy
 from pathlib import Path
-from typing import Any, Literal, TypeAlias, cast, get_args
+from typing import Any, Literal
 
 import curies
 import flask
-import flask_bootstrap
-import pydantic
 import sssom_pydantic
-import werkzeug
 from curies import NamableReference, Reference
 from curies.vocabulary import broad_match, exact_match, manual_mapping_curation, narrow_match
 from flask import current_app
 from flask_wtf import FlaskForm
 from pydantic import BaseModel
 from sssom_pydantic import SemanticMapping
-from werkzeug.local import LocalProxy
 from wtforms import StringField, SubmitField
 
-from .wsgi_utils import commit, get_branch, insert, not_main, push
-from ..constants import DEFAULT_RESOLVER_BASE, ensure_converter
+from .utils import Mark
+from ..constants import ensure_converter, insert
 
 __all__ = [
-    "get_app",
+    "Controller",
+    "MappingForm",
+    "State",
 ]
-
-Mark: TypeAlias = Literal["correct", "incorrect", "unsure", "broad", "narrow"]
-MARKS: set[Mark] = set(get_args(Mark))
 
 
 class State(BaseModel):
@@ -78,70 +70,6 @@ def _get_bool_arg(name: str) -> bool | None:
     if value is not None:
         return value.lower() in {"true", "t"}
     return None
-
-
-def url_for_state(endpoint: str, state: State, **kwargs: Any) -> str:
-    """Get the URL for an endpoint based on the state class."""
-    vv = state.model_dump(exclude_none=True, exclude_defaults=True)
-    vv.update(kwargs)  # make sure stuff explicitly set overrides state
-    return flask.url_for(endpoint, **vv)
-
-
-def get_app(
-    *,
-    target_references: Iterable[Reference] | None = None,
-    predictions_path: Path | None = None,
-    positives_path: Path | None = None,
-    negatives_path: Path | None = None,
-    unsure_path: Path | None = None,
-    controller: Controller | None = None,
-    user: Reference | None = None,
-    resolver_base: str | None = None,
-    title: str | None = None,
-    footer: str | None = None,
-    converter: curies.Converter | None = None,
-) -> flask.Flask:
-    """Get a curation flask app."""
-    app_ = flask.Flask(__name__)
-    app_.config["WTF_CSRF_ENABLED"] = False
-    app_.config["SECRET_KEY"] = os.urandom(8)
-    app_.config["SHOW_RELATIONS"] = True
-    app_.config["SHOW_LINES"] = False
-    if controller is None:
-        if (
-            predictions_path is None
-            or positives_path is None
-            or negatives_path is None
-            or unsure_path is None
-            or user is None
-        ):
-            raise ValueError
-        controller = Controller(
-            target_references=target_references,
-            predictions_path=predictions_path,
-            positives_path=positives_path,
-            negatives_path=negatives_path,
-            unsure_path=unsure_path,
-            user=user,
-            converter=converter,
-        )
-    if not controller._predictions and predictions_path is not None:
-        raise RuntimeError(f"There are no predictions to curate in {predictions_path}")
-    app_.config["controller"] = controller
-    flask_bootstrap.Bootstrap4(app_)
-    app_.register_blueprint(blueprint)
-
-    if not resolver_base:
-        resolver_base = DEFAULT_RESOLVER_BASE
-
-    app_.jinja_env.globals.update(
-        controller=controller,
-        url_for_state=url_for_state,
-        resolver_base=resolver_base,
-        title=title,
-        footer=footer,
-    )
-    return app_
 
 
 class Controller:
@@ -427,8 +355,6 @@ class Controller:
             )
         if line not in self._marked:
             self.total_curated += 1
-        if value not in MARKS:
-            raise ValueError(f"illegal mark value given: {value}. Should be one of {MARKS}")
         self._marked[line] = value
 
     def add_mapping(
@@ -529,12 +455,10 @@ class Controller:
         return None
 
 
-CONTROLLER: Controller = cast(Controller, LocalProxy(lambda: current_app.config["controller"]))
-
-
-# TODO how to get types for flask-wtf
 class MappingForm(FlaskForm):  # type:ignore[misc]
     """Form for entering new mappings."""
+
+    # TODO how to get types for flask-wtf
 
     source_prefix = StringField("Source Prefix", id="source_prefix")
     source_id = StringField("Source ID", id="source_id")
@@ -544,7 +468,7 @@ class MappingForm(FlaskForm):  # type:ignore[misc]
     target_name = StringField("Target Name", id="target_name")
     submit = SubmitField("Add")
 
-    def get_subject(self) -> NamableReference:
+    def get_subject(self, converter: curies.Converter) -> NamableReference:
         """Get the subject."""
         return NamableReference.model_validate(
             {
@@ -552,10 +476,10 @@ class MappingForm(FlaskForm):  # type:ignore[misc]
                 "identifier": self.data["source_id"],
                 "name": self.data["source_name"],
             },
-            context=CONTROLLER.converter,
+            context=converter,
         )
 
-    def get_object(self) -> NamableReference:
+    def get_object(self, converter: curies.Converter) -> NamableReference:
         """Get the object."""
         return NamableReference.model_validate(
             {
@@ -563,123 +487,5 @@ class MappingForm(FlaskForm):  # type:ignore[misc]
                 "identifier": self.data["target_id"],
                 "name": self.data["target_name"],
             },
-            context=CONTROLLER.converter,
+            context=converter,
         )
-
-
-blueprint = flask.Blueprint("ui", __name__)
-
-
-@blueprint.route("/")
-def home() -> str:
-    """Serve the home page."""
-    form = MappingForm()
-    state = State.from_flask_globals()
-    predictions = CONTROLLER.predictions_from_state(state)
-    remaining_rows = CONTROLLER.count_predictions_from_state(state)
-    return flask.render_template(
-        "home.html",
-        predictions=predictions,
-        form=form,
-        state=state,
-        remaining_rows=remaining_rows,
-    )
-
-
-@blueprint.route("/summary")
-def summary() -> str:
-    """Serve the summary page."""
-    state = State.from_flask_globals()
-    state.limit = None
-    predictions = CONTROLLER.predictions_from_state(state)
-    counter = Counter((mapping.subject.prefix, mapping.object.prefix) for _, mapping in predictions)
-    rows = []
-    for (source_prefix, target_prefix), count in counter.most_common():
-        row_state = deepcopy(state)
-        row_state.source_prefix = source_prefix
-        row_state.target_prefix = target_prefix
-        rows.append((source_prefix, target_prefix, count, url_for_state(".home", row_state)))
-
-    return flask.render_template(
-        "summary.html",
-        state=state,
-        rows=rows,
-    )
-
-
-@blueprint.route("/add_mapping", methods=["POST"])
-def add_mapping() -> werkzeug.Response:
-    """Add a new mapping manually."""
-    form = MappingForm()
-    if form.is_submitted():
-        try:
-            subject = form.get_subject()
-        except pydantic.ValidationError as e:
-            flask.flash(f"Problem with source CURIE {e}", category="warning")
-            return _go_home()
-
-        try:
-            obj = form.get_object()
-        except pydantic.ValidationError as e:
-            flask.flash(f"Problem with source CURIE {e}", category="warning")
-            return _go_home()
-
-        CONTROLLER.add_mapping(subject, obj)
-        CONTROLLER.persist()
-    else:
-        flask.flash("missing form data", category="warning")
-    return _go_home()
-
-
-@blueprint.route("/commit")
-def run_commit() -> werkzeug.Response:
-    """Make a commit then redirect to the home page."""
-    commit_info = commit(
-        f"Curated {CONTROLLER.total_curated} mapping"
-        f"{'s' if CONTROLLER.total_curated > 1 else ''}"
-        f" ({getpass.getuser()})",
-    )
-    current_app.logger.warning("git commit res: %s", commit_info)
-    if not_main():
-        branch = get_branch()
-        push_output = push(branch_name=branch)
-        current_app.logger.warning("git push res: %s", push_output)
-    else:
-        flask.flash("did not push because on master branch")
-        current_app.logger.warning("did not push because on master branch")
-    CONTROLLER.total_curated = 0
-    return _go_home()
-
-
-CORRECT = {"yup", "true", "t", "correct", "right", "close enough", "disco"}
-INCORRECT = {"no", "nope", "false", "f", "nada", "nein", "incorrect", "negative", "negatory"}
-UNSURE = {"unsure", "maybe", "idk", "idgaf", "idgaff"}
-
-
-def _normalize_mark(value: str) -> Mark:
-    value = value.lower()
-    if value in CORRECT:
-        return "correct"
-    elif value in INCORRECT:
-        return "incorrect"
-    elif value in UNSURE:
-        return "unsure"
-    elif value in {"broader", "broad"}:
-        return "broad"
-    elif value in {"narrow", "narrower"}:
-        return "narrow"
-    else:
-        raise ValueError
-
-
-@blueprint.route("/mark/<int:line>/<value>")
-def mark(line: int, value: str) -> werkzeug.Response:
-    """Mark the given line as correct or not."""
-    CONTROLLER.mark(line, _normalize_mark(value))
-    CONTROLLER.persist()
-    return _go_home()
-
-
-def _go_home() -> werkzeug.Response:
-    state = State.from_flask_globals()
-    return flask.redirect(url_for_state(".home", state))

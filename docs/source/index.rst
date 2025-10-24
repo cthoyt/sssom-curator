@@ -7,9 +7,9 @@ SSSOM Curator |release| Documentation
     :name: start
 
     installation
-    usage
-    cli
     projects
+    cli
+    reference
 
 Indices and Tables
 ------------------
