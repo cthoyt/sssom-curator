@@ -50,14 +50,24 @@ environments.
 
 ## 💪 Getting Started
 
-SSSOM Curator manages semantic mapping curation projects from
-prediction to curation to validation:
+SSSOM Curator manages semantic mapping curation projects from prediction to
+curation to validation:
 
 ```console
 $ sssom_curator init -d example
 Initialized project `example` at `/home/user/example`
 
 $ cd example
+$ tree .
+├── LICENSE
+├── README.md
+├── main.py
+├── data
+│   ├── negative.sssom.tsv
+│   ├── positive.sssom.tsv
+│   ├── predictions.sssom.tsv
+│   └── unsure.sssom.tsv
+└── sssom-curator.json
 
 $ # predict lexical mappings between Medical Subject Headings and the Medical Action Ontology
 $ sssom_curator predict mesh maxo
@@ -71,11 +81,13 @@ $ sssom_curator test
 $ sssom_curator web
 ```
 
-See the [project documentation](https://sssom-curator.readthedocs.io/en/latest/projects.html)
+See the
+[project documentation](https://sssom-curator.readthedocs.io/en/latest/projects.html)
 to get started.
 
-If you're a developer and want to incorporate this functionality
-in your Python code, see [here](https://sssom-curator.readthedocs.io/en/latest/api/sssom_curator.Repository.html).
+If you're a developer and want to incorporate this functionality in your Python
+code, see
+[here](https://sssom-curator.readthedocs.io/en/latest/api/sssom_curator.Repository.html).
 
 ## 🚀 Installation
 
