@@ -68,11 +68,12 @@ class Repository(BaseModel):
     2. Configure using Python
 
     Configuring a Repository with JSON
-    ----------------------------------
-    Since the :class:`Repository` class inherits from :class:`pydantic.BaseModel`,
-    you can define the data externally in a JSON file and parse it. Given
-    the following example configuration (corresponding to the Biomappings project),
-    the following Python code can be used to load the repository and run the CLI.
+    ==================================
+
+    Since the :class:`Repository` class inherits from :class:`pydantic.BaseModel`, you
+    can define the data externally in a JSON file and parse it. Given the following
+    example configuration (corresponding to the Biomappings project), the following
+    Python code can be used to load the repository and run the CLI.
 
     .. code-block:: json
 
@@ -103,12 +104,12 @@ class Repository(BaseModel):
             repository.run_cli()
 
     Configuring a Repository with Python
-    ------------------------------------
+    ====================================
 
     You can configure your repository using the `sssom_curator.Repository` object
-    directly from within Python, which offers the full flexibility of a general
-    purpose programming language. Again using Biomappings as an example, here's
-    how the Python file would look:
+    directly from within Python, which offers the full flexibility of a general purpose
+    programming language. Again using Biomappings as an example, here's how the Python
+    file would look:
 
     .. code-block:: python
 
@@ -135,7 +136,7 @@ class Repository(BaseModel):
 
         if __name__ == "__main__":
             repository.run_cli()
-    """
+    """  # noqa:E501
 
     predictions_path: Path
     positives_path: Path

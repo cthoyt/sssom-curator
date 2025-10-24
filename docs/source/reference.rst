@@ -1,5 +1,5 @@
 Reference
-===========
+=========
 
 .. automodapi:: sssom_curator.repository
     :no-inheritance-diagram:

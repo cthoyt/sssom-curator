@@ -50,47 +50,32 @@ environments.
 
 ## 💪 Getting Started
 
-You can initialize a project with the following command:
+SSSOM Curator manages semantic mapping curation projects from
+prediction to curation to validation:
 
 ```console
-$ sssom_curator init
-```
+$ sssom_curator init -d example
+Initialized project `example` at `/home/user/example`
 
-See
-[Creating a new Project](https://sssom-curator.readthedocs.io/en/latest/projects.html)
-in the documentation for additional information about this command. If you're a
-developer, see documentation on the Python
-[sssom_curator.Repository](https://sssom-curator.readthedocs.io/en/latest/api/sssom_curator.Repository.html)
-class.
+$ cd example
 
-Now, you're ready to make some predictions - the `sssom_curator predict` command
-invokes the lexical matching workflow. The following example demonstrates using
-it to predict mappings between the Medical Subject Headings (MeSH) and Medical
-Action Ontology (MaXO), which are put in the `predictions.sssom.tsv` file
-
-```console
+$ # predict lexical mappings between Medical Subject Headings and the Medical Action Ontology
 $ sssom_curator predict mesh maxo
-```
 
-After making predictions, you can run a local web-based curation application,
-which interacts with Git.
+$ # Run data linting and formatting
+$ sssom_curator lint
 
-```console
+$ # Run data integrity tests
+$ sssom_curator test
+
 $ sssom_curator web
 ```
 
-Run data integrity tests (exits with 0 on success and 1 on errors):
+See the [project documentation](https://sssom-curator.readthedocs.io/en/latest/projects.html)
+to get started.
 
-```console
-$ sssom_curator test
-```
-
-If your configuration file is somewhere else, you can use `-p` to point to it
-like in
-
-```console
-$ sssom_curator -p /path/to/sssom-curator-config.json predict mesh maxo
-```
+If you're a developer and want to incorporate this functionality
+in your Python code, see [here](https://sssom-curator.readthedocs.io/en/latest/api/sssom_curator.Repository.html).
 
 ## 🚀 Installation
 
