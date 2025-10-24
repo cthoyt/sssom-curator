@@ -78,6 +78,7 @@ $ sssom_curator lint
 $ # Run data integrity tests
 $ sssom_curator test
 
+$ # Run the web-based curation interface
 $ sssom_curator web
 ```
 
