@@ -2,17 +2,25 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from functools import lru_cache
+from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TypeAlias
 
 if TYPE_CHECKING:
     import curies
+    from sssom_pydantic import SemanticMapping
 
 __all__ = [
     "DEFAULT_RESOLVER_BASE",
+    "NEGATIVES_NAME",
+    "POSITIVES_NAME",
+    "PREDICTIONS_NAME",
+    "UNSURE_NAME",
     "PredictionMethod",
     "RecognitionMethod",
     "ensure_converter",
+    "insert",
 ]
 
 
@@ -68,3 +76,34 @@ STUB_SSSOM_COLUMNS = [
     "mapping_tool",
     "predicate_modifier",
 ]
+
+
+def insert(
+    path: Path,
+    *,
+    converter: curies.Converter | None = None,
+    include_mappings: Iterable[SemanticMapping] | None = None,
+) -> None:
+    """Append eagerly with linting at the same time."""
+    import sssom_pydantic
+
+    mappings, converter_processed, metadata = sssom_pydantic.read(path, converter=converter)
+
+    if include_mappings is not None:
+        prefixes: set[str] = set()
+        for mapping in include_mappings:
+            prefixes.update(mapping.get_prefixes())
+            mappings.append(mapping)
+
+        for prefix in prefixes:
+            if not converter_processed.standardize_prefix(prefix):
+                raise NotImplementedError("amending prefixes not yet implemented")
+
+    sssom_pydantic.write(
+        mappings,
+        path,
+        converter=converter_processed,
+        metadata=metadata,
+        sort=True,
+        drop_duplicates=True,
+    )

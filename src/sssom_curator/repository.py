@@ -20,7 +20,9 @@ from .constants import (
     POSITIVES_NAME,
     PREDICTIONS_NAME,
     UNSURE_NAME,
+    PredictionMethod,
     ensure_converter,
+    insert,
 )
 
 if TYPE_CHECKING:
@@ -148,9 +150,6 @@ class Repository(BaseModel):
         self, mappings: Iterable[SemanticMapping], *, converter: curies.Converter | None = None
     ) -> None:
         """Append new lines to the positive mappings document."""
-        from .constants import ensure_converter
-        from .web.wsgi_utils import insert
-
         converter = ensure_converter(converter)
         insert(
             self.positives_path,
@@ -162,9 +161,6 @@ class Repository(BaseModel):
         self, mappings: Iterable[SemanticMapping], *, converter: curies.Converter | None = None
     ) -> None:
         """Append new lines to the negative mappings document."""
-        from .constants import ensure_converter
-        from .web.wsgi_utils import insert
-
         converter = ensure_converter(converter)
         insert(
             self.negatives_path,
@@ -176,9 +172,6 @@ class Repository(BaseModel):
         self, mappings: Iterable[SemanticMapping], *, converter: curies.Converter | None = None
     ) -> None:
         """Append new lines to the predicted mappings document."""
-        from .constants import ensure_converter
-        from .web.wsgi_utils import insert
-
         converter = ensure_converter(converter)
         insert(
             self.predictions_path,
@@ -421,8 +414,6 @@ def get_lint_command(converter: curies.Converter | None = None) -> click.Command
         if strategy == "passthrough":
             pass
         else:
-            from .constants import ensure_converter
-
             converter = ensure_converter(preferred=strategy == "bioregistry-preferred")
 
         exclude_mappings = []
@@ -460,7 +451,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             from curies import NamableReference
             from more_click import run_app
 
-            from .web.wsgi import get_app
+            from .web import get_app
 
             if orcid is not None:
                 user = NamableReference(prefix="orcid", identifier=orcid)
@@ -539,8 +530,6 @@ def get_predict_command(
 ) -> click.Command:
     """Create a prediction command."""
     from more_click import verbose_option
-
-    from .constants import PredictionMethod
 
     if source_prefix is None:
         source_prefix_argument = click.argument("source_prefix")

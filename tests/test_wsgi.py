@@ -11,7 +11,8 @@ from sssom_pydantic import MappingSet, MappingTool, SemanticMapping
 
 from sssom_curator import Repository
 from sssom_curator.constants import STUB_SSSOM_COLUMNS
-from sssom_curator.web.wsgi import Controller, State, get_app
+from sssom_curator.web.components import Controller, State
+from sssom_curator.web.wsgi import get_app
 
 TEST_USER = NamableReference(
     prefix="orcid", identifier="0000-0000-0000-0000", name="Max Mustermann"

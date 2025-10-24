@@ -8,16 +8,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
-import curies
-import sssom_pydantic
-from curies.vocabulary import charlie, lexical_matching_process, manual_mapping_curation
-from sssom_pydantic import MappingSet, SemanticMapping
-
-from sssom_curator.constants import NEGATIVES_NAME, POSITIVES_NAME, PREDICTIONS_NAME, UNSURE_NAME
-from sssom_curator.repository import CONFIGURATION_FILENAME, Repository
 
 if TYPE_CHECKING:
     import jinja2
+    from sssom_pydantic import MappingSet
 
 __all__ = [
     "initialize_folder",
@@ -45,14 +39,14 @@ def normalize_name(name: str) -> str:
     return name.replace(" ", "-").replace("_", "-").lower()
 
 
-def initialize_folder(
+def initialize_folder(  # noqa:C901
     directory: str | Path,
     *,
-    positive_mappings_filename: str = POSITIVES_NAME,
-    unsure_mappings_filename: str = UNSURE_NAME,
-    predicted_mappings_filename: str = PREDICTIONS_NAME,
-    negative_mappings_filename: str = NEGATIVES_NAME,
-    repository_filename: str = CONFIGURATION_FILENAME,
+    positive_mappings_filename: str | None = None,
+    unsure_mappings_filename: str | None = None,
+    predicted_mappings_filename: str | None = None,
+    negative_mappings_filename: str | None = None,
+    repository_filename: str | None = None,
     mapping_set: MappingSet | None = None,
     purl_base: str | None = None,
     script_filename: str = SCRIPT_NAME,
@@ -75,6 +69,25 @@ def initialize_folder(
     """
     if mapping_set is None and mapping_set_id is None:
         raise ValueError("either a mapping set or a mapping set ID should be given")
+
+    import curies
+    import sssom_pydantic
+    from curies.vocabulary import charlie, lexical_matching_process, manual_mapping_curation
+    from sssom_pydantic import MappingSet, SemanticMapping
+
+    from ..constants import NEGATIVES_NAME, POSITIVES_NAME, PREDICTIONS_NAME, UNSURE_NAME
+    from ..repository import CONFIGURATION_FILENAME, Repository
+
+    if repository_filename is None:
+        repository_filename = CONFIGURATION_FILENAME
+    if positive_mappings_filename is None:
+        positive_mappings_filename = POSITIVES_NAME
+    if negative_mappings_filename is None:
+        negative_mappings_filename = NEGATIVES_NAME
+    if unsure_mappings_filename is None:
+        unsure_mappings_filename = UNSURE_NAME
+    if predicted_mappings_filename is None:
+        predicted_mappings_filename = PREDICTIONS_NAME
 
     directory = Path(directory).expanduser().resolve()
 
@@ -192,18 +205,3 @@ def _get_jinja2_environment() -> jinja2.Environment:
         autoescape=True, loader=FileSystemLoader(HERE), trim_blocks=True, lstrip_blocks=True
     )
     return environment
-
-
-if __name__ == "__main__":
-    x = HERE.parent.parent.parent.resolve().joinpath("example")
-    if x.is_dir():
-        for p in x.glob("*"):
-            p.unlink()
-        x.rmdir()
-    x.mkdir(exist_ok=True)
-    initialize_folder(
-        x,
-        mapping_set=MappingSet(
-            mapping_set_id="https://example.org/test.tsv", mapping_set_title="Test"
-        ),
-    )

@@ -116,16 +116,15 @@ Actions Ontology (MaxO) with:
 Making New Resources Available
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This workflow accepts two _prefixes_ for resources corresponding to records in the
-Bioregistry `the Bioregistry <https://bioregistry.io>`_ (:mod:`bioregistry`) as a
-standard. Note that despite its name, the Bioregistry (despite the "bio-" name) is
-domain-agnostic and contains prefixes for ontologies, controlled vocabularies,
-databases, and other resources that mint identifiers in other domains such as
-engineering, cultural heritage, digital humanities, and more. Bioregistry records that
-contain links to OWL, OBO, or SKOS ontologies can be readily used in the SSSOM-Curator
-workflow. If the Bioregistry contains such an ontology link, then the workflow uses
-:mod:`pyobo` to parse them. Otherwise, it looks in :mod:`pyobo.sources` for a custom
-import module.
+This workflow accepts two _prefixes_ for resources corresponding to records in `the
+Bioregistry <https://bioregistry.io>`_ (:mod:`bioregistry`) as a standard. Note that
+despite its name, the Bioregistry (despite the "bio-" name) is domain-agnostic and
+contains prefixes for ontologies, controlled vocabularies, databases, and other
+resources that mint identifiers in other domains such as engineering, cultural heritage,
+digital humanities, and more. Bioregistry records that contain links to OWL, OBO, or
+SKOS ontologies can be readily used in the SSSOM-Curator workflow. If the Bioregistry
+contains such an ontology link, then the workflow uses :mod:`pyobo` to parse them.
+Otherwise, it looks in :mod:`pyobo.sources` for a custom import module.
 
 If you want to use this interface to predict mappings to/from a resource that is not
 available in the Bioregistry, consider submitting a `new prefix request
