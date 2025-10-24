@@ -27,10 +27,8 @@
         <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff" style="max-width:100%;"></a>
     <a href="https://github.com/cthoyt/sssom-curator/blob/main/.github/CODE_OF_CONDUCT.md">
         <img src="https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg" alt="Contributor Covenant"/></a>
-    <!-- uncomment if you archive on zenodo
-    <a href="https://zenodo.org/badge/latestdoi/XXXXXX">
-        <img src="https://zenodo.org/badge/XXXXXX.svg" alt="DOI"></a>
-    -->
+    <a href="https://zenodo.org/badge/latestdoi/17419841">
+        <img src="https://zenodo.org/badge/17419841.svg" alt="DOI"></a>
 </p>
 
 SSSOM Curator is a suite of tools for predicting and curating semantic mappings
@@ -52,78 +50,39 @@ environments.
 
 ## 💪 Getting Started
 
-You can configure your repository using the `sssom_curator.Repository` object
-and construct a custom CLI like the following example for Biomappings:
+You can initialize a project with the following command:
 
-```python
-from sssom_pydantic import MappingSet
-from sssom_curator import Repository
-from pathlib import Path
-
-# Assume files are all in the same folder
-HERE = Path(__file__).parent.resolve()
-
-repository = Repository(
-    positives_path=HERE.joinpath("positive.sssom.tsv"),
-    negatives_path=HERE.joinpath("negative.sssom.tsv"),
-    unsure_path=HERE.joinpath("unsure.sssom.tsv"),
-    predictions_path=HERE.joinpath("predictions.sssom.tsv"),
-    mapping_set=MappingSet(
-        mapping_set_title="Biomappings",
-        mapping_set_id="https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv",
-    ),
-    # Add the beginning part of the PURL used to
-    # construct exports.
-    purl_base="https://w3id.org/biopragmatics/biomappings/sssom/",
-)
-
-main = repository.get_cli()
-
-if __name__ == '__main__':
-    main()
+```console
+$ sssom_curator init
 ```
 
-Then, when you run this python file as a script, you will get a nice CLI.
+See
+[Creating a new Project](https://sssom-curator.readthedocs.io/en/latest/projects.html)
+in the documentation for additional information about this command. If you're a
+developer, see documentation on the Python
+[sssom_curator.Repository](https://sssom-curator.readthedocs.io/en/latest/api/sssom_curator.Repository.html)
+class.
 
-### Command Line Interface
+Now, you're ready to make some predictions - the `sssom_curator predict` command
+invokes the lexical matching workflow. The following example demonstrates using
+it to predict mappings between the Medical Subject Headings (MeSH) and Medical
+Action Ontology (MaXO), which are put in the `predictions.sssom.tsv` file
 
-The `sssom_curator` command line interface (CLI) can be run in any directory
-with a configuration file like the following (using Biomappings as an example):
+```console
+$ sssom_curator predict mesh maxo
+```
 
-```json
-{
-  "predictions_path": "predictions.sssom.tsv",
-  "positives_path": "positive.sssom.tsv",
-  "negatives_path": "negative.sssom.tsv",
-  "unsure_path": "unsure.sssom.tsv",
-  "purl_base": "https://w3id.org/biopragmatics/biomappings/sssom",
-  "mapping_set": {
-    "mapping_set_id": "https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv",
-    "mapping_set_description": "Biomappings is a repository of community curated and predicted equivalences and related mappings between named biological entities that are not available from primary sources. It's also a place where anyone can contribute curations of predicted mappings or their own novel mappings.",
-    "mapping_set_title": "Biomappings",
-    "license": "https://creativecommons.org/publicdomain/zero/1.0/",
-    "creator_id": ["orcid:0000-0003-4423-4370"]
-  }
-}
+After making predictions, you can run a local web-based curation application,
+which interacts with Git.
+
+```console
+$ sssom_curator web
 ```
 
 Run data integrity tests (exits with 0 on success and 1 on errors):
 
 ```console
 $ sssom_curator test
-```
-
-Run a local web-based curation application:
-
-```console
-$ sssom_curator web
-```
-
-Add new predicted mappings between two resources (in this example, Medical
-Subject Headings (MeSH) and Medical Action Ontology (MaXO)):
-
-```console
-$ sssom_curator predict mesh maxo
 ```
 
 If your configuration file is somewhere else, you can use `-p` to point to it

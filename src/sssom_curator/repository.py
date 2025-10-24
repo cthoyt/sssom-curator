@@ -60,7 +60,82 @@ strategy_option = click.option(
 
 
 class Repository(BaseModel):
-    """A data structure containing information about a SSSOM repository."""
+    """A data structure containing information about a SSSOM repository.
+
+    There are two ways to configure a repository:
+
+    1. Parse from a JSON file representing a configuration
+    2. Configure using Python
+
+    Configuring a Repository with JSON
+    ----------------------------------
+    Since the :class:`Repository` class inherits from :class:`pydantic.BaseModel`,
+    you can define the data externally in a JSON file and parse it. Given
+    the following example configuration (corresponding to the Biomappings project),
+    the following Python code can be used to load the repository and run the CLI.
+
+    .. code-block:: json
+
+        {
+          "predictions_path": "predictions.sssom.tsv",
+          "positives_path": "positive.sssom.tsv",
+          "negatives_path": "negative.sssom.tsv",
+          "unsure_path": "unsure.sssom.tsv",
+          "purl_base": "https://w3id.org/biopragmatics/biomappings/sssom",
+          "mapping_set": {
+            "mapping_set_id": "https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv",
+            "mapping_set_description": "Biomappings is a repository of community curated and predicted equivalences and related mappings between named biological entities that are not available from primary sources. It's also a place where anyone can contribute curations of predicted mappings or their own novel mappings.",
+            "mapping_set_title": "Biomappings",
+            "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+            "creator_id": ["orcid:0000-0003-4423-4370"]
+          }
+        }
+
+    .. code-block:: python
+
+        from pathlib import Path
+        from sssom_curator import Repository
+
+        path = Path("sssom-curator.json")
+        repository = Repository.model_validate_json(path.read_text())
+
+        if __name__ == "__main__":
+            repository.run_cli()
+
+    Configuring a Repository with Python
+    ------------------------------------
+
+    You can configure your repository using the `sssom_curator.Repository` object
+    directly from within Python, which offers the full flexibility of a general
+    purpose programming language. Again using Biomappings as an example, here's
+    how the Python file would look:
+
+    .. code-block:: python
+
+        from sssom_pydantic import MappingSet
+        from sssom_curator import Repository
+        from pathlib import Path
+
+        # Assume files are all in the same folder
+        HERE = Path(__file__).parent.resolve()
+
+        repository = Repository(
+            positives_path=HERE.joinpath("positive.sssom.tsv"),
+            negatives_path=HERE.joinpath("negative.sssom.tsv"),
+            unsure_path=HERE.joinpath("unsure.sssom.tsv"),
+            predictions_path=HERE.joinpath("predictions.sssom.tsv"),
+            mapping_set=MappingSet(
+                mapping_set_title="Biomappings",
+                mapping_set_id="https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv",
+            ),
+            # Add the beginning part of the PURL used to
+            # construct exports.
+            purl_base="https://w3id.org/biopragmatics/biomappings/sssom/",
+        )
+
+        if __name__ == "__main__":
+            repository.run_cli()
+    """
 
     predictions_path: Path
     positives_path: Path
