@@ -138,20 +138,55 @@ Creating Custom Mapping Generators
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Any custom workflows that produce predicted mappings can be added to the project via
-:meth:`sssom_curator.Repository.append_predicted_mappings` like in the following:
+:meth:`sssom_curator.Repository.append_predicted_mappings` like in the following, which
+exploits the structure of names of human proteins in MeSH to map them back to HGNC, then
+UniProt:
 
 .. code-block:: python
 
+    import re
+
+    import pyobo
+    from curies import NamedReference
+    from curies.vocabulary import exact_match, lexical_matching_process
+    from pyobo.struct import has_gene_product
+    from sssom_curator import Repository
+    from sssom_pydantic import MappingTool, SemanticMapping
+
     from main import repository
-    from sssom_pydantic import SemanticMapping
 
+    MESH_PROTEIN_RE = re.compile(r"^(.+) protein, human$")
+    MAPPING_TOOL = MappingTool(name="mesh-uniprot-mapper")
 
-    # custom code that creates mappings
-    def get_predictions() -> list[SemanticMapping]: ...
-
-
-    if __name__ == "__main__":
-        repository.append_predicted_mappings(get_predictions())
+    grounder = pyobo.get_grounder("hgnc")
+    hgnc_id_to_uniprot_id = pyobo.get_relation_mapping(
+        "hgnc", relation=has_gene_product, target_prefix="uniprot"
+    )
+    mappings = []
+    for mesh_id, mesh_name in pyobo.get_id_name_mapping("mesh").items():
+        match = MESH_PROTEIN_RE.match(mesh_name)
+        if not match:
+            continue
+        gene_name = match.groups()[0]
+        for gene_reference in grounder.get_matches(gene_name):
+            uniprot_id = hgnc_id_to_uniprot_id.get(gene_reference.identifier)
+            if not uniprot_id or "," in uniprot_id:
+                continue
+            mappings.append(
+                SemanticMapping(
+                    subject=NamedReference(
+                        prefix="mesh", identifier=mesh_id, name=mesh_name
+                    ),
+                    predicate=exact_match.curie,
+                    object=NamedReference(
+                        prefix="uniprot", identifier=uniprot_id, name=gene_reference.name
+                    ),
+                    justification=lexical_matching_process,
+                    confidence=gene_reference.score,
+                    mapping_tool=mapping_tool,
+                )
+            )
+    repository.append_predicted_mappings(mappings)
 
 For example, you might want to implement a graph machine learning-based method for
 predicting mappings or implement a wrapper around some of the tricky existing mapping
