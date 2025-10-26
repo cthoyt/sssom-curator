@@ -70,7 +70,7 @@ $ tree .
 └── sssom-curator.json
 
 $ # predict lexical mappings between Medical Subject Headings and the Medical Action Ontology
-$ sssom_curator predict mesh maxo
+$ sssom_curator predict lexical mesh maxo
 
 $ # Run data linting and formatting
 $ sssom_curator lint
