@@ -249,6 +249,8 @@ class Repository(BaseModel):
     ) -> None:
         """Append new lines to the predicted mappings document."""
         converter = ensure_converter(converter)
+        # FIXME exclude what's already in others? or is it better just
+        #  to do a cleanup lint/prune step?
         insert(
             self.predictions_path,
             converter=converter,
