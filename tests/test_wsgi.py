@@ -10,7 +10,13 @@ from curies import NamableReference
 from sssom_pydantic import MappingSet, MappingTool, SemanticMapping
 
 from sssom_curator import Repository
-from sssom_curator.constants import STUB_SSSOM_COLUMNS
+from sssom_curator.constants import (
+    NEGATIVES_NAME,
+    POSITIVES_NAME,
+    PREDICTIONS_NAME,
+    STUB_SSSOM_COLUMNS,
+    UNSURE_NAME,
+)
 from sssom_curator.web.components import Controller, State
 from sssom_curator.web.impl import get_app
 
@@ -40,17 +46,20 @@ def make_repository(directory: str | Path) -> Repository:
     """Make a dummy repository."""
     directory = Path(directory).resolve()
     repository = Repository(
-        positives_path=directory.joinpath("positive.tsv"),
-        predictions_path=directory.joinpath("predictions.tsv"),
-        negatives_path=directory.joinpath("negative.tsv"),
-        unsure_path=directory.joinpath("usure.tsv"),
-        mapping_set=MappingSet(mapping_set_id="https://example.org/positive.tsv"),
+        positives_path=directory.joinpath(POSITIVES_NAME),
+        predictions_path=directory.joinpath(PREDICTIONS_NAME),
+        negatives_path=directory.joinpath(NEGATIVES_NAME),
+        unsure_path=directory.joinpath(UNSURE_NAME),
+        mapping_set=MappingSet(id="https://example.org/positive.tsv"),
         purl_base="https://example.org/",
     )
     sssom_pydantic.write(
         [TEST_MAPPING],
         path=repository.predictions_path,
-        metadata={"mapping_set_id": f"https://example.org/{repository.predictions_path.name}"},
+        metadata={
+            "mapping_set_id": f"https://example.org/{repository.predictions_path.name}",
+            "license": "https://creativecommons.org/licenses/by/4.0",
+        },
         converter=TEST_CONVERTER,
     )
     for path in repository.curated_paths:
@@ -158,3 +167,8 @@ class TestFull(unittest.TestCase):
 
         # now, we have one less than before~
         self.assertEqual(0, len(self.controller._predictions))
+
+        mappings, _converter, mapping_set = sssom_pydantic.read(self.controller.positives_path)
+        self.assertIsNone(mapping_set.title)
+        self.assertEqual(f"https://example.org/{POSITIVES_NAME}", mapping_set.id)
+        self.assertEqual(1, len(mappings))

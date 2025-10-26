@@ -93,18 +93,18 @@ def initialize_folder(  # noqa:C901
 
     if mapping_set is None:
         mapping_set = MappingSet(
-            mapping_set_id=mapping_set_id,
-            mapping_set_version="1",
+            id=mapping_set_id,
+            version="1",
         )
 
-    if mapping_set.mapping_set_title is None:
-        mapping_set = mapping_set.model_copy(update={"mapping_set_title": directory.name})
+    if mapping_set.title is None:
+        mapping_set = mapping_set.model_copy(update={"title": directory.name})
 
     if mapping_set.license is None and add_license:
         mapping_set = mapping_set.model_copy(update={"license": CC0_CURIE})
 
     if not purl_base:
-        purl_base, _, _ = mapping_set.mapping_set_id.rpartition("/")
+        purl_base, _, _ = mapping_set.id.rpartition("/")
         click.secho(
             f"`purl_base` was not given. Inferring from mapping set ID to be: {purl_base}",
             fg="yellow",
@@ -155,7 +155,7 @@ def initialize_folder(  # noqa:C901
         if path.exists():
             raise FileExistsError(f"{path} already exists. cowardly refusing to overwrite.")
 
-        metadata = MappingSet(mapping_set_id=f"{purl_base}{name}")
+        metadata = MappingSet(id=f"{purl_base}{name}")
         sssom_pydantic.write([mapping], path, metadata=metadata, converter=converter)
 
     data_directory_stub = Path(DATA_DIR_NAME)
@@ -171,8 +171,8 @@ def initialize_folder(  # noqa:C901
     repository_path.write_text(repository.model_dump_json(indent=2, exclude=SKIPS) + "\n")
 
     comment = "SSSOM Curator"
-    if mapping_set.mapping_set_title:
-        comment += f" for {mapping_set.mapping_set_title}"
+    if mapping_set.title:
+        comment += f" for {mapping_set.title}"
 
     environment = _get_jinja2_environment()
     script_template = environment.get_template("main.py.jinja2")
