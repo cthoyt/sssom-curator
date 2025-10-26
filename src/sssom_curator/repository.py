@@ -605,9 +605,13 @@ def get_predict_command(
     *,
     source_prefix: str | None = None,
     target_prefix: str | None | list[str] = None,
-) -> click.Command:
+) -> click.Group:
     """Create a prediction command."""
     from more_click import verbose_option
+
+    @click.group()
+    def predict():
+        """Predict semantic mappings."""
 
     if source_prefix is None:
         source_prefix_argument = click.argument("source_prefix")
@@ -621,7 +625,7 @@ def get_predict_command(
             "--target-prefix", multiple=True, default=[target_prefix]
         )
 
-    @click.command()
+    @predict.command()
     @verbose_option
     @source_prefix_argument
     @target_prefix_argument
@@ -644,7 +648,7 @@ def get_predict_command(
         "in either the subject or object resource",
     )
     @click.pass_obj
-    def predict(
+    def lexical(
         obj: Repository,
         source_prefix: str,
         target_prefix: str,
@@ -653,7 +657,7 @@ def get_predict_command(
         cutoff: float | None,
         filter_mutual_mappings: bool,
     ) -> None:
-        """Predict semantic mappings."""
+        """Predict semantic mappings with lexical methods."""
         from .predict.lexical import append_lexical_predictions
 
         append_lexical_predictions(
