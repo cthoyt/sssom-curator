@@ -62,9 +62,9 @@ def initialize(directory: Path, purl_base: str, mapping_set_title: str | None) -
     purl_base = purl_base.rstrip("/") + "/"
 
     mapping_set = MappingSet(
-        mapping_set_id=f"{purl_base}sssom.tsv",
-        mapping_set_title=mapping_set_title,
-        mapping_set_version="1",
+        id=f"{purl_base}sssom.tsv",
+        title=mapping_set_title,
+        version="1"
     )
     initialize_folder(directory, mapping_set=mapping_set, purl_base=purl_base)
 

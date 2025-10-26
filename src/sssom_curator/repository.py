@@ -126,8 +126,8 @@ class Repository(BaseModel):
             unsure_path=HERE.joinpath("unsure.sssom.tsv"),
             predictions_path=HERE.joinpath("predictions.sssom.tsv"),
             mapping_set=MappingSet(
-                mapping_set_title="Biomappings",
-                mapping_set_id="https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv",
+                title="Biomappings",
+                id="https://w3id.org/biopragmatics/biomappings/sssom/biomappings.sssom.tsv",
             ),
             # Add the beginning part of the PURL used to
             # construct exports.

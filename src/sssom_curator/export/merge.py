@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 import click
 import curies
-from sssom_pydantic import MappingSet
+from sssom_pydantic import MappingSet, Metadata
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -33,13 +33,8 @@ columns = [
 ]
 
 
-def _sssom_dump(mapping_set: MappingSet) -> dict[str, Any]:
-    metadata = mapping_set.model_dump(exclude_none=True, exclude_unset=True)
-    # fix dumping
-    metadata["creator_id"] = [
-        creator["prefix"] + ":" + creator["identifier"] for creator in metadata["creator_id"]
-    ]
-    return metadata
+def _sssom_dump(mapping_set: MappingSet) -> Metadata:
+    return mapping_set.to_record().model_dump(exclude_none=True, exclude_unset=True)
 
 
 def merge(repository: Repository, directory: Path) -> None:
@@ -56,8 +51,8 @@ def merge(repository: Repository, directory: Path) -> None:
 
     if repository.basename:
         fname = repository.basename
-    elif repository.mapping_set.mapping_set_title is not None:
-        fname = repository.mapping_set.mapping_set_title.lower().replace(" ", "-")
+    elif repository.mapping_set.title is not None:
+        fname = repository.mapping_set.title.lower().replace(" ", "-")
     else:
         raise ValueError("basename or mapping set title must be se")
 
