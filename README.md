@@ -27,8 +27,8 @@
         <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff" style="max-width:100%;"></a>
     <a href="https://github.com/cthoyt/sssom-curator/blob/main/.github/CODE_OF_CONDUCT.md">
         <img src="https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg" alt="Contributor Covenant"/></a>
-    <a href="https://zenodo.org/badge/latestdoi/17419841">
-        <img src="https://zenodo.org/badge/17419841.svg" alt="DOI"></a>
+    <a href="https://doi.org/10.5281/zenodo.17419841">
+        <img src="https://zenodo.org/badge/DOI/10.5281/zenodo.17419841.svg" alt="DOI"></a>
 </p>
 
 SSSOM Curator is a suite of tools for predicting and curating semantic mappings
