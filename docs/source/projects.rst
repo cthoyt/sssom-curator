@@ -111,7 +111,12 @@ Actions Ontology (MaxO) with:
 
 .. code-block:: console
 
-    $ uv run main.py predict mesh maxo
+    $ uv run main.py predict lexical mesh maxo
+
+.. note::
+
+    This is a nested command to make it possible to register additional commands in the
+    future
 
 Making New Resources Available
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

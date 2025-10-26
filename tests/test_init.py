@@ -77,7 +77,7 @@ class TestInitializeFolder(unittest.TestCase):
         and the Medical Actions Ontology (MaxO) with:
 
         ```console
-        $ uv run main.py predict mesh maxo
+        $ uv run main.py predict lexical mesh maxo
         ```
 
         Run the curator with:

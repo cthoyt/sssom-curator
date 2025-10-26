@@ -610,7 +610,7 @@ def get_predict_command(
     from more_click import verbose_option
 
     @click.group()
-    def predict():
+    def predict() -> None:
         """Predict semantic mappings."""
 
     if source_prefix is None:
