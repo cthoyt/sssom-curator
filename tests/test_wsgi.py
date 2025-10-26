@@ -44,7 +44,7 @@ def make_repository(directory: str | Path) -> Repository:
         predictions_path=directory.joinpath("predictions.tsv"),
         negatives_path=directory.joinpath("negative.tsv"),
         unsure_path=directory.joinpath("usure.tsv"),
-        mapping_set=MappingSet(mapping_set_id="https://example.org/positive.tsv"),
+        mapping_set=MappingSet(id="https://example.org/positive.tsv"),
         purl_base="https://example.org/",
     )
     sssom_pydantic.write(

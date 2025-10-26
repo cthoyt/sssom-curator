@@ -31,7 +31,7 @@ class TestInitializeFolder(unittest.TestCase):
             self.directory,
             purl_base="https://example.org/ms/components/",
             mapping_set=MappingSet(
-                mapping_set_id="https://example.org/ms/test.sssom.tsv",
+                id="https://example.org/ms/test.sssom.tsv",
             ),
         )
 
