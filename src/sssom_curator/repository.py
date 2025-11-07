@@ -328,6 +328,10 @@ class Repository(BaseModel):
         target_prefixes: str | Iterable[str],
         *,
         mapping_tool: str | MappingTool | None = None,
+        force: bool = False,
+        force_process: bool = False,
+        cache: bool = True,
+        converter: curies.Converter | None = None,
         **kwargs: Any,
     ) -> None:
         """Append lexical predictions."""
@@ -338,8 +342,12 @@ class Repository(BaseModel):
             prefix,
             target_prefixes,
             mapping_tool=mapping_tool,
-            path=self.positives_path,
+            path=self.predictions_path,
             curated_paths=self.curated_paths,
+            force=force,
+            force_process=force_process,
+            cache=cache,
+            converter=converter,
             **kwargs,
         )
 
@@ -647,6 +655,24 @@ def get_predict_command(
         help="Remove predictions that correspond to already existing mappings "
         "in either the subject or object resource",
     )
+    @click.option(
+        "--force", is_flag=True, help="Force re-downloading and re-processing of resources"
+    )
+    @click.option(
+        "--force-process",
+        is_flag=True,
+        help="Force re-processing, but not re-downloading of resources",
+    )
+    @click.option(
+        "--cache/--no-cache",
+        is_flag=True,
+        help="Should a cache be made",
+    )
+    @click.option(
+        "--all-by-all",
+        is_flag=True,
+        help="Don't just predict from source to targets, but also between all targets",
+    )
     @click.pass_obj
     def lexical(
         obj: Repository,
@@ -656,6 +682,10 @@ def get_predict_command(
         method: PredictionMethod | None,
         cutoff: float | None,
         filter_mutual_mappings: bool,
+        cache: bool,
+        force: bool,
+        force_process: bool,
+        all_by_all: bool,
     ) -> None:
         """Predict semantic mappings with lexical methods."""
         from .predict.lexical import append_lexical_predictions
@@ -669,6 +699,10 @@ def get_predict_command(
             relation=relation,
             method=method,
             cutoff=cutoff,
+            cache=cache,
+            force=force,
+            force_process=force_process,
+            all_by_all=all_by_all,
         )
 
     return predict

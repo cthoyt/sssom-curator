@@ -14,17 +14,19 @@ import click
 import curies
 import ssslm
 import sssom_pydantic
-from bioregistry import NormalizedNamableReference, NormalizedNamedReference, NormalizedReference
-from curies.vocabulary import exact_match, lexical_matching_process
+from bioregistry import NormalizedNamedReference
+from curies.vocabulary import lexical_matching_process
 from more_click import verbose_option
 from sssom_pydantic import MappingTool, SemanticMapping
 from tqdm.auto import tqdm
 
+from .embedding import predict_embedding_mappings
+from .utils import TOOL_NAME, resolve_mapping_tool, resolve_predicate
 from ..constants import PredictionMethod, RecognitionMethod
 
 if TYPE_CHECKING:
+    import gilda
     import networkx as nx
-    import pandas as pd
 
 __all__ = [
     "TOOL_NAME",
@@ -43,16 +45,8 @@ logger = logging.getLogger(__name__)
 #: A filter 3-dictionary of source prefix to target prefix to source identifier to target identifier
 NestedMappingDict: TypeAlias = Mapping[str, Mapping[str, Mapping[str, str]]]
 
-#: The name of the lexical mapping tool
-TOOL_NAME = "SSSOM Curator"
-
-
-def _resolve_tool(mapping_tool: str | MappingTool | None) -> MappingTool:
-    if mapping_tool is None:
-        return MappingTool(name=TOOL_NAME, version=None)
-    if isinstance(mapping_tool, str):
-        return MappingTool(name=mapping_tool, version=None)
-    return mapping_tool
+#: A callable that gets matches
+MatchCallable: TypeAlias = Callable[[str], list[ssslm.Match]]
 
 
 def get_predictions(
@@ -68,6 +62,10 @@ def get_predictions(
     progress: bool = True,
     filter_mutual_mappings: bool = False,
     mapping_tool: str | MappingTool | None = None,
+    force: bool = False,
+    cache: bool = True,
+    force_process: bool = False,
+    all_by_all: bool = False,
 ) -> list[SemanticMapping]:
     """Add lexical matching-based predictions to the Biomappings predictions.tsv file.
 
@@ -85,29 +83,61 @@ def get_predictions(
     :param progress: Should progress be shown?
     :param filter_mutual_mappings: Should mappings between entities in the given
         namespaces be filtered out?
+    :param force: Should the ontologies be re-downloaded/processed?
+    :param force_process: Should the ontologies be re-processed? Subsumed by ``force``
+    :param cache: Should the results of processing the resources be cached?
+    :param all_by_all: Enable all-by-all prediction mode, which doesn't just check
+        between the given prefix and target_prefixes (1-n) but does all against all
+
+    :returns: A list of predicted semantic mappings
     """
     if isinstance(target_prefixes, str):
         targets = [target_prefixes]
     else:
         targets = list(target_prefixes)
 
-    mapping_tool = _resolve_tool(mapping_tool)
+    mapping_tool = resolve_mapping_tool(mapping_tool)
 
     if method is None or method in typing.get_args(RecognitionMethod):
         import pyobo
 
-        # by default, PyOBO wraps a gilda grounder, but
-        # can be configured to use other NER/NEN systems
-        grounder = pyobo.get_grounder(targets)
-        predictions = predict_lexical_mappings(
-            prefix,
-            predicate=relation,
-            grounder=grounder,
-            mapping_tool=mapping_tool,
-            identifiers_are_names=identifiers_are_names,
-            method=cast(RecognitionMethod | None, method),
-        )
+        if all_by_all:
+            grounder = pyobo.get_grounder(
+                [prefix, *targets],
+                raise_on_missing=False,
+                force=force,
+                force_process=force_process,
+                cache=cache,
+            )
+            predictions = _predict_lexical_mappings_all_by_all(
+                grounder,
+                predicate=relation,
+                mapping_tool=mapping_tool,
+                method=cast(RecognitionMethod | None, method),
+            )
+        else:
+            # by default, PyOBO wraps a gilda grounder, but
+            # can be configured to use other NER/NEN systems
+            grounder = pyobo.get_grounder(
+                targets,
+                raise_on_missing=False,
+                force=force,
+                force_process=force_process,
+                cache=cache,
+            )
+            predictions = predict_lexical_mappings(
+                prefix,
+                predicate=relation,
+                grounder=grounder,
+                mapping_tool=mapping_tool,
+                identifiers_are_names=identifiers_are_names,
+                method=cast(RecognitionMethod | None, method),
+            )
     elif method == "embedding":
+        if all_by_all:
+            raise NotImplementedError(
+                "all-by-all prediction not implemented for embedding workflow"
+            )
         predictions = predict_embedding_mappings(
             prefix,
             target_prefixes,
@@ -133,135 +163,60 @@ def get_predictions(
     return predictions
 
 
-def predict_embedding_mappings(
-    prefix: str,
-    target_prefixes: str | Iterable[str],
-    mapping_tool: str | MappingTool,
-    *,
-    relation: str | None | curies.NamableReference = None,
-    cutoff: float | None = None,
-    batch_size: int | None = None,
-    progress: bool = True,
-) -> list[SemanticMapping]:
-    """Predict semantic mappings with embeddings."""
-    import pyobo
-    import pyobo.api.embedding
+def _get_get_matches(method: RecognitionMethod | None, grounder: ssslm.Grounder) -> MatchCallable:
+    if method is None or method == "grounding":
+        return grounder.get_matches
+    elif method == "ner":
 
-    if isinstance(target_prefixes, str):
-        targets = [target_prefixes]
+        def _get_matches(s: str) -> list[ssslm.Match]:
+            return [a.match for a in grounder.annotate(s)]
+
+        return _get_matches
+
     else:
-        targets = list(target_prefixes)
-    if cutoff is None:
-        cutoff = 0.65
-    if batch_size is None:
-        batch_size = 10_000
-
-    model = pyobo.api.embedding.get_text_embedding_model()
-    source_df = pyobo.get_text_embeddings_df(prefix, model=model)
-
-    mapping_tool = _resolve_tool(mapping_tool)
-
-    predictions = []
-    for target in tqdm(targets, disable=len(targets) == 1):
-        target_df = pyobo.get_text_embeddings_df(target, model=model)
-        for source_id, target_id, confidence in _calculate_similarities(
-            source_df, target_df, batch_size, cutoff, progress=progress
-        ):
-            predictions.append(
-                SemanticMapping(
-                    subject=_r(prefix=prefix, identifier=source_id),
-                    predicate=relation,
-                    object=_r(prefix=target, identifier=target_id),
-                    justification=lexical_matching_process,
-                    confidence=confidence,
-                    mapping_tool=mapping_tool,
-                )
-            )
-    return predictions
+        raise ValueError(f"invalid lexical method: {method}")
 
 
-def _calculate_similarities(
-    source_df: pd.DataFrame,
-    target_df: pd.DataFrame,
-    batch_size: int | None,
-    cutoff: float,
-    progress: bool = True,
-) -> list[tuple[str, str, float]]:
-    if batch_size is not None:
-        return _calculate_similarities_batched(
-            source_df, target_df, batch_size=batch_size, cutoff=cutoff, progress=progress
-        )
-    else:
-        return _calculate_similarities_unbatched(source_df, target_df, cutoff=cutoff)
-
-
-def _calculate_similarities_batched(
-    source_df: pd.DataFrame,
-    target_df: pd.DataFrame,
+def _predict_lexical_mappings_all_by_all(
+    grounder: ssslm.Grounder,
     *,
-    batch_size: int,
-    cutoff: float,
-    progress: bool = True,
-) -> list[tuple[str, str, float]]:
-    import torch
-    from sentence_transformers.util import cos_sim
+    predicate: str | curies.Reference | None = None,
+    method: RecognitionMethod | None = None,
+    mapping_tool: str | MappingTool | None = None,
+) -> Iterable[SemanticMapping]:
+    """Iterate over predictions."""
+    predicate = resolve_predicate(predicate)
+    mapping_tool = resolve_mapping_tool(mapping_tool)
+    if method not in {None, "grounding"}:
+        raise NotImplementedError(f"all-by-all requires grounding method, {method} not allowed")
+    if not isinstance(grounder, ssslm.GildaGrounder):
+        raise NotImplementedError(f"all-by-all requires gilda grounder. got: {type(grounder)}")
+    yield from _all_by_all_gilda(grounder._grounder, predicate, mapping_tool)
 
-    similarities = []
-    source_df_numpy = source_df.to_numpy()
-    for target_start in tqdm(
-        range(0, len(target_df), batch_size), unit="target batch", disable=not progress
-    ):
-        target_end = target_start + batch_size
-        target_batch_df = target_df.iloc[target_start:target_end]
-        similarity = cos_sim(
-            source_df_numpy,
-            target_batch_df.to_numpy(),
-        )
-        source_target_pairs = torch.nonzero(similarity >= cutoff, as_tuple=False)
-        for source_idx, target_idx in source_target_pairs:
-            source_id: str = source_df.index[source_idx.item()]
-            target_id: str = target_batch_df.index[target_idx.item()]
-            similarities.append(
-                (
-                    source_id,
-                    target_id,
-                    similarity[source_idx, target_idx].item(),
-                )
+
+def _all_by_all_gilda(
+    grounder: gilda.Grounder, predicate: curies.Reference, mapping_tool: MappingTool | None = None
+) -> Iterable[SemanticMapping]:
+    from gilda.scorer import generate_match
+    from gilda.scorer import score as get_score
+
+    for values in grounder.entries.values():
+        for s, o in itt.combinations(values, 2):
+            if s.db == o.db:
+                continue
+            match = generate_match(s.text, o.text)
+            score = get_score(match, o)  # FIXME not symmetric
+            yield SemanticMapping(
+                subject=NormalizedNamedReference(prefix=s.db, identifier=s.id, name=s.entry_name),
+                predicate=predicate,
+                object=NormalizedNamedReference(prefix=o.db, identifier=o.id, name=o.entry_name),
+                justification=lexical_matching_process,
+                confidence=round(score, 3),
+                mapping_tool=mapping_tool,
             )
-    return similarities
 
 
-def _calculate_similarities_unbatched(
-    source_df: pd.DataFrame, target_df: pd.DataFrame, *, cutoff: float
-) -> list[tuple[str, str, float]]:
-    import torch
-    from sentence_transformers.util import cos_sim
-
-    similarities = []
-    similarity = cos_sim(source_df.to_numpy(), target_df.to_numpy())
-    source_target_pairs = torch.nonzero(similarity >= cutoff, as_tuple=False)
-    for source_idx, target_idx in source_target_pairs:
-        source_id: str = source_df.index[source_idx.item()]
-        target_id: str = target_df.index[target_idx.item()]
-        similarities.append(
-            (
-                source_id,
-                target_id,
-                similarity[source_idx, target_idx].item(),
-            )
-        )
-    return similarities
-
-
-def _r(prefix: str, identifier: str) -> NormalizedNamableReference:
-    import pyobo
-
-    return NormalizedNamableReference(
-        prefix=prefix, identifier=identifier, name=pyobo.get_name(prefix, identifier)
-    )
-
-
-def predict_lexical_mappings(  # noqa:C901
+def predict_lexical_mappings(
     prefix: str,
     *,
     predicate: str | curies.Reference | None = None,
@@ -274,36 +229,18 @@ def predict_lexical_mappings(  # noqa:C901
     """Iterate over prediction tuples for a given prefix."""
     import pyobo
 
-    if predicate is None:
-        predicate = exact_match
-    elif isinstance(predicate, str):
-        predicate = NormalizedReference.from_curie(predicate)
-
-    # throw away name so we don't make a label column
-    predicate = NormalizedReference(prefix=predicate.prefix, identifier=predicate.identifier)
-
     id_name_mapping = pyobo.get_id_name_mapping(prefix, strict=strict)
     it = tqdm(
         id_name_mapping.items(), desc=f"[{prefix}] lexical tuples", unit_scale=True, unit="name"
     )
 
-    if method is None or method == "grounding":
-
-        def _get_matches(s: str) -> list[ssslm.Match]:
-            return grounder.get_matches(s)
-
-    elif method == "ner":
-
-        def _get_matches(s: str) -> list[ssslm.Match]:
-            return [a.match for a in grounder.annotate(s)]
-    else:
-        raise ValueError(f"invalid lexical method: {method}")
-
-    mapping_tool = _resolve_tool(mapping_tool)
+    predicate = resolve_predicate(predicate)
+    get_matches = _get_get_matches(method, grounder)
+    mapping_tool = resolve_mapping_tool(mapping_tool)
 
     name_prediction_count = 0
     for identifier, name in it:
-        for scored_match in _get_matches(name):
+        for scored_match in get_matches(name):
             name_prediction_count += 1
             yield SemanticMapping(
                 subject=NormalizedNamedReference(prefix=prefix, identifier=identifier, name=name),
@@ -322,7 +259,7 @@ def predict_lexical_mappings(  # noqa:C901
         )
         identifier_prediction_count = 0
         for identifier in it:
-            for scored_match in _get_matches(identifier):
+            for scored_match in get_matches(identifier):
                 name_prediction_count += 1
                 yield SemanticMapping(
                     subject=NormalizedNamedReference(
@@ -458,18 +395,43 @@ def append_predictions(
     *,
     path: Path,
     curated_paths: list[Path] | None = None,
+    converter: curies.Converter | None = None,
 ) -> None:
     """Append new lines to the predictions table."""
-    mappings, converter, metadata = sssom_pydantic.read(path)
+    mappings, converter, metadata = sssom_pydantic.read(path, converter=converter)
 
     prefixes: set[str] = set()
     for mapping in new_mappings:
         prefixes.update(mapping.get_prefixes())
         mappings.append(mapping)
 
-    for prefix in prefixes:
-        if not converter.standardize_prefix(prefix):
-            raise NotImplementedError("amending prefixes not yet implemented")
+    prefixes_to_add = {prefix for prefix in prefixes if not converter.standardize_prefix(prefix)}
+    if prefixes_to_add:
+        try:
+            import bioregistry
+        except ImportError as e:
+            raise ImportError("amending prefixes requires the bioregistry to be installed") from e
+
+        for prefix in prefixes_to_add:
+            resource = bioregistry.get_resource(prefix)
+            if resource is None:
+                raise ValueError(
+                    f"can not automatically extend because {prefix} is not registered in the "
+                    f"bioregistry.\n\nSolution: add a CURIE prefix-URI prefix mapping manually "
+                    f"to the file {path}"
+                )
+
+            uri_prefix = resource.get_rdf_uri_prefix() or resource.get_uri_prefix()
+            if not uri_prefix:
+                raise ValueError(
+                    f"can not automatically extend because {prefix} does not have a valid URI "
+                    f"prefix in the bioregistry.\n\nSolution: add a CURIE prefix-URI prefix "
+                    f"mapping manually to the file {path}"
+                )
+            converter.add_prefix(
+                resource.prefix,
+                uri_prefix,
+            )
 
     if curated_paths is not None:
         exclude_mappings = itt.chain.from_iterable(
@@ -504,6 +466,11 @@ def append_lexical_predictions(
     filter_mutual_mappings: bool = False,
     curated_paths: list[Path] | None = None,
     mapping_tool: str | MappingTool | None = None,
+    force: bool = False,
+    force_process: bool = False,
+    cache: bool = True,
+    converter: curies.Converter | None = None,
+    all_by_all: bool = False,
 ) -> None:
     """Add lexical matching-based predictions to the Biomappings predictions.tsv file.
 
@@ -537,12 +504,16 @@ def append_lexical_predictions(
         custom_filter_function=custom_filter_function,
         progress=progress,
         filter_mutual_mappings=filter_mutual_mappings,
+        force=force,
+        force_process=force_process,
+        cache=cache,
+        all_by_all=all_by_all,
     )
     tqdm.write(f"[{prefix}] generated {len(predictions):,} predictions")
 
     # since the function that constructs the predictions already
     # pre-standardizes, we don't have to worry about standardizing again
-    append_predictions(predictions, path=path, curated_paths=curated_paths)
+    append_predictions(predictions, path=path, curated_paths=curated_paths, converter=converter)
 
 
 def lexical_prediction_cli(
@@ -563,8 +534,9 @@ def lexical_prediction_cli(
     tt = target if isinstance(target, str) else ", ".join(target)
 
     @click.command(help=f"Generate mappings from {prefix} to {tt}")
+    @click.option("--force", is_flag=True)
     @verbose_option
-    def main() -> None:
+    def main(force: bool) -> None:
         """Generate mappings."""
         append_lexical_predictions(
             prefix,
@@ -578,6 +550,7 @@ def lexical_prediction_cli(
             cutoff=cutoff,
             custom_filter_function=custom_filter_function,
             mapping_tool=mapping_tool,
+            force=force,
         )
 
     main()

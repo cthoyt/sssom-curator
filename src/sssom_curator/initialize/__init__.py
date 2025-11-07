@@ -13,6 +13,8 @@ if TYPE_CHECKING:
     import jinja2
     from sssom_pydantic import MappingSet
 
+    from ..repository import Repository
+
 __all__ = [
     "initialize_folder",
 ]
@@ -53,7 +55,7 @@ def initialize_folder(  # noqa:C901
     readme_filename: str = README_NAME,
     add_license: bool = True,
     mapping_set_id: str | None = None,
-) -> None:
+) -> Repository:
     """Create a curation repository in a folder.
 
     :param directory: The directory where to create it.
@@ -196,6 +198,8 @@ def initialize_folder(  # noqa:C901
     if mapping_set.license == CC0_CURIE:
         license_path = directory.joinpath("LICENSE")
         license_path.write_text(HERE.joinpath("cc0.txt").read_text())
+
+    return repository
 
 
 def _get_jinja2_environment() -> jinja2.Environment:
