@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeAlias
 import click
 import sssom_pydantic
 from pydantic import BaseModel
-from sssom_pydantic import MappingSet
 from typing_extensions import Self
 
 from .constants import (
@@ -28,7 +27,7 @@ from .constants import (
 if TYPE_CHECKING:
     import curies
     from curies import Converter
-    from sssom_pydantic import MappingTool, SemanticMapping
+    from sssom_pydantic import MappingSet, MappingTool, SemanticMapping, SemanticMappingPredicate
 
     from .testing import IntegrityTestCase
 
@@ -413,6 +412,7 @@ def add_commands(
     )
     main.add_command(get_predict_command())
     main.add_command(get_test_command())
+    main.add_command(get_import_command())
 
 
 def get_merge_command(sssom_directory: Path | None = None) -> click.Command:
@@ -729,3 +729,93 @@ def get_test_command() -> click.Command:
         sys.exit(not result.wasSuccessful())
 
     return test
+
+
+def _get_latest_semra() -> tuple[str, None, int]:
+    url = "https://zenodo.org/records/15504009/files/mappings.sssom.tsv.gz"
+    version = None  # TODO
+    count = 43_400_000
+    return url, version, count
+
+
+def get_import_command() -> click.Group:
+    """Get a command for importing."""
+    url, version, count = _get_latest_semra()
+
+    @click.group(name="import")
+    def import_group() -> None:
+        """Import external SSSOM files."""
+
+    preview_warning = (
+        "This command is in preview mode, and functionality may change without warning"
+    )
+
+    @import_group.command(
+        name="semra",
+        help="Import raw mappings from SeMRA.\n\n"
+        "Currently, this workflow is configured to only import semantic mappings from the "
+        "SeMRA Raw Mapping database (https://doi.org/10.5281/zenodo.11082038) that are not "
+        "already marked as manual mapping curations, have a CC0 license, and are either "
+        f"an exact match or dbxref.\n\nNote: {preview_warning}",
+    )
+    @click.option(
+        "-p",
+        "--prefixes",
+        multiple=True,
+        help="Filter to mappings whose subject and objects are both in the prefix list. "
+        "Can pass multiple.",
+    )
+    @click.pass_obj
+    def import_semra(obj: Repository, prefixes: list[str]) -> None:
+        """Import mappings from SeMRA."""
+        if len(prefixes) == 1:
+            click.secho("requires either zero or two or more prefixes", fg="red")
+            raise sys.exit(1)
+
+        click.secho(preview_warning, fg="yellow")
+
+        import bioregistry
+        import pystow
+
+        path = pystow.ensure("semra", "cache", url=url, version=version)
+        converter = bioregistry.get_converter()
+        mappings, _, _ = sssom_pydantic.read(
+            path,
+            metadata={"mapping_set_id": url},
+            progress=True,
+            progress_kwargs={"total": count},
+            semantic_mapping_predicate=_get_predicate(prefixes),
+            converter=converter,
+        )
+        obj.append_predicted_mappings(mappings, converter=converter)
+
+    return import_group
+
+
+def _get_predicate(prefixes: list[str]) -> SemanticMappingPredicate:
+    from curies.vocabulary import exact_match, has_dbxref, manual_mapping_curation
+
+    prefix_checker = set(prefixes).__contains__
+    predicate_checker = {exact_match, has_dbxref}.__contains__
+    license_checker = "CC0".__eq__
+
+    if prefixes:
+
+        def _predicate(m: SemanticMapping) -> bool:
+            return (
+                m.justification != manual_mapping_curation
+                and predicate_checker(m.predicate)
+                and prefix_checker(m.subject.prefix)
+                and prefix_checker(m.object.prefix)
+                and license_checker(m.license)
+            )
+    else:
+
+        def _predicate(m: SemanticMapping) -> bool:
+            return (
+                m.justification != manual_mapping_curation
+                and predicate_checker(m.predicate)
+                and license_checker(m.license)
+            )
+
+    return _predicate

@@ -197,6 +197,12 @@ For example, you might want to implement a graph machine learning-based method f
 predicting mappings or implement a wrapper around some of the tricky existing mapping
 tools (like LogMap).
 
+Importing Mappings
+------------------
+
+
+
+
 Curation
 --------
 
