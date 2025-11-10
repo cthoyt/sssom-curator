@@ -200,8 +200,17 @@ tools (like LogMap).
 Importing Mappings
 ------------------
 
+As an alternative to predicting mappings, the `SeMRA Raw Mappings Database
+<https://doi.org/10.5281/zenodo.11082038>` can be imported and filtered to mappings that
+haven't already been curated with high precision. You need to specify two or more
+prefixes using the ``-p`` flag.
 
+.. code-block:: console
 
+    $ uv run main.py import semra -p mesh -p hgnc
+
+Note, this takes about five minutes to download and twenty minutes to process due to the
+size of the SeMRA Raw Mappings Database.
 
 Curation
 --------

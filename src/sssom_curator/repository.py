@@ -27,7 +27,7 @@ from .constants import (
 if TYPE_CHECKING:
     import curies
     from curies import Converter
-    from sssom_pydantic import MappingSet, MappingTool, SemanticMapping, SemanticMappingPredicate
+    from sssom_pydantic import MappingTool, SemanticMapping, SemanticMappingPredicate
 
     from .testing import IntegrityTestCase
 
@@ -141,7 +141,7 @@ class Repository(BaseModel):
     positives_path: Path
     negatives_path: Path
     unsure_path: Path
-    mapping_set: MappingSet | None = None
+    mapping_set: sssom_pydantic.MappingSet | None = None
     purl_base: str | None = None
     basename: str | None = None
     ndex_uuid: str | None = None
@@ -762,14 +762,14 @@ def get_import_command() -> click.Group:
         "-p",
         "--prefixes",
         multiple=True,
-        help="Filter to mappings whose subject and objects are both in the prefix list. "
-        "Can pass multiple.",
+        help="Filter to mappings whose subject and objects are both in the prefix list."
+        "Must pass at least two.",
     )
     @click.pass_obj
     def import_semra(obj: Repository, prefixes: list[str]) -> None:
         """Import mappings from SeMRA."""
-        if len(prefixes) == 1:
-            click.secho("requires either zero or two or more prefixes", fg="red")
+        if len(prefixes) < 2:
+            click.secho("requires two or more prefixes", fg="red")
             raise sys.exit(1)
 
         click.secho(preview_warning, fg="yellow")
