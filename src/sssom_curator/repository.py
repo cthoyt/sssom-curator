@@ -798,12 +798,13 @@ def _get_predicate(prefixes: list[str]) -> SemanticMappingPredicate:
     prefix_checker = set(prefixes).__contains__
     predicate_checker = {exact_match, has_dbxref}.__contains__
     license_checker = "CC0".__eq__
+    justification_checker = lambda x: x != manual_mapping_curation
 
     if prefixes:
 
         def _predicate(m: SemanticMapping) -> bool:
             return (
-                m.justification != manual_mapping_curation
+                justification_checker(m.justification)
                 and predicate_checker(m.predicate)
                 and prefix_checker(m.subject.prefix)
                 and prefix_checker(m.object.prefix)
@@ -813,7 +814,7 @@ def _get_predicate(prefixes: list[str]) -> SemanticMappingPredicate:
 
         def _predicate(m: SemanticMapping) -> bool:
             return (
-                m.justification != manual_mapping_curation
+                justification_checker(m.justification)
                 and predicate_checker(m.predicate)
                 and license_checker(m.license)
             )
