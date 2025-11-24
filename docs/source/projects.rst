@@ -203,25 +203,29 @@ Importing Mappings
 As an alternative to predicting mappings directly, SSSOM Curator exposes ways of
 importing mappings from other sources.
 
-BioPortal
-~~~~~~~~~
+OntoPortal
+~~~~~~~~~~
 
-`BioPortal <https://bioportal.bioontology.org/>`_ is an instance of the `OntoPortal
-<https://ontoportal.org/>`_ ontology catalog focused on biological and biomedical
-ontologies. It predicts semantic mappings through an ensemble of methods such lexical
-matches produced by `LOOM <https://pubmed.ncbi.nlm.nih.gov/20351849/>`_ and inferred
-mappings produced using the UMLS, which can be processed into low-precision SSSOM
-mappings that are a good target for curation. See `this blog post
-<https://cthoyt.com/2025/11/23/sssom-from-bioportal.html>`_ for more information on how
-processing is done.
+`OntoPortal <https://ontoportal.org/>`_ is a generic web-based ontology catalog. It
+predicts mappings between its indexed ontologies through an ensemble of methods such
+lexical matches via `LOOM <https://pubmed.ncbi.nlm.nih.gov/20351849/>`_ and inferred
+mappings via the UMLS. It stores these mappings in a custom format which is missing many
+key metadata (e.g., predicate, mapping justification), making them a good target for
+processing and then curation in SSSOM.
 
-The OntoPortal mappings endpoint only allows pairwise comparison, so SSSOM Curator
-exposes the ``import ontoportal`` command that takes two prefixes. An ``--instance`` can
-be given to specify which OntoPortal to use, defaulting to BioPortal
+SSSOM Curator implements a workflow for consuming mappings from an OntoPortal instance's
+API:
 
 .. code-block:: console
 
     $ uv run main.py import ontoportal snomed aero
+
+By default, this command uses `BioPortal <https://bioportal.bioontology.org/>`_, the
+flagship instance of OntoPortal which covers biological and biomedical ontologies. Other
+portals can be selected with the ``--instance`` flag.
+
+See `this blog post <https://cthoyt.com/2025/11/23/sssom-from-bioportal.html>`_ for more
+information on how processing is done to produce the SSSOM for curation.
 
 .. note::
 
