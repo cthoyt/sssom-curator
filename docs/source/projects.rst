@@ -215,9 +215,9 @@ mappings that are a good target for curation. See `this blog post
 <https://cthoyt.com/2025/11/23/sssom-from-bioportal.html>`_ for more information on how
 processing is done.
 
-The OntoPortal mappings endpoint only allows pairwise comparison, so SSSOM Curator exposes the
-``import ontoportal`` command that takes two prefixes. An ``--instance`` can be given to specify
-which OntoPortal to use, defaulting to BioPortal
+The OntoPortal mappings endpoint only allows pairwise comparison, so SSSOM Curator
+exposes the ``import ontoportal`` command that takes two prefixes. An ``--instance`` can
+be given to specify which OntoPortal to use, defaulting to BioPortal
 
 .. code-block:: console
 
