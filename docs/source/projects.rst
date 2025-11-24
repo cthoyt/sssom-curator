@@ -197,6 +197,55 @@ For example, you might want to implement a graph machine learning-based method f
 predicting mappings or implement a wrapper around some of the tricky existing mapping
 tools (like LogMap).
 
+Importing Mappings
+------------------
+
+As an alternative to predicting mappings directly, SSSOM Curator exposes ways of
+importing mappings from other sources.
+
+OntoPortal
+~~~~~~~~~~
+
+`OntoPortal <https://ontoportal.org/>`_ is a generic web-based ontology catalog. It
+predicts mappings between its indexed ontologies through an ensemble of methods such
+lexical matches via `LOOM <https://pubmed.ncbi.nlm.nih.gov/20351849/>`_ and inferred
+mappings via the UMLS. It stores these mappings in a custom format which is missing many
+key metadata (e.g., predicate, mapping justification), making them a good target for
+processing and then curation in SSSOM.
+
+SSSOM Curator implements a workflow for consuming mappings from an OntoPortal instance's
+API:
+
+.. code-block:: console
+
+    $ uv run main.py import ontoportal snomed aero
+
+By default, this command uses `BioPortal <https://bioportal.bioontology.org/>`_, the
+flagship instance of OntoPortal which covers biological and biomedical ontologies. Other
+portals can be selected with the ``--instance`` flag.
+
+See `this blog post <https://cthoyt.com/2025/11/23/sssom-from-bioportal.html>`_ for more
+information on how processing is done to produce the SSSOM for curation.
+
+.. note::
+
+    This command accepts Bioregistry prefixes, which are internally mapped to the
+    appropriate OntoPortal instance's prefixes.
+
+SeMRA
+~~~~~
+
+The `SeMRA Raw Mappings Database <https://doi.org/10.5281/zenodo.11082038>`_ can be
+imported and filtered to mappings that haven't already been curated with high precision.
+You need to specify two or more prefixes using the ``-p`` flag.
+
+.. code-block:: console
+
+    $ uv run main.py import semra -p mesh -p hgnc
+
+Note, this takes about five minutes to download and twenty minutes to process due to the
+size of the SeMRA Raw Mappings Database.
+
 Curation
 --------
 
