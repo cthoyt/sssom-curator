@@ -215,19 +215,18 @@ mappings that are a good target for curation. See `this blog post
 <https://cthoyt.com/2025/11/23/sssom-from-bioportal.html>`_ for more information on how
 processing is done.
 
-The BioPortal endpoint only allows pairwise comparison, so SSSOM Curator exposes the
-``import bioportal`` command that takes two prefixes.
+The OntoPortal mappings endpoint only allows pairwise comparison, so SSSOM Curator exposes the
+``import ontoportal`` command that takes two prefixes. An ``--instance`` can be given to specify
+which OntoPortal to use, defaulting to BioPortal
 
 .. code-block:: console
 
-    $ uv run main.py import bioportal snomed aero
+    $ uv run main.py import ontoportal snomed aero
 
 .. note::
 
     This command accepts Bioregistry prefixes, which are internally mapped to the
     appropriate OntoPortal instance's prefixes.
-
-.. todo:: extend to generic client over all OntoPortal instances
 
 SeMRA
 ~~~~~

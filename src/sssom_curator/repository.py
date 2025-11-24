@@ -790,39 +790,58 @@ def get_import_command() -> click.Group:
         obj.append_predicted_mappings(mappings, converter=converter)
 
     @import_group.command(
-        name="bioportal",
-        help="Import uncurated mappings from BioPortal",
+        name="ontoportal",
+        help="Import uncurated mappings from an OntoPortal instance",
     )
-    @click.argument("left")
-    @click.argument("right")
+    @click.argument("ontology_1")
+    @click.argument("ontology_2")
+    @click.option(
+        "--instance",
+        type=click.Choice(["bioportal", "agroportal", "ecoportal"]),
+        default="bioportal",
+        show_default=True,
+    )
     @click.pass_obj
-    def import_bioportal(obj: Repository, left: str, right: str) -> None:
-        """Import mappings from BioPortal."""
+    def import_ontoportal(obj: Repository, ontology_1: str, ontology_2: str, instance: str) -> None:
+        """Import mappings from an OntoPortal instance."""
         import bioregistry
-        from sssom_pydantic.contrib.ontoportal import from_bioportal
+        from ontoportal_client import ontoportal_resolver
+        from sssom_pydantic.contrib.ontoportal import from_ontoportal
 
-        left_resource = bioregistry.get_resource(left, strict=True)
-        left_bioportal = left_resource.get_mapped_prefix("bioportal")
-        if left_bioportal is None:
-            click.secho(f"{left} does not have a BioPortal mapping", fg="red")
+        client = ontoportal_resolver.make(instance)
+        registry = bioregistry.get_registry(instance)
+        if registry is None:
+            click.secho(f"{instance} is not a valid Bioregistry registry", fg="red")
             sys.exit(1)
 
-        right_resource = bioregistry.get_resource(right, strict=True)
-        right_bioportal = right_resource.get_mapped_prefix("bioportal")
+        left_resource = bioregistry.get_resource(ontology_1, strict=True)
+        left_bioportal = left_resource.get_mapped_prefix(instance)
+        if left_bioportal is None:
+            click.secho(
+                f"{ontology_1} does not have a {registry.get_short_name()} mapping", fg="red"
+            )
+            sys.exit(1)
+
+        right_resource = bioregistry.get_resource(ontology_2, strict=True)
+        right_bioportal = right_resource.get_mapped_prefix(instance)
         if right_bioportal is None:
-            click.secho(f"{right} does not have a BioPortal mapping", fg="red")
+            click.secho(
+                f"{ontology_2} does not have a {registry.get_short_name()} mapping", fg="red"
+            )
             sys.exit(1)
 
         converter = bioregistry.get_converter()
 
-        mappings = from_bioportal(
-            left_bioportal, right_bioportal, converter=converter, progress=True
+        mappings = from_ontoportal(
+            left_bioportal, right_bioportal, converter=converter, client=client, progress=True
         )
 
         # Filter to only be mappings incident to the given prefixes
-        mappings = _keep_only_prefixes(mappings, {left_resource.prefix, right_resource.prefix})
+        mappings_filtered = _keep_only_prefixes(
+            mappings, {left_resource.prefix, right_resource.prefix}
+        )
 
-        obj.append_predicted_mappings(mappings, converter=converter)
+        obj.append_predicted_mappings(mappings_filtered, converter=converter)
 
     return import_group
 
