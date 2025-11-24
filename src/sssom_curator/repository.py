@@ -789,6 +789,22 @@ def get_import_command() -> click.Group:
         )
         obj.append_predicted_mappings(mappings, converter=converter)
 
+    @import_group.command(
+        name="bioportal",
+        help="Import uncurated mappings from BioPortal",
+    )
+    @click.argument("left")
+    @click.argument("right")
+    @click.pass_obj
+    def import_bioportal(obj: Repository, left: str, right: str) -> None:
+        """Import mappings from BioPortal."""
+        import bioregistry
+        from sssom_pydantic.contrib.ontoportal import from_bioportal
+
+        converter = bioregistry.get_converter()
+        mappings = from_bioportal(left, right, converter=converter)  # TODO add progress=True
+        obj.append_predicted_mappings(mappings, converter=converter)
+
     return import_group
 
 
