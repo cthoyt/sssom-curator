@@ -235,7 +235,7 @@ information on how processing is done to produce the SSSOM for curation.
 SeMRA
 ~~~~~
 
-The `SeMRA Raw Mappings Database <https://doi.org/10.5281/zenodo.11082038>` can be
+The `SeMRA Raw Mappings Database <https://doi.org/10.5281/zenodo.11082038>`_ can be
 imported and filtered to mappings that haven't already been curated with high precision.
 You need to specify two or more prefixes using the ``-p`` flag.
 
