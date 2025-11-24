@@ -801,11 +801,38 @@ def get_import_command() -> click.Group:
         import bioregistry
         from sssom_pydantic.contrib.ontoportal import from_bioportal
 
+        left_resource = bioregistry.get_resource(left, strict=True)
+        left_bioportal = left_resource.get_mapped_prefix("bioportal")
+        if left_bioportal is None:
+            click.secho(f"{left} does not have a BioPortal mapping", fg="red")
+            sys.exit(1)
+
+        right_resource = bioregistry.get_resource(right, strict=True)
+        right_bioportal = right_resource.get_mapped_prefix("bioportal")
+        if right_bioportal is None:
+            click.secho(f"{right} does not have a BioPortal mapping", fg="red")
+            sys.exit(1)
+
         converter = bioregistry.get_converter()
-        mappings = from_bioportal(left, right, converter=converter)  # TODO add progress=True
+
+        mappings = from_bioportal(
+            left_bioportal, right_bioportal, converter=converter, progress=True
+        )
+
+        # Filter to only be mappings incident to the given prefixes
+        mappings = _keep_only_prefixes(mappings, {left_resource.prefix, right_resource.prefix})
+
         obj.append_predicted_mappings(mappings, converter=converter)
 
     return import_group
+
+
+def _keep_only_prefixes(
+    mappings: Iterable[SemanticMapping], kk: set[str]
+) -> Iterable[SemanticMapping]:
+    for m in mappings:
+        if m.subject.prefix in kk and m.object.prefix in kk:
+            yield m
 
 
 def _get_predicate(prefixes: list[str]) -> SemanticMappingPredicate:
