@@ -200,10 +200,41 @@ tools (like LogMap).
 Importing Mappings
 ------------------
 
-As an alternative to predicting mappings, the `SeMRA Raw Mappings Database
-<https://doi.org/10.5281/zenodo.11082038>` can be imported and filtered to mappings that
-haven't already been curated with high precision. You need to specify two or more
-prefixes using the ``-p`` flag.
+As an alternative to predicting mappings directly, SSSOM Curator exposes ways of
+importing mappings from other sources.
+
+BioPortal
+~~~~~~~~~
+
+`BioPortal <https://bioportal.bioontology.org/>`_ is an instance of the `OntoPortal
+<https://ontoportal.org/>`_ ontology catalog focused on biological and biomedical
+ontologies. It predicts semantic mappings through an ensemble of methods such lexical
+matches produced by `LOOM <https://pubmed.ncbi.nlm.nih.gov/20351849/>`_ and inferred
+mappings produced using the UMLS, which can be processed into low-precision SSSOM
+mappings that are a good target for curation. See `this blog post
+<https://cthoyt.com/2025/11/23/sssom-from-bioportal.html>`_ for more information on how
+processing is done.
+
+The BioPortal endpoint only allows pairwise comparison, so SSSOM Curator exposes the
+``import bioportal`` command that takes two prefixes.
+
+.. code-block:: console
+
+    $ uv run main.py import bioportal snomed aero
+
+.. note::
+
+    This command accepts Bioregistry prefixes, which are internally mapped to the
+    appropriate OntoPortal instance's prefixes.
+
+.. todo:: extend to generic client over all OntoPortal instances
+
+SeMRA
+~~~~~
+
+The `SeMRA Raw Mappings Database <https://doi.org/10.5281/zenodo.11082038>` can be
+imported and filtered to mappings that haven't already been curated with high precision.
+You need to specify two or more prefixes using the ``-p`` flag.
 
 .. code-block:: console
 
