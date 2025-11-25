@@ -85,3 +85,42 @@ class TestMerge(cases.RepositoryTestCase):
             """).rstrip(),
             self.output_tsv_path.read_text().rstrip(),
         )
+
+    def test_merge_with_curations_no_standardization(self) -> None:
+        """Test adding some extra mappings that also have preferred prefixes."""
+        self.repository.merge_standardize_bioregistry = False
+        self.maxDiff = None
+        mapping = SemanticMapping(
+            subject=curies.NamedReference(prefix="chebi", identifier="10001", name="Visnadin"),
+            predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
+            object=curies.NamedReference(prefix="mesh", identifier="C067604", name="visnadin"),
+            justification=manual_mapping_curation,
+            authors=[charlie],
+        )
+        self.repository.append_positive_mappings([mapping])
+
+        merge(self.repository, self.output_directory, output_owl=False, output_json=False)
+
+        self.assertTrue(self.output_tsv_path.is_file())
+        # note that `chebi` doesn't get capitalized because this test explicitly turns
+        # off bioregistry normalization. The MeSH URI is also the non-RDF one here, too
+        self.assertEqual(
+            dedent(f"""\
+                #curie_map:
+                #  chebi: http://purl.obolibrary.org/obo/CHEBI_
+                #  ex: https://example.org/
+                #  mesh: https://meshb.nlm.nih.gov/record/ui?ui=
+                #  orcid: https://orcid.org/
+                #  semapv: https://w3id.org/semapv/vocab/
+                #  skos: http://www.w3.org/2004/02/skos/core#
+                #license: spdx:CC0-1.0
+                #mapping_set_id: {self.mapping_set_id}
+                #mapping_set_title: {self.directory.name}
+                subject_id\tsubject_label\tpredicate_id\tpredicate_modifier\tobject_id\tobject_label\tmapping_justification\tauthor_id\tconfidence
+                chebi:10001\tVisnadin\tskos:exactMatch\t\tmesh:C067604\tvisnadin\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t
+                ex:1\t1\tskos:exactMatch\t\tex:2\t2\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t
+                ex:3\t3\tskos:exactMatch\tNot\tex:4\t4\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t
+                ex:7\t7\tskos:exactMatch\t\tex:8\t8\tsemapv:LexicalMatching\t\t0.77
+            """).rstrip(),
+            self.output_tsv_path.read_text().rstrip(),
+        )
