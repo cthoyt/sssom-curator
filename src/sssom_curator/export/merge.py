@@ -25,7 +25,12 @@ def _sssom_dump(mapping_set: MappingSet) -> Metadata:
 
 
 def merge(
-    repository: Repository, directory: Path, output_owl: bool = True, output_json: bool = True
+    repository: Repository,
+    directory: Path,
+    *,
+    output_owl: bool = True,
+    output_json: bool = True,
+    sssompy_validate: bool = True,
 ) -> None:
     """Merge the SSSOM files together and output to a directory."""
     if repository.mapping_set is None:
@@ -34,7 +39,7 @@ def merge(
     import yaml
     from sssom.writers import write_json, write_owl
 
-    mappings, converter, msdf = get_merged_sssom(repository)
+    mappings, converter, msdf = _get_merged_sssom(repository, sssompy_validate=sssompy_validate)
 
     tsv_meta = {**_sssom_dump(repository.mapping_set), "curie_map": converter.bimap}
 
@@ -77,8 +82,10 @@ def merge(
                     write_owl(msdf, file)
 
 
-def get_merged_sssom(
-    repository: Repository, *, converter: curies.Converter | None = None
+def _get_merged_sssom(
+    repository: Repository,
+    *,
+    sssompy_validate: bool = True,
 ) -> tuple[list[SemanticMapping], curies.Converter, MappingSetDataFrame]:
     """Get an SSSOM dataframe."""
     if repository.mapping_set is None:
@@ -90,21 +97,22 @@ def get_merged_sssom(
 
     converter = curies.chain(
         [
-            ensure_converter(converter, preferred=True),
+            ensure_converter(preferred=True),
             repository.get_converter(),
         ]
     )
-
     mappings: list[SemanticMapping] = [
         *repository.read_positive_mappings(),
         *repository.read_negative_mappings(),
         *repository.read_predicted_mappings(),
     ]
+    mappings = [mapping.standardize(converter) for mapping in mappings]
 
+    # this is also built-in to sssom-pydantic writing,
+    # but needs to be done or the sssom-py code gets
+    # confused
     prefixes = {p for m in mappings for p in m.get_prefixes()}
     converter = converter.get_subconverter(prefixes)
-
-    mappings = [mapping.standardize(converter) for mapping in mappings]
 
     try:
         msdf = mappings_to_msdf(
@@ -114,15 +122,15 @@ def get_merged_sssom(
         click.secho(f"SSSOM Export failed...\n{e}", fg="red")
         raise
 
-    from sssom.constants import DEFAULT_VALIDATION_TYPES
-    from sssom.validators import validate
+    if sssompy_validate:
+        import sssom.validators
 
-    results = validate(msdf=msdf, validation_types=DEFAULT_VALIDATION_TYPES, fail_on_error=False)
-    for validator_type, validation_report in results.items():
-        if validation_report.results:
-            click.secho(f"SSSOM Validator Failed: {validator_type}", fg="red")
-            for result in validation_report.results:
-                click.secho(f"- {result}", fg="red")
-            click.echo("")
+        results = sssom.validators.validate(msdf=msdf, fail_on_error=False)
+        for validator_type, validation_report in results.items():
+            if validation_report.results:
+                click.secho(f"SSSOM Validator Failed: {validator_type}", fg="red")
+                for result in validation_report.results:
+                    click.secho(f"- {result}", fg="red")
+                click.echo("")
 
     return mappings, converter, msdf
