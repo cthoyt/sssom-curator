@@ -99,7 +99,10 @@ def get_merged_sssom(
 
     from ..constants import ensure_converter
 
-    converter = ensure_converter(converter, preferred=True)
+    converter = curies.chain([
+        ensure_converter(converter, preferred=True),
+        repository.get_converter(),
+    ])
     prefixes: set[str] = {"semapv"}
 
     # NEW WAY: load all DFs, concat them, reorder columns
