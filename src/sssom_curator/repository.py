@@ -471,7 +471,7 @@ def get_summarize_command(
     @click.option(
         "--output-directory",
         type=click.Path(file_okay=False, dir_okay=True, exists=True),
-        default=output_directory.joinpath("summary.yml") if output_directory else None,
+        default=output_directory,
         required=True,
     )
     @click.option(
