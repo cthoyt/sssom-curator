@@ -30,6 +30,8 @@ used by a variety of people:
    want to integrate SSSOM Curator in their toolchain and extend it to support their
    team of curators and semantic data engineers.
 
+Check the live demo on `YouTube <https://www.youtube.com/watch?v=FkXkOhT8gdc>`_.
+
 This project is open source under the MIT license on GitHub at
 https://github.com/cthoyt/sssom-curator.
 

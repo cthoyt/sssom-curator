@@ -48,6 +48,8 @@ The SSSOM Curator evolved from the
 curation workflow, but is now fully domain-agnostic and reusable in custom
 environments.
 
+Check the live demo on [YouTube](https://www.youtube.com/watch?v=FkXkOhT8gdc).
+
 ## 💪 Getting Started
 
 SSSOM Curator manages semantic mapping curation projects from prediction to
