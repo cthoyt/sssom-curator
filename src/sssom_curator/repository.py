@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeAlias
 
 import click
+import curies
 import sssom_pydantic
 from pydantic import BaseModel
 from typing_extensions import Self
@@ -205,6 +206,11 @@ class Repository(BaseModel):
         """Get curated paths."""
         return [self.positives_path, self.negatives_path, self.unsure_path]
 
+    @property
+    def paths(self) -> list[Path]:
+        """Get all paths."""
+        return [self.positives_path, self.negatives_path, self.unsure_path, self.predictions_path]
+
     def read_positive_mappings(self) -> list[SemanticMapping]:
         """Load the positive mappings."""
         return sssom_pydantic.read(self.positives_path)[0]
@@ -220,6 +226,10 @@ class Repository(BaseModel):
     def read_predicted_mappings(self) -> list[SemanticMapping]:
         """Load the predicted mappings."""
         return sssom_pydantic.read(self.predictions_path)[0]
+
+    def get_converter(self) -> curies.Converter:
+        """Get a converter chained from all files."""
+        return curies.chain([sssom_pydantic.read(path)[1] for path in self.paths])
 
     def append_positive_mappings(
         self, mappings: Iterable[SemanticMapping], *, converter: curies.Converter | None = None

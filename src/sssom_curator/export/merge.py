@@ -19,7 +19,7 @@ __all__ = [
     "merge",
 ]
 
-columns = [
+_TARGET_COLUMNS = [
     "subject_id",
     "subject_label",
     "predicate_id",
@@ -64,7 +64,7 @@ def merge(repository: Repository, directory: Path) -> None:
 
     with tsv_path.open("w") as file:
         for line in yaml.safe_dump(tsv_meta).splitlines():
-            print(f"# {line}", file=file)
+            print(f"#{line}", file=file)
         df.to_csv(file, sep="\t", index=False)
 
     with open(metadata_path, "w") as file:
@@ -99,7 +99,12 @@ def get_merged_sssom(
 
     from ..constants import ensure_converter
 
-    converter = ensure_converter(converter, preferred=True)
+    converter = curies.chain(
+        [
+            ensure_converter(converter, preferred=True),
+            repository.get_converter(),
+        ]
+    )
     prefixes: set[str] = {"semapv"}
 
     # NEW WAY: load all DFs, concat them, reorder columns
@@ -108,7 +113,9 @@ def get_merged_sssom(
     b = pd.read_csv(repository.negatives_path, sep="\t", comment="#")
     c = pd.read_csv(repository.predictions_path, sep="\t", comment="#")
     df = pd.concat([a, b, c])
-    df = df[columns]
+
+    # filter to existing columns
+    df = df[[column for column in _TARGET_COLUMNS if column in df.columns]]
 
     for column in ["subject_id", "object_id", "predicate_id"]:
         converter.pd_standardize_curie(df, column=column, strict=True)
