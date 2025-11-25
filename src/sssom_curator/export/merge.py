@@ -19,19 +19,6 @@ __all__ = [
     "merge",
 ]
 
-_TARGET_COLUMNS = [
-    "subject_id",
-    "subject_label",
-    "predicate_id",
-    "predicate_modifier",
-    "object_id",
-    "object_label",
-    "mapping_justification",
-    "author_id",
-    "confidence",
-    "mapping_tool",
-]
-
 
 def _sssom_dump(mapping_set: MappingSet) -> Metadata:
     return mapping_set.to_record().model_dump(exclude_none=True, exclude_unset=True)
