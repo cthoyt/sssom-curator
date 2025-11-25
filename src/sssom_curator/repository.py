@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeAlias
 import click
 import curies
 import sssom_pydantic
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing_extensions import Self
 
 from .constants import (
@@ -150,6 +150,16 @@ class Repository(BaseModel):
     web_title: str | None = None
     web_disabled_message: str | None = None
     web_footer: str | None = None
+
+    merge_standardize_bioregistry: bool | None = Field(
+        None,
+        description="""\
+            If set to true, uses the preferred prefixes in the Bioregistry
+            to standardize the merged SSSOM output. This maintains backwards
+            compatibility in the Biomappings repository. You shouldn't use this
+            field.
+        """,
+    )
 
     def update_relative_paths(self, directory: Path) -> None:
         """Update paths relative to the directory."""
