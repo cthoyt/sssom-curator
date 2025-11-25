@@ -102,7 +102,8 @@ class TestMerge(cases.RepositoryTestCase):
         merge(self.repository, self.output_directory, output_owl=False, output_json=False)
 
         self.assertTrue(self.output_tsv_path.is_file())
-        # note that `chebi` gets capitalized to `CHEBI` because of Bioregistry preferred prefixes
+        # note that `chebi` doesn't get capitalized because this test explicitly turns off bioregistry
+        # normalization. The MeSH URI is also the non-RDF one here, too
         self.assertEqual(
             dedent(f"""\
                 #curie_map:
