@@ -147,13 +147,13 @@ class TestInitializeFolder(unittest.TestCase):
         self.assertTrue(negatives_path.is_file())
         self.assertEqual(
             dedent(f"""\
-                    #curie_map:
-                    #  ex: https://example.org/
-                    #  skos: http://www.w3.org/2004/02/skos/core#
-                    #mapping_set_id: https://example.org/ms/components/{NEGATIVES_NAME}
-                    subject_id\tsubject_label\tpredicate_id\tpredicate_modifier\tobject_id\tobject_label\tmapping_justification\tauthor_id
-                    ex:3\t3\tskos:exactMatch\tNot\tex:4\t4\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370
-                """).rstrip(),
+                #curie_map:
+                #  ex: https://example.org/
+                #  skos: http://www.w3.org/2004/02/skos/core#
+                #mapping_set_id: https://example.org/ms/components/{NEGATIVES_NAME}
+                subject_id\tsubject_label\tpredicate_id\tpredicate_modifier\tobject_id\tobject_label\tmapping_justification\tauthor_id
+                ex:3\t3\tskos:exactMatch\tNot\tex:4\t4\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370
+            """).rstrip(),
             negatives_path.read_text().rstrip(),
         )
 
