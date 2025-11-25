@@ -10,7 +10,6 @@ import curies
 from sssom_pydantic import MappingSet, Metadata
 
 if TYPE_CHECKING:
-    import pandas as pd
     from sssom import MappingSetDataFrame
 
     from ..repository import Repository
@@ -37,7 +36,9 @@ def _sssom_dump(mapping_set: MappingSet) -> Metadata:
     return mapping_set.to_record().model_dump(exclude_none=True, exclude_unset=True)
 
 
-def merge(repository: Repository, directory: Path) -> None:
+def merge(
+    repository: Repository, directory: Path, output_owl: bool = True, output_json: bool = True
+) -> None:
     """Merge the SSSOM files together and output to a directory."""
     if repository.mapping_set is None:
         raise ValueError
@@ -45,7 +46,7 @@ def merge(repository: Repository, directory: Path) -> None:
     import yaml
     from sssom.writers import write_json, write_owl
 
-    converter, df, msdf = get_merged_sssom(repository)
+    converter, msdf = get_merged_sssom(repository)
 
     tsv_meta = {**_sssom_dump(repository.mapping_set), "curie_map": converter.bimap}
 
@@ -65,30 +66,33 @@ def merge(repository: Repository, directory: Path) -> None:
     with tsv_path.open("w") as file:
         for line in yaml.safe_dump(tsv_meta).splitlines():
             print(f"#{line}", file=file)
-        df.to_csv(file, sep="\t", index=False)
+        msdf.df.to_csv(file, sep="\t", index=False)
 
     with open(metadata_path, "w") as file:
         yaml.safe_dump(tsv_meta, file)
 
-    if not repository.purl_base:
-        click.secho(
-            "can not output JSON nor OWL because ``purl_base`` was not defined", fg="yellow"
-        )
-    else:
-        _base = repository.purl_base.rstrip("/")
-        click.echo("Writing JSON")
-        with json_path.open("w") as file:
-            msdf.metadata["mapping_set_id"] = f"{_base}/{fname}.sssom.json"
-            write_json(msdf, file)
-        click.echo("Writing OWL")
-        with owl_path.open("w") as file:
-            msdf.metadata["mapping_set_id"] = f"{_base}/{fname}.sssom.owl"
-            write_owl(msdf, file)
+    if output_owl or output_json:
+        if not repository.purl_base:
+            click.secho(
+                "can not output JSON nor OWL because ``purl_base`` was not defined", fg="yellow"
+            )
+        else:
+            _base = repository.purl_base.rstrip("/")
+            if output_json:
+                click.echo("Writing JSON")
+                with json_path.open("w") as file:
+                    msdf.metadata["mapping_set_id"] = f"{_base}/{fname}.sssom.json"
+                    write_json(msdf, file)
+            if output_owl:
+                click.echo("Writing OWL")
+                with owl_path.open("w") as file:
+                    msdf.metadata["mapping_set_id"] = f"{_base}/{fname}.sssom.owl"
+                    write_owl(msdf, file)
 
 
 def get_merged_sssom(
     repository: Repository, *, use_tqdm: bool = False, converter: curies.Converter | None = None
-) -> tuple[curies.Converter, pd.DataFrame, MappingSetDataFrame]:
+) -> tuple[curies.Converter, MappingSetDataFrame]:
     """Get an SSSOM dataframe."""
     if repository.mapping_set is None:
         raise ValueError
@@ -153,4 +157,4 @@ def get_merged_sssom(
                 click.secho(f"- {result}", fg="red")
             click.echo("")
 
-    return converter, df, msdf
+    return converter, msdf

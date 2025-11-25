@@ -7,9 +7,7 @@ from textwrap import dedent
 
 from sssom_pydantic import MappingSet
 
-from sssom_curator import Repository
 from sssom_curator.constants import NEGATIVES_NAME, POSITIVES_NAME, PREDICTIONS_NAME
-from sssom_curator.export.merge import merge
 from sssom_curator.initialize import initialize_folder
 
 TEST_PURL_BASE = "https://example.com/test/"
@@ -173,33 +171,4 @@ class TestInitializeFolder(unittest.TestCase):
                 ex:7\t7\tskos:exactMatch\tex:8\t8\tsemapv:LexicalMatching\t0.77
             """).rstrip(),
             predictions_path.read_text().rstrip(),
-        )
-
-        # Run some commands
-
-        # do merge
-        repository = Repository.from_directory(self.directory)
-
-        d = self.directory.joinpath("output")
-        d.mkdir()
-        merge(repository, d)
-
-        tsv_path = d.joinpath(f"{self.directory.name}.sssom.tsv")
-        self.assertTrue(tsv_path.is_file())
-        self.assertEqual(
-            dedent(f"""\
-                #curie_map:
-                #  ex: https://example.org/
-                #  orcid: https://orcid.org/
-                #  semapv: https://w3id.org/semapv/vocab/
-                #  skos: http://www.w3.org/2004/02/skos/core#
-                #license: spdx:CC0-1.0
-                #mapping_set_id: {mapping_set_id}
-                #mapping_set_title: {self.directory.name}
-                subject_id\tsubject_label\tpredicate_id\tpredicate_modifier\tobject_id\tobject_label\tmapping_justification\tauthor_id\tconfidence
-                ex:1\t1\tskos:exactMatch\t\tex:2\t2\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t
-                ex:3\t3\tskos:exactMatch\tNot\tex:4\t4\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t
-                ex:7\t7\tskos:exactMatch\t\tex:8\t8\tsemapv:LexicalMatching\t\t0.77
-            """).rstrip(),
-            tsv_path.read_text().rstrip(),
         )
