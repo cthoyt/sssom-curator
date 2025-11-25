@@ -47,6 +47,8 @@ def ensure_converter(
     if preferred:
         return _get_preferred()
     else:
+        # TODO should this also return a converter with
+        #  the RDF URI prefix prioritized?
         return bioregistry.get_default_converter()
 
 
