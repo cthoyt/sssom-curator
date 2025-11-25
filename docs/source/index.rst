@@ -1,5 +1,6 @@
-SSSOM Curator |release| Documentation
-=====================================
+#######################################
+ SSSOM Curator |release| Documentation
+#######################################
 
 SSSOM Curator is a suite of tools for predicting and curating semantic mappings encoded
 in the `Simple Standard for Sharing Ontological Mappings (SSSOM)
@@ -42,8 +43,9 @@ https://github.com/cthoyt/sssom-curator.
     cli
     reference
 
-Indices and Tables
-------------------
+********************
+ Indices and Tables
+********************
 
 - :ref:`genindex`
 - :ref:`modindex`

@@ -67,8 +67,9 @@ class Repository(BaseModel):
     1. Parse from a JSON file representing a configuration
     2. Configure using Python
 
-    Configuring a Repository with JSON
-    ==================================
+    ####################################
+     Configuring a Repository with JSON
+    ####################################
 
     Since the :class:`Repository` class inherits from :class:`pydantic.BaseModel`, you
     can define the data externally in a JSON file and parse it. Given the following
@@ -103,8 +104,9 @@ class Repository(BaseModel):
         if __name__ == "__main__":
             repository.run_cli()
 
-    Configuring a Repository with Python
-    ====================================
+    ######################################
+     Configuring a Repository with Python
+    ######################################
 
     You can configure your repository using the `sssom_curator.Repository` object
     directly from within Python, which offers the full flexibility of a general purpose

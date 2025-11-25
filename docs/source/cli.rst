@@ -1,5 +1,6 @@
-Command Line Interface
-======================
+########################
+ Command Line Interface
+########################
 
 sssom_curator automatically installs the command ``sssom_curator``. See ``sssom_curator
 --help`` for usage details.

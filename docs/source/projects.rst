@@ -1,10 +1,12 @@
-Creating Projects
-=================
+###################
+ Creating Projects
+###################
 
 SSSOM Curator supports creating a project with ``sssom_curator init``.
 
-Target Directory
-----------------
+******************
+ Target Directory
+******************
 
 SSSOM Curator will create a project in the working directory, or, in a target directory
 by providing a name, e.g., ``sssom_curator init -d foo``. If there's already a project
@@ -16,8 +18,9 @@ Curator will exit with an error.
     $ sssom_curator init -d example-repo
     initialized SSSOM project `example-repo` at `/path/to/example-repo`
 
-Contents
---------
+**********
+ Contents
+**********
 
 The project includes a configuration file ``sssom-curator.json``, a script
 (``main.py``), a readme, a license (CC0 by default), and SSSOM data files.
@@ -71,8 +74,9 @@ shebang so it can be run like:
 3. As a plain Python module with ``python main.py`` (requires manual environment
    construction, not recommended)
 
-Usage with Git and GitHub
--------------------------
+***************************
+ Usage with Git and GitHub
+***************************
 
 Based on the `Open Data, Open Code, Open Infrastructure (O3)
 <https://doi.org/10.1038/s41597-024-03406-w>`_ guidelines, we suggest using git as a
@@ -102,8 +106,9 @@ initialize it, then commit/push it.
     $ git commit -m "initialized SSSOM project"
     $ git push
 
-Making Predictions
-------------------
+********************
+ Making Predictions
+********************
 
 After initialization, you can generate predicted semantic mappings using the ``predict``
 command in the CLI, e.g., between Medical Subject Headings (MeSH) and the Medical
@@ -119,7 +124,7 @@ Actions Ontology (MaxO) with:
     future
 
 Making New Resources Available
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+==============================
 
 This workflow accepts two _prefixes_ for resources corresponding to records in `the
 Bioregistry <https://bioregistry.io>`_ (:mod:`bioregistry`) as a standard. Note that
@@ -140,7 +145,7 @@ module <https://github.com/biopragmatics/pyobo/issues/new>`_ on the PyOBO issue 
 or submit a pull request implementing one.
 
 Creating Custom Mapping Generators
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+==================================
 
 Any custom workflows that produce predicted mappings can be added to the project via
 :meth:`sssom_curator.Repository.append_predicted_mappings` like in the following, which
@@ -197,14 +202,15 @@ For example, you might want to implement a graph machine learning-based method f
 predicting mappings or implement a wrapper around some of the tricky existing mapping
 tools (like LogMap).
 
-Importing Mappings
-------------------
+********************
+ Importing Mappings
+********************
 
 As an alternative to predicting mappings directly, SSSOM Curator exposes ways of
 importing mappings from other sources.
 
 OntoPortal
-~~~~~~~~~~
+==========
 
 `OntoPortal <https://ontoportal.org/>`_ is a generic web-based ontology catalog. It
 predicts mappings between its indexed ontologies through an ensemble of methods such
@@ -233,7 +239,7 @@ information on how processing is done to produce the SSSOM for curation.
     appropriate OntoPortal instance's prefixes.
 
 SeMRA
-~~~~~
+=====
 
 The `SeMRA Raw Mappings Database <https://doi.org/10.5281/zenodo.11082038>`_ can be
 imported and filtered to mappings that haven't already been curated with high precision.
@@ -246,8 +252,9 @@ You need to specify two or more prefixes using the ``-p`` flag.
 Note, this takes about five minutes to download and twenty minutes to process due to the
 size of the SeMRA Raw Mappings Database.
 
-Curation
---------
+**********
+ Curation
+**********
 
 Finally, after making predictions, a local, web-based curation application can be run
 with the following command. It has integrations with ``git`` to manage making commits
@@ -257,8 +264,9 @@ and pushes during curation.
 
     $ uv run main.py web
 
-Project Maintenance
--------------------
+*********************
+ Project Maintenance
+*********************
 
 Format/lint the mappings with:
 
