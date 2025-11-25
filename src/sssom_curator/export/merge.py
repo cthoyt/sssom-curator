@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING
 
 import click
 import curies
-from sssom_pydantic import MappingSet, Metadata
+import sssom_pydantic
+from sssom_pydantic import MappingSet, Metadata, SemanticMapping
 
 if TYPE_CHECKING:
     from sssom import MappingSetDataFrame
@@ -46,7 +47,7 @@ def merge(
     import yaml
     from sssom.writers import write_json, write_owl
 
-    converter, msdf = get_merged_sssom(repository)
+    mappings, converter, msdf = get_merged_sssom(repository)
 
     tsv_meta = {**_sssom_dump(repository.mapping_set), "curie_map": converter.bimap}
 
@@ -63,10 +64,9 @@ def merge(
     owl_path = stub.with_suffix(".sssom.owl")
     metadata_path = stub.with_suffix(".sssom.yml")
 
-    with tsv_path.open("w") as file:
-        for line in yaml.safe_dump(tsv_meta).splitlines():
-            print(f"#{line}", file=file)
-        msdf.df.to_csv(file, sep="\t", index=False)
+    sssom_pydantic.write(
+        mappings, path=tsv_path, converter=converter, metadata=repository.mapping_set
+    )
 
     with open(metadata_path, "w") as file:
         yaml.safe_dump(tsv_meta, file)
@@ -91,15 +91,13 @@ def merge(
 
 
 def get_merged_sssom(
-    repository: Repository, *, use_tqdm: bool = False, converter: curies.Converter | None = None
-) -> tuple[curies.Converter, MappingSetDataFrame]:
+    repository: Repository, *, converter: curies.Converter | None = None
+) -> tuple[list[SemanticMapping], curies.Converter, MappingSetDataFrame]:
     """Get an SSSOM dataframe."""
     if repository.mapping_set is None:
         raise ValueError
 
-    import pandas as pd
-    from curies.utils import _prefix_from_curie
-    from tqdm.auto import tqdm
+    from sssom_pydantic.contrib.sssompy import mappings_to_msdf
 
     from ..constants import ensure_converter
 
@@ -109,45 +107,28 @@ def get_merged_sssom(
             repository.get_converter(),
         ]
     )
-    prefixes: set[str] = {"semapv"}
 
-    # NEW WAY: load all DFs, concat them, reorder columns
+    mappings: list[SemanticMapping] = [
+        *repository.read_positive_mappings(),
+        *repository.read_negative_mappings(),
+        *repository.read_predicted_mappings(),
+    ]
 
-    a = pd.read_csv(repository.positives_path, sep="\t", comment="#")
-    b = pd.read_csv(repository.negatives_path, sep="\t", comment="#")
-    c = pd.read_csv(repository.predictions_path, sep="\t", comment="#")
-    df = pd.concat([a, b, c])
-
-    # filter to existing columns
-    df = df[[column for column in _TARGET_COLUMNS if column in df.columns]]
-
-    for column in ["subject_id", "object_id", "predicate_id"]:
-        converter.pd_standardize_curie(df, column=column, strict=True)
-
-    for _, mapping in tqdm(
-        df.iterrows(), desc="tabulating prefixes & authors", disable=not use_tqdm
-    ):
-        prefixes.add(_prefix_from_curie(mapping["subject_id"]))
-        prefixes.add(_prefix_from_curie(mapping["predicate_id"]))
-        prefixes.add(_prefix_from_curie(mapping["object_id"]))
-        author_id = mapping["author_id"]
-        if pd.notna(author_id) and any(author_id.startswith(x) for x in ["orcid:", "wikidata:"]):
-            prefixes.add(_prefix_from_curie(author_id))
-        # TODO add justification:
-
+    prefixes = {p for m in mappings for p in m.get_prefixes()}
     converter = converter.get_subconverter(prefixes)
 
-    from sssom.constants import DEFAULT_VALIDATION_TYPES
-    from sssom.parsers import from_sssom_dataframe
-    from sssom.validators import validate
+    mappings = [mapping.standardize(converter) for mapping in mappings]
 
     try:
-        msdf = from_sssom_dataframe(
-            df, prefix_map=converter, meta=_sssom_dump(repository.mapping_set)
+        msdf = mappings_to_msdf(
+            mappings, converter=converter, metadata=repository.mapping_set, linkml_validate=False
         )
     except Exception as e:
         click.secho(f"SSSOM Export failed...\n{e}", fg="red")
         raise
+
+    from sssom.constants import DEFAULT_VALIDATION_TYPES
+    from sssom.validators import validate
 
     results = validate(msdf=msdf, validation_types=DEFAULT_VALIDATION_TYPES, fail_on_error=False)
     for validator_type, validation_report in results.items():
@@ -157,4 +138,4 @@ def get_merged_sssom(
                 click.secho(f"- {result}", fg="red")
             click.echo("")
 
-    return converter, msdf
+    return mappings, converter, msdf

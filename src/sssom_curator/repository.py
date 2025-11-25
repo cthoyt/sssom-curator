@@ -207,6 +207,11 @@ class Repository(BaseModel):
         return [self.positives_path, self.negatives_path, self.unsure_path]
 
     @property
+    def export_paths(self) -> list[Path]:
+        """Get export paths."""
+        return [self.positives_path, self.negatives_path, self.predictions_path]
+
+    @property
     def paths(self) -> list[Path]:
         """Get all paths."""
         return [self.positives_path, self.negatives_path, self.unsure_path, self.predictions_path]
