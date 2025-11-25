@@ -19,7 +19,7 @@ __all__ = [
     "merge",
 ]
 
-columns = [
+_TARGET_COLUMNS = [
     "subject_id",
     "subject_label",
     "predicate_id",
@@ -108,7 +108,9 @@ def get_merged_sssom(
     b = pd.read_csv(repository.negatives_path, sep="\t", comment="#")
     c = pd.read_csv(repository.predictions_path, sep="\t", comment="#")
     df = pd.concat([a, b, c])
-    df = df[columns]
+
+    # filter to existing columns
+    df = df[[column for column in _TARGET_COLUMNS if column in df.columns]]
 
     for column in ["subject_id", "object_id", "predicate_id"]:
         converter.pd_standardize_curie(df, column=column, strict=True)
