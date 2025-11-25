@@ -5,9 +5,7 @@ import sssom_pydantic
 from curies import NamableReference
 from sssom_pydantic import MappingTool, SemanticMapping
 
-from sssom_curator.constants import (
-    POSITIVES_NAME
-)
+from sssom_curator.constants import POSITIVES_NAME
 from sssom_curator.web.components import Controller, State
 from sssom_curator.web.impl import get_app
 from tests import cases
