@@ -378,9 +378,7 @@ class Repository(BaseModel):
         )
 
     def get_test_class(
-        self,
-        converter_strategy: Literal["bioregistry", "bioregistry-preferred", "passthrough"]
-        | None = None,
+        self, converter_strategy: ConverterStrategy | None = None
     ) -> type[IntegrityTestCase]:
         """Get a test case class."""
         from .testing import RepositoryTestCase
