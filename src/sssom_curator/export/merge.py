@@ -10,7 +10,6 @@ import curies
 from sssom_pydantic import MappingSet, Metadata
 
 if TYPE_CHECKING:
-    import pandas as pd
     from sssom import MappingSetDataFrame
 
     from ..repository import Repository
@@ -45,7 +44,7 @@ def merge(repository: Repository, directory: Path) -> None:
     import yaml
     from sssom.writers import write_json, write_owl
 
-    converter, df, msdf = get_merged_sssom(repository)
+    converter, msdf = get_merged_sssom(repository)
 
     tsv_meta = {**_sssom_dump(repository.mapping_set), "curie_map": converter.bimap}
 
@@ -65,7 +64,7 @@ def merge(repository: Repository, directory: Path) -> None:
     with tsv_path.open("w") as file:
         for line in yaml.safe_dump(tsv_meta).splitlines():
             print(f"#{line}", file=file)
-        df.to_csv(file, sep="\t", index=False)
+        msdf.df.to_csv(file, sep="\t", index=False)
 
     with open(metadata_path, "w") as file:
         yaml.safe_dump(tsv_meta, file)
@@ -88,7 +87,7 @@ def merge(repository: Repository, directory: Path) -> None:
 
 def get_merged_sssom(
     repository: Repository, *, use_tqdm: bool = False, converter: curies.Converter | None = None
-) -> tuple[curies.Converter, pd.DataFrame, MappingSetDataFrame]:
+) -> tuple[curies.Converter, MappingSetDataFrame]:
     """Get an SSSOM dataframe."""
     if repository.mapping_set is None:
         raise ValueError
@@ -153,4 +152,4 @@ def get_merged_sssom(
                 click.secho(f"- {result}", fg="red")
             click.echo("")
 
-    return converter, df, msdf
+    return converter, msdf
