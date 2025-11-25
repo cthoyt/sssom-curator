@@ -64,7 +64,7 @@ def merge(repository: Repository, directory: Path) -> None:
 
     with tsv_path.open("w") as file:
         for line in yaml.safe_dump(tsv_meta).splitlines():
-            print(f"# {line}", file=file)
+            print(f"#{line}", file=file)
         df.to_csv(file, sep="\t", index=False)
 
     with open(metadata_path, "w") as file:

@@ -147,6 +147,7 @@ def initialize_folder(  # noqa:C901
             predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
             object=curies.NamedReference(prefix="ex", identifier="8", name="8"),
             justification=lexical_matching_process,
+            confidence=0.77,
         ),
     }
 
