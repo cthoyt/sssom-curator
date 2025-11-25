@@ -132,6 +132,7 @@ def initialize_folder(  # noqa:C901
             predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
             object=curies.NamedReference(prefix="ex", identifier="4", name="4"),
             justification=manual_mapping_curation,
+            predicate_modifier="Not",
             authors=[charlie],
         ),
         unsure_mappings_filename: SemanticMapping(
