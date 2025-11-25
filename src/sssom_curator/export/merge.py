@@ -51,7 +51,9 @@ def merge(  # noqa:C901
 
     mappings, converter = _get_merged_sssom(
         repository,
-        standardize_bioregistry=repository.merge_standardize_bioregistry or False,
+        standardize_bioregistry=True
+        if repository.merge_standardize_bioregistry is None
+        else repository.merge_standardize_bioregistry,
     )
 
     tsv_meta = {**_sssom_dump(repository.mapping_set), "curie_map": converter.bimap}
