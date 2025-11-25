@@ -7,7 +7,9 @@ from textwrap import dedent
 
 from sssom_pydantic import MappingSet
 
+from sssom_curator import Repository
 from sssom_curator.constants import NEGATIVES_NAME, POSITIVES_NAME, PREDICTIONS_NAME
+from sssom_curator.export.merge import merge
 from sssom_curator.initialize import initialize_folder
 
 TEST_PURL_BASE = "https://example.com/test/"
@@ -170,3 +172,15 @@ class TestInitializeFolder(unittest.TestCase):
             """).rstrip(),
             predictions_path.read_text().rstrip(),
         )
+
+        # Run some commands
+
+        # do merge
+        repository = Repository.from_directory(self.directory)
+
+        d = self.directory.joinpath("output")
+        d.mkdir()
+        merge(repository, d)
+
+        tsv_path = d.joinpath(f"{self.directory.name}.sssom.tsv")
+        self.assertTrue(tsv_path.is_file())
