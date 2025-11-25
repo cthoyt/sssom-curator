@@ -27,7 +27,7 @@ class TestMerge(cases.RepositoryTestCase):
             raise ValueError
         return self.mapping_set.id
 
-    def test_empty_merge(self) -> None:
+    def test_merge_empty(self) -> None:
         """Test merge works directly after initialization."""
         merge(self.repository, self.output_directory, output_owl=False, output_json=False)
 
@@ -50,7 +50,7 @@ class TestMerge(cases.RepositoryTestCase):
             self.output_tsv_path.read_text().rstrip(),
         )
 
-    def test_preferred_prefixes(self) -> None:
+    def test_merge_with_curations(self) -> None:
         """Test adding some extra mappings that also have preferred prefixes."""
         mapping = SemanticMapping(
             subject=curies.NamedReference(prefix="chebi", identifier="10001", name="Visnadin"),
