@@ -125,6 +125,8 @@ def initialize_folder(  # noqa:C901
             {
                 "ex": "https://example.org/",
                 "skos": "http://www.w3.org/2004/02/skos/core#",
+                "semapv": "https://w3id.org/semapv/vocab/",
+                "orcid": "https://orcid.org/",
             }
         )
     name_to_examples: dict[str, list[SemanticMapping]] = {
