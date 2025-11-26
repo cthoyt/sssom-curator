@@ -94,7 +94,7 @@
                                     {{ p.subject.curie }}
                                 </a>
                             </td>
-                            <td>{{ p.subject.name }}</td>
+                            <td>{{ p.subject_name }}</td>
                             {% if show_relations %}
                                 <td>{{ p.predicate.curie }}</td>
                             {% endif %}
@@ -103,7 +103,7 @@
                                     {{ p.object.curie }}
                                 </a>
                             </td>
-                            <td>{{ p.object.name }}</td>
+                            <td>{{ p.object_name }}</td>
                             <td>
                                 <div class="progress" style="margin-bottom: 0">
                                     {% set confidence = ((p.confidence | float) * 100) | int %}
@@ -124,14 +124,14 @@
                             </td>
                             <td class="text-nowrap">
                                 <a data-toggle="tooltip"
-                                   title="{{ p.subject.name }} (source) is broader than {{ p.object.name }} (object)."
+                                   title="{{ p.subject_name }} (source) is broader than {{ p.object_name }} (object)."
                                    href="{{ url_for_state('.mark', state, line=line, value='broad') }}">
                                     <i class="fas fa-greater-than"></i>
                                 </a>
                             </td>
                             <td class="text-nowrap">
                                 <a data-toggle="tooltip"
-                                   title="{{ p.subject.name }} (source) is narrower than {{ p.object.name }} (object)."
+                                   title="{{ p.subject_name }} (source) is narrower than {{ p.object_name }} (object)."
                                    href="{{ url_for_state('.mark', state, line=line, value='narrow') }}">
                                    <i class="fas fa-less-than"></i>
                                 </a>
