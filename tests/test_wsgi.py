@@ -60,7 +60,7 @@ class TestFull(cases.RepositoryTestCase):
             negatives_path=self.repository.negatives_path,
             unsure_path=self.repository.unsure_path,
             user=TEST_USER,
-            converter=self.converter_seed,
+            converter=TEST_CONVERTER,
         )
         self.app = get_app(controller=self.controller)
         self.app.testing = True
