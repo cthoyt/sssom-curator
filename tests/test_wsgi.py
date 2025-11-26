@@ -89,10 +89,7 @@ class TestFull(cases.RepositoryTestCase):
         """Set up the test case."""
         super().setUp()
         self.controller = Controller(
-            predictions_path=self.repository.predictions_path,
-            positives_path=self.repository.positives_path,
-            negatives_path=self.repository.negatives_path,
-            unsure_path=self.repository.unsure_path,
+            repository=self.repository,
             user=TEST_USER,
             converter=TEST_CONVERTER,
         )
@@ -158,14 +155,16 @@ class TestFull(cases.RepositoryTestCase):
         # now, we have one less than before~
         self.assertEqual(0, len(self.controller._predictions))
 
-        mappings, _converter, mapping_set = sssom_pydantic.read(self.controller.positives_path)
+        mappings, _converter, mapping_set = sssom_pydantic.read(
+            self.controller.repository.positives_path
+        )
         self.assertIsNone(mapping_set.title)
         self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", mapping_set.id)
         self.assertEqual([TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_TRUE], mappings)
 
-        self.assert_file_mapping_count(self.controller.negatives_path, 0)
-        self.assert_file_mapping_count(self.controller.predictions_path, 0)
-        self.assert_file_mapping_count(self.controller.unsure_path, 0)
+        self.assert_file_mapping_count(self.controller.repository.negatives_path, 0)
+        self.assert_file_mapping_count(self.controller.repository.predictions_path, 0)
+        self.assert_file_mapping_count(self.controller.repository.unsure_path, 0)
 
     def test_mark_incorrect(self) -> None:
         """A self-contained scenario for marking an entry incorrect."""
@@ -179,14 +178,16 @@ class TestFull(cases.RepositoryTestCase):
         # now, we have one less than before~
         self.assertEqual(0, len(self.controller._predictions))
 
-        mappings, _converter, mapping_set = sssom_pydantic.read(self.controller.negatives_path)
+        mappings, _converter, mapping_set = sssom_pydantic.read(
+            self.controller.repository.negatives_path
+        )
         self.assertIsNone(mapping_set.title)
         self.assertEqual(f"{self.purl_base}{NEGATIVES_NAME}", mapping_set.id)
         self.assertEqual([TEST_PREDICTED_MAPPING_MARKED_FALSE], mappings)
 
-        self.assert_file_mapping_count(self.controller.positives_path, 1)
-        self.assert_file_mapping_count(self.controller.predictions_path, 0)
-        self.assert_file_mapping_count(self.controller.unsure_path, 0)
+        self.assert_file_mapping_count(self.controller.repository.positives_path, 1)
+        self.assert_file_mapping_count(self.controller.repository.predictions_path, 0)
+        self.assert_file_mapping_count(self.controller.repository.unsure_path, 0)
 
     def test_mark_unsure(self) -> None:
         """A self-contained scenario for marking an entry as unsure."""
@@ -200,14 +201,16 @@ class TestFull(cases.RepositoryTestCase):
         # now, we have one less than before~
         self.assertEqual(0, len(self.controller._predictions))
 
-        mappings, _converter, mapping_set = sssom_pydantic.read(self.controller.unsure_path)
+        mappings, _converter, mapping_set = sssom_pydantic.read(
+            self.controller.repository.unsure_path
+        )
         self.assertIsNone(mapping_set.title)
         self.assertEqual(f"{self.purl_base}{UNSURE_NAME}", mapping_set.id)
         self.assertEqual([TEST_PREDICTED_MAPPING_MARKED_TRUE], mappings)
 
-        self.assert_file_mapping_count(self.controller.positives_path, 1)
-        self.assert_file_mapping_count(self.controller.predictions_path, 0)
-        self.assert_file_mapping_count(self.controller.negatives_path, 0)
+        self.assert_file_mapping_count(self.controller.repository.positives_path, 1)
+        self.assert_file_mapping_count(self.controller.repository.predictions_path, 0)
+        self.assert_file_mapping_count(self.controller.repository.negatives_path, 0)
 
     def test_mark_broad(self) -> None:
         """A self-contained scenario for marking an entry as broad."""
@@ -221,14 +224,16 @@ class TestFull(cases.RepositoryTestCase):
         # now, we have one less than before~
         self.assertEqual(0, len(self.controller._predictions))
 
-        mappings, _converter, mapping_set = sssom_pydantic.read(self.controller.positives_path)
+        mappings, _converter, mapping_set = sssom_pydantic.read(
+            self.controller.repository.positives_path
+        )
         self.assertIsNone(mapping_set.title)
         self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", mapping_set.id)
         self.assertEqual([TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_BROAD], mappings)
 
-        self.assert_file_mapping_count(self.controller.negatives_path, 0)
-        self.assert_file_mapping_count(self.controller.predictions_path, 0)
-        self.assert_file_mapping_count(self.controller.unsure_path, 0)
+        self.assert_file_mapping_count(self.controller.repository.negatives_path, 0)
+        self.assert_file_mapping_count(self.controller.repository.predictions_path, 0)
+        self.assert_file_mapping_count(self.controller.repository.unsure_path, 0)
 
     def test_mark_narrow(self) -> None:
         """A self-contained scenario for marking an entry as narrow."""
@@ -242,11 +247,13 @@ class TestFull(cases.RepositoryTestCase):
         # now, we have one less than before~
         self.assertEqual(0, len(self.controller._predictions))
 
-        mappings, _converter, mapping_set = sssom_pydantic.read(self.controller.positives_path)
+        mappings, _converter, mapping_set = sssom_pydantic.read(
+            self.controller.repository.positives_path
+        )
         self.assertIsNone(mapping_set.title)
         self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", mapping_set.id)
         self.assertEqual([TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_NARROW], mappings)
 
-        self.assert_file_mapping_count(self.controller.negatives_path, 0)
-        self.assert_file_mapping_count(self.controller.predictions_path, 0)
-        self.assert_file_mapping_count(self.controller.unsure_path, 0)
+        self.assert_file_mapping_count(self.controller.repository.negatives_path, 0)
+        self.assert_file_mapping_count(self.controller.repository.predictions_path, 0)
+        self.assert_file_mapping_count(self.controller.repository.unsure_path, 0)

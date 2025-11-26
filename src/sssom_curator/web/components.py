@@ -20,6 +20,7 @@ from wtforms import StringField, SubmitField
 
 from .utils import Mark
 from ..constants import ensure_converter, insert
+from ..repository import Repository
 
 __all__ = [
     "Controller",
@@ -83,10 +84,7 @@ class Controller:
         self,
         *,
         target_references: Iterable[Reference] | None = None,
-        predictions_path: Path,
-        positives_path: Path,
-        negatives_path: Path,
-        unsure_path: Path,
+        repository: Repository,
         user: Reference,
         converter: curies.Converter | None = None,
     ) -> None:
@@ -101,14 +99,10 @@ class Controller:
         :param negatives_path: A custom negatives file to curate to
         :param unsure_path: A custom unsure file to curate to
         """
-        self.predictions_path = predictions_path
+        self.repository = repository
         self._predictions, _, self._predictions_metadata = sssom_pydantic.read(
-            self.predictions_path
+            self.repository.predictions_path
         )
-
-        self.positives_path = positives_path
-        self.negatives_path = negatives_path
-        self.unsure_path = unsure_path
 
         self._marked: dict[int, Mark] = {}
         self.total_curated = 0
@@ -432,15 +426,15 @@ class Controller:
         # no need to standardize since we assume everything was correct on load.
         # only write files that have some values to go in them!
         if entries["correct"]:
-            self._insert(entries["correct"], path=self.positives_path)
+            self._insert(entries["correct"], path=self.repository.positives_path)
         if entries["incorrect"]:
-            self._insert(entries["incorrect"], path=self.negatives_path)
+            self._insert(entries["incorrect"], path=self.repository.negatives_path)
         if entries["unsure"]:
-            self._insert(entries["unsure"], path=self.unsure_path)
+            self._insert(entries["unsure"], path=self.repository.unsure_path)
 
         sssom_pydantic.write(
             self._predictions,
-            self.predictions_path,
+            self.repository.predictions_path,
             metadata=self._predictions_metadata,
             converter=self.converter,
             drop_duplicates=True,
@@ -450,7 +444,7 @@ class Controller:
 
         # Now add manually curated mappings, if there are any
         if self._added_mappings:
-            self._insert(self._added_mappings, path=self.positives_path)
+            self._insert(self._added_mappings, path=self.repository.positives_path)
             self._added_mappings = []
 
         return None
