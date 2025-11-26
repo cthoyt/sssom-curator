@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import getpass
-from typing import Any, Literal, NamedTuple, cast
+from typing import Any, cast
 
 import flask
 import werkzeug
 from flask import current_app
 from werkzeug.local import LocalProxy
 
-from .components import DEFAULT_LIMIT, Controller, State
+from .components import Controller, State, get_pagination_elements
 from .utils import commit, get_branch, normalize_mark, not_main, push
 
 __all__ = [
@@ -67,41 +67,8 @@ def home() -> str:
         predictions=predictions,
         state=state,
         n_predictions=n_predictions,
-        pagination_elements=_get_pagination_elements(state, n_predictions),
+        pagination_elements=get_pagination_elements(state, n_predictions),
     )
-
-
-class PaginationElement(NamedTuple):
-    """Represents pagination element."""
-
-    offset: int | None
-    icon: str
-    text: str
-    position: Literal["before", "after"]
-
-
-def _get_pagination_elements(state: State, remaining_rows: int) -> list[PaginationElement]:
-    rv = []
-
-    def _append(
-        offset: int | None, icon: str, text: str, position: Literal["before", "after"]
-    ) -> None:
-        rv.append(PaginationElement(offset, icon, text, position))
-
-    offset = state.offset or 0
-    limit = state.limit or DEFAULT_LIMIT
-    if 0 <= offset - limit:
-        _append(None, "angle-double-left", "First", "after")
-        _append(offset - limit, "angle-left", f"Previous {limit:,}", "after")
-    if offset < remaining_rows - limit:
-        _append(offset + limit, "angle-right", f"Next {limit:,}", "before")
-        _append(
-            remaining_rows - limit,
-            "angle-double-right",
-            f"Last ({remaining_rows:,})",
-            "before",
-        )
-    return rv
 
 
 @blueprint.route("/summary")

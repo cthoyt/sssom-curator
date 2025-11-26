@@ -11,7 +11,7 @@ import flask_bootstrap
 
 from .blueprint import blueprint, url_for_state
 from .components import Controller
-from ..constants import DEFAULT_RESOLVER_BASE
+from ..constants import DEFAULT_RESOLVER_BASE, ensure_converter
 from ..repository import Repository
 
 if TYPE_CHECKING:
@@ -46,7 +46,7 @@ def get_app(
             target_references=target_references,
             repository=repository,
             user=user,
-            converter=converter,
+            converter=ensure_converter(converter),
         )
     if not controller._predictions:
         raise RuntimeError(

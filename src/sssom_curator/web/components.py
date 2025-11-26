@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, NamedTuple
 
 import curies
 import sssom_pydantic
@@ -15,12 +15,14 @@ from pydantic import BaseModel, Field
 from sssom_pydantic import SemanticMapping
 
 from .utils import MARK_TO_FILE, CorrectIncorrectOrUnsure, Mark
-from ..constants import ensure_converter, insert
+from ..constants import insert
 from ..repository import Repository
 
 __all__ = [
     "Controller",
+    "PaginationElement",
     "State",
+    "get_pagination_elements",
 ]
 
 #: The default limit
@@ -83,9 +85,9 @@ class State(BaseModel):
 class Controller:
     """A module for interacting with the predictions and mappings."""
 
-    _user: Reference
-    _predictions: list[SemanticMapping]
     converter: curies.Converter
+    repository: Repository
+    target_references: set[Reference] | None
 
     def __init__(
         self,
@@ -93,7 +95,7 @@ class Controller:
         target_references: Iterable[Reference] | None = None,
         repository: Repository,
         user: Reference,
-        converter: curies.Converter | None = None,
+        converter: curies.Converter,
     ) -> None:
         """Instantiate the web controller.
 
@@ -109,8 +111,8 @@ class Controller:
 
         self._marked: dict[int, Mark] = {}
         self.total_curated = 0
-        self.target_references = set(target_references or [])
-        self.converter = ensure_converter(converter)
+        self.target_references = set(target_references) if target_references is not None else None
+        self.converter = converter
 
         self._current_author = user
 
@@ -148,7 +150,7 @@ class Controller:
 
     def _help_it_predictions(self, state: State) -> Iterator[tuple[int, SemanticMapping]]:  # noqa:C901
         mappings: Iterable[tuple[int, SemanticMapping]] = enumerate(self._predictions)
-        if self.target_references:
+        if self.target_references is not None:
             mappings = (
                 (line, mapping)
                 for (line, mapping) in mappings
@@ -320,3 +322,37 @@ class Controller:
         self._marked.clear()
 
         return None
+
+
+class PaginationElement(NamedTuple):
+    """Represents pagination element."""
+
+    offset: int | None
+    icon: str
+    text: str
+    position: Literal["before", "after"]
+
+
+def get_pagination_elements(state: State, remaining_rows: int) -> list[PaginationElement]:
+    """Get pagination elements."""
+    rv = []
+
+    def _append(
+        offset: int | None, icon: str, text: str, position: Literal["before", "after"]
+    ) -> None:
+        rv.append(PaginationElement(offset, icon, text, position))
+
+    offset = state.offset or 0
+    limit = state.limit or DEFAULT_LIMIT
+    if 0 <= offset - limit:
+        _append(None, "angle-double-left", "First", "after")
+        _append(offset - limit, "angle-left", f"Previous {limit:,}", "after")
+    if offset < remaining_rows - limit:
+        _append(offset + limit, "angle-right", f"Next {limit:,}", "before")
+        _append(
+            remaining_rows - limit,
+            "angle-double-right",
+            f"Last ({remaining_rows:,})",
+            "before",
+        )
+    return rv
