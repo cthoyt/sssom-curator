@@ -2,7 +2,7 @@
 
 {% import "bootstrap4/utils.html" as util %}
 
-{% block title %}{{ title }} ({{ "{:,d}".format(remaining_rows) }}){% endblock %}
+{% block title %}{{ title }} ({{ "{:,d}".format(n_predictions) }}){% endblock %}
 
 {% macro progress_color(confidence) -%}
     {% if confidence > 85 %}
@@ -46,7 +46,7 @@
                     {% endif %}
                     {% if query %}
                         <span class="btn btn-sm btn-outline-dark">
-                            Query: <code>{{ query }}</code> ({{ "{:,d}".format(remaining_rows) }} Results)
+                            Query: <code>{{ query }}</code> ({{ "{:,d}".format(n_predictions) }} Results)
                         </span>
                         <a href="{{ url_for('.home') }}">
                             <button class="btn btn-sm btn-outline-dark">Clear</button>

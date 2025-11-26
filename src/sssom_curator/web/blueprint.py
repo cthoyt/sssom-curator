@@ -61,13 +61,13 @@ def home() -> str:
     """Serve the home page."""
     state = get_state_from_flask()
     predictions = controller.iterate_predictions(state)
-    remaining_rows = controller.count_predictions(state)
+    n_predictions = controller.count_predictions(state)
     return flask.render_template(
         "home.html",
         predictions=predictions,
         state=state,
-        remaining_rows=remaining_rows,
-        pagination_elements=_get_pagination_elements(state, remaining_rows),
+        n_predictions=n_predictions,
+        pagination_elements=_get_pagination_elements(state, n_predictions),
     )
 
 
@@ -149,7 +149,6 @@ def run_commit() -> werkzeug.Response:
 def mark(line: int, value: str) -> werkzeug.Response:
     """Mark the given line as correct or not."""
     controller.mark(line, normalize_mark(value))
-    controller.persist()
     return _go_home()
 
 

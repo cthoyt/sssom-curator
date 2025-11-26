@@ -256,11 +256,12 @@ class Controller:
         if line not in self._marked:
             self.total_curated += 1
         self._marked[line] = value
+        self._persist()
 
     def _insert(self, mappings: Iterable[SemanticMapping], path: Path) -> None:
         insert(path=path, converter=self.converter, include_mappings=mappings)
 
-    def persist(self) -> None:
+    def _persist(self) -> None:
         """Save the current markings to the source files."""
         if not self._marked:
             # no need to persist if there are no marks
