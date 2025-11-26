@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 
-{% import "bootstrap4/form.html" as wtf %}
 {% import "bootstrap4/utils.html" as util %}
 
 {% block title %}{{ title }} ({{ "{:,d}".format(remaining_rows) }}){% endblock %}
@@ -155,22 +154,6 @@
                     {% endfor %}
                     </tbody>
                 </table>
-
-                <form class="form" method="POST" role="form" action="{{ url_for_state('.add_mapping', state) }}">
-                    <table class="table" style="margin-bottom: 0">
-                        <tr>
-                            <td>{{ wtf.render_field(form.source_prefix) }}</td>
-                            <td>{{ wtf.render_field(form.source_id) }}</td>
-                            <td>{{ wtf.render_field(form.source_name) }}</td>
-                            <td>{{ wtf.render_field(form.target_prefix) }}</td>
-                            <td>{{ wtf.render_field(form.target_id) }}</td>
-                            <td>{{ wtf.render_field(form.target_name) }}</td>
-                            <td style="vertical-align: middle">
-                                {{ wtf.render_field(form.submit, class="btn btn-primary") }}
-                            </td>
-                        </tr>
-                    </table>
-                </form>
 
                 <div class="card-footer text-center">
                     {% for pagination_element in pagination_elements %}

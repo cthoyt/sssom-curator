@@ -6,12 +6,11 @@ import getpass
 from typing import Any, Literal, NamedTuple, cast
 
 import flask
-import pydantic
 import werkzeug
 from flask import current_app
 from werkzeug.local import LocalProxy
 
-from .components import DEFAULT_LIMIT, Controller, MappingForm, State
+from .components import DEFAULT_LIMIT, Controller, State
 from .utils import commit, get_branch, normalize_mark, not_main, push
 
 __all__ = [
@@ -60,14 +59,12 @@ blueprint = flask.Blueprint("ui", __name__)
 @blueprint.route("/")
 def home() -> str:
     """Serve the home page."""
-    form = MappingForm()
     state = get_state_from_flask()
     predictions = controller.iterate_predictions(state)
     remaining_rows = controller.count_predictions(state)
     return flask.render_template(
         "home.html",
         predictions=predictions,
-        form=form,
         state=state,
         remaining_rows=remaining_rows,
         pagination_elements=_get_pagination_elements(state, remaining_rows),
@@ -128,30 +125,6 @@ def summary() -> str:
         for (source_prefix, target_prefix), count in counter.most_common()
     ]
     return flask.render_template("summary.html", state=state, rows=rows)
-
-
-@blueprint.route("/add_mapping", methods=["POST"])
-def add_mapping() -> werkzeug.Response:
-    """Add a new mapping manually."""
-    form = MappingForm()
-    if form.is_submitted():
-        try:
-            subject = form.get_subject(controller.converter)
-        except pydantic.ValidationError as e:
-            flask.flash(f"Problem with source CURIE {e}", category="warning")
-            return _go_home()
-
-        try:
-            obj = form.get_object(controller.converter)
-        except pydantic.ValidationError as e:
-            flask.flash(f"Problem with source CURIE {e}", category="warning")
-            return _go_home()
-
-        controller.add_mapping(subject, obj)
-        controller.persist()
-    else:
-        flask.flash("missing form data", category="warning")
-    return _go_home()
 
 
 @blueprint.route("/commit")
