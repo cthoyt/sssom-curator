@@ -2,36 +2,38 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
 from typing import Any, Literal
 
 import curies
 import sssom_pydantic
-from curies import NamableReference, Reference
-from curies.vocabulary import broad_match, exact_match, manual_mapping_curation, narrow_match
-from flask_wtf import FlaskForm
+from curies import Reference
+from curies.vocabulary import broad_match, manual_mapping_curation, narrow_match
 from pydantic import BaseModel, Field
 from sssom_pydantic import SemanticMapping
-from wtforms import StringField, SubmitField
 
-from .utils import Mark
+from .utils import MARK_TO_FILE, CorrectIncorrectOrUnsure, Mark
 from ..constants import ensure_converter, insert
 from ..repository import Repository
 
 __all__ = [
     "Controller",
-    "MappingForm",
     "State",
 ]
+
+#: The default limit
+DEFAULT_LIMIT = 10
 
 
 class State(BaseModel):
     """Contains the state for queries to the curation app."""
 
-    limit: int | None = Field(10, description="If given, only iterate this number of predictions.")
-    offset: int | None = Field(0, description="If given, offset the iteration by this number")
+    limit: int | None = Field(
+        DEFAULT_LIMIT, description="If given, only iterate this number of predictions."
+    )
+    offset: int | None = Field(None, description="If given, offset the iteration by this number")
     query: str | None = Field(
         None,
         description="If given, show only mappings that have it appearing as a substring "
@@ -107,7 +109,6 @@ class Controller:
 
         self._marked: dict[int, Mark] = {}
         self.total_curated = 0
-        self._added_mappings: list[SemanticMapping] = []
         self.target_references = set(target_references or [])
         self.converter = ensure_converter(converter)
 
@@ -115,6 +116,13 @@ class Controller:
 
     def _get_current_author(self) -> Reference:
         return self._current_author
+
+    def get_prefix_counter(self, state: State) -> Counter[tuple[str, str]]:
+        """Get a subject/object prefix counter."""
+        return Counter(
+            (mapping.subject.prefix, mapping.object.prefix)
+            for _, mapping in self.iterate_predictions(state)
+        )
 
     def iterate_predictions(self, state: State) -> Iterable[tuple[int, SemanticMapping]]:
         """Iterate over pairs of positions and predicted semantic mappings."""
@@ -232,11 +240,6 @@ class Controller:
             if any(query in element.casefold() for element in func(mapping) if element):
                 yield line, mapping
 
-    @property
-    def total_predictions(self) -> int:
-        """Return the total number of yet unmarked predictions."""
-        return len(self._predictions) - len(self._marked)
-
     def mark(self, line: int, value: Mark) -> None:
         """Mark the given mapping as correct.
 
@@ -253,47 +256,27 @@ class Controller:
         if line not in self._marked:
             self.total_curated += 1
         self._marked[line] = value
-
-    def add_mapping(
-        self,
-        subject: Reference,
-        obj: Reference,
-    ) -> None:
-        """Add manually curated new mappings."""
-        self._added_mappings.append(
-            SemanticMapping.model_validate(
-                {
-                    "subject": subject,
-                    "predicate": exact_match,
-                    "object": obj,
-                    "authors": [self._get_current_author()],
-                    "justification": manual_mapping_curation,
-                }
-            )
-        )
-        self.total_curated += 1
+        self._persist()
 
     def _insert(self, mappings: Iterable[SemanticMapping], path: Path) -> None:
         insert(path=path, converter=self.converter, include_mappings=mappings)
 
-    def persist(self) -> None:  # noqa:C901
+    def _persist(self) -> None:
         """Save the current markings to the source files."""
         if not self._marked:
             # no need to persist if there are no marks
             return None
 
-        entries: defaultdict[Literal["correct", "incorrect", "unsure"], list[SemanticMapping]] = (
-            defaultdict(list)
-        )
+        entries: defaultdict[CorrectIncorrectOrUnsure, list[SemanticMapping]] = defaultdict(list)
 
-        for line, value in sorted(self._marked.items(), reverse=True):
-            try:
-                mapping = self._predictions.pop(line)
-            except IndexError:
+        for line, mark in sorted(self._marked.items(), reverse=True):
+            if line > len(self._predictions):
                 raise IndexError(
                     f"you tried popping the {line} element from the predictions list, "
                     f"which only has {len(self._predictions):,} elements"
-                ) from None
+                )
+
+            mapping = self._predictions.pop(line)
 
             update: dict[str, Any] = {
                 "authors": [self._get_current_author()],
@@ -303,28 +286,19 @@ class Controller:
                 "mapping_tool": None,
             }
 
-            entry_key: Literal["correct", "incorrect", "unsure"]
-            # note these go backwards because of the way they are read
-            if value == "broad":
-                entry_key = "correct"
+            if mark == "broad":
+                # note these go backwards because of the way they are read
                 update["predicate"] = narrow_match
-            elif value == "narrow":
-                entry_key = "correct"
+            elif mark == "narrow":
+                # note these go backwards because of the way they are read
                 update["predicate"] = broad_match
-            elif value == "incorrect":
-                entry_key = "incorrect"
+            elif mark == "incorrect":
                 update["predicate_modifier"] = "Not"
-            elif value == "correct":
-                entry_key = "correct"
-            elif value == "unsure":
-                entry_key = "unsure"
-            else:
-                raise NotImplementedError
 
             # replace some values using model_copy since the model is frozen
             new_mapping = mapping.model_copy(update=update)
 
-            entries[entry_key].append(new_mapping)
+            entries[MARK_TO_FILE[mark]].append(new_mapping)
 
         # no need to standardize since we assume everything was correct on load.
         # only write files that have some values to go in them!
@@ -345,45 +319,4 @@ class Controller:
         )
         self._marked.clear()
 
-        # Now add manually curated mappings, if there are any
-        if self._added_mappings:
-            self._insert(self._added_mappings, path=self.repository.positives_path)
-            self._added_mappings = []
-
         return None
-
-
-class MappingForm(FlaskForm):  # type:ignore[misc]
-    """Form for entering new mappings."""
-
-    # TODO how to get types for flask-wtf
-
-    source_prefix = StringField("Source Prefix", id="source_prefix")
-    source_id = StringField("Source ID", id="source_id")
-    source_name = StringField("Source Name", id="source_name")
-    target_prefix = StringField("Target Prefix", id="target_prefix")
-    target_id = StringField("Target ID", id="target_id")
-    target_name = StringField("Target Name", id="target_name")
-    submit = SubmitField("Add")
-
-    def get_subject(self, converter: curies.Converter) -> NamableReference:
-        """Get the subject."""
-        return NamableReference.model_validate(
-            {
-                "prefix": self.data["source_prefix"],
-                "identifier": self.data["source_id"],
-                "name": self.data["source_name"],
-            },
-            context=converter,
-        )
-
-    def get_object(self, converter: curies.Converter) -> NamableReference:
-        """Get the object."""
-        return NamableReference.model_validate(
-            {
-                "prefix": self.data["target_prefix"],
-                "identifier": self.data["target_id"],
-                "name": self.data["target_name"],
-            },
-            context=converter,
-        )
