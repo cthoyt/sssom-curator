@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
 from typing import Any, Literal
@@ -26,12 +26,17 @@ __all__ = [
     "State",
 ]
 
+#: The default limit
+DEFAULT_LIMIT = 10
+
 
 class State(BaseModel):
     """Contains the state for queries to the curation app."""
 
-    limit: int | None = Field(10, description="If given, only iterate this number of predictions.")
-    offset: int | None = Field(0, description="If given, offset the iteration by this number")
+    limit: int | None = Field(
+        DEFAULT_LIMIT, description="If given, only iterate this number of predictions."
+    )
+    offset: int | None = Field(None, description="If given, offset the iteration by this number")
     query: str | None = Field(
         None,
         description="If given, show only mappings that have it appearing as a substring "
@@ -115,6 +120,13 @@ class Controller:
 
     def _get_current_author(self) -> Reference:
         return self._current_author
+
+    def get_prefix_counter(self, state: State) -> Counter[tuple[str, str]]:
+        """Get a subject/object prefix counter."""
+        return Counter(
+            (mapping.subject.prefix, mapping.object.prefix)
+            for _, mapping in self.iterate_predictions(state)
+        )
 
     def iterate_predictions(self, state: State) -> Iterable[tuple[int, SemanticMapping]]:
         """Iterate over pairs of positions and predicted semantic mappings."""

@@ -15,6 +15,16 @@
     {% endif %}
 {%- endmacro %}
 
+{% macro render_pagination_element(state, b) %}
+<a href="{{ url_for_state('.home', state, offset=b.offset) }}">
+    {% if b.position == "before" %}
+    {{ b.text }} <i class="fas fa-{{ b.icon }}"></i>
+    {% else %}
+    <i class="fas fa-{{ b.icon }}"></i> {{ b.text }}
+    {% endif %}
+</a>
+{% endmacro %}
+
 {% block content %}
     <div class="container" style="margin-top: 50px; margin-bottom: 50px">
         {{ util.render_messages(dismissible=True, container=False) }}
@@ -115,16 +125,16 @@
                             </td>
                             <td class="text-nowrap">
                                 <a data-toggle="tooltip"
-                                   title="{{ p.subject.name }} is broader than {{ p.object.name }}."
+                                   title="{{ p.subject.name }} (source) is broader than {{ p.object.name }} (object)."
                                    href="{{ url_for_state('.mark', state, line=line, value='broad') }}">
-                                    -B-
+                                    <i class="fas fa-greater-than"></i>
                                 </a>
                             </td>
                             <td class="text-nowrap">
                                 <a data-toggle="tooltip"
-                                   title="{{ p.subject.name }} is narrower than {{ p.object.name }}."
+                                   title="{{ p.subject.name }} (source) is narrower than {{ p.object.name }} (object)."
                                    href="{{ url_for_state('.mark', state, line=line, value='narrow') }}">
-                                    -N-
+                                   <i class="fas fa-less-than"></i>
                                 </a>
                             </td>
                             <td>
@@ -163,28 +173,10 @@
                 </form>
 
                 <div class="card-footer text-center">
-                    {% if 0 <= state.offset - state.limit %}
-                        <a href="{{ url_for_state('.home', state, offset=0) }}">
-                            <i class="fas fa-angle-double-left"></i>
-                            First
-                        </a> &nbsp;|&nbsp;
-                        <a href="{{ url_for_state('.home', state, offset=state.offset - state.limit) }}">
-                            <i class="fas fa-angle-left"></i>
-                            Previous {{ state.limit }}
-                        </a>  &nbsp;|&nbsp;
-                    {% endif %}
-                    {% if state.offset < remaining_rows - state.limit %}
-                        <a href="{{ url_for_state('.home', state, offset=state.offset + state.limit) }}">
-                            Next {{ limit }}
-                            <i class="fas fa-angle-right"></i>
-                        </a>  &nbsp;|&nbsp;
-                    {% endif %}
-                    {% if state.offset < remaining_rows - state.limit %}
-                        <a href="{{ url_for_state('.home', state, offset=remaining_rows - state.limit) }}">
-                            Last ({{ "{:,d}".format(remaining_rows) }})
-                            <i class="fas fa-angle-double-right"></i>
-                        </a>
-                    {% endif %}
+                    {% for pagination_element in pagination_elements %}
+                    {{ render_pagination_element(state, pagination_element) }}
+                    {% if not loop.last %}&nbsp;|&nbsp;{% endif %}
+                    {% endfor %}
                 </div>
             </div>
         </div>

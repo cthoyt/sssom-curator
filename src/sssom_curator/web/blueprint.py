@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import getpass
-from collections import Counter
-from copy import deepcopy
-from typing import Any, cast
+from typing import Any, Literal, NamedTuple, cast
 
 import flask
 import pydantic
@@ -13,7 +11,7 @@ import werkzeug
 from flask import current_app
 from werkzeug.local import LocalProxy
 
-from .components import Controller, MappingForm, State
+from .components import DEFAULT_LIMIT, Controller, MappingForm, State
 from .utils import commit, get_branch, normalize_mark, not_main, push
 
 __all__ = [
@@ -55,7 +53,7 @@ def url_for_state(endpoint: str, state: State, **kwargs: Any) -> str:
     return flask.url_for(endpoint, **vv)
 
 
-CONTROLLER: Controller = cast(Controller, LocalProxy(lambda: current_app.config["controller"]))
+controller: Controller = cast(Controller, LocalProxy(lambda: current_app.config["controller"]))
 blueprint = flask.Blueprint("ui", __name__)
 
 
@@ -64,15 +62,49 @@ def home() -> str:
     """Serve the home page."""
     form = MappingForm()
     state = get_state_from_flask()
-    predictions = CONTROLLER.iterate_predictions(state)
-    remaining_rows = CONTROLLER.count_predictions(state)
+    predictions = controller.iterate_predictions(state)
+    remaining_rows = controller.count_predictions(state)
     return flask.render_template(
         "home.html",
         predictions=predictions,
         form=form,
         state=state,
         remaining_rows=remaining_rows,
+        pagination_elements=_get_pagination_elements(state, remaining_rows),
     )
+
+
+class PaginationElement(NamedTuple):
+    """Represents pagination element."""
+
+    offset: int | None
+    icon: str
+    text: str
+    position: Literal["before", "after"]
+
+
+def _get_pagination_elements(state: State, remaining_rows: int) -> list[PaginationElement]:
+    rv = []
+
+    def _append(
+        offset: int | None, icon: str, text: str, position: Literal["before", "after"]
+    ) -> None:
+        rv.append(PaginationElement(offset, icon, text, position))
+
+    offset = state.offset or 0
+    limit = state.limit or DEFAULT_LIMIT
+    if 0 <= offset - limit:
+        _append(None, "angle-double-left", "First", "after")
+        _append(offset - limit, "angle-left", f"Previous {limit:,}", "after")
+    if offset < remaining_rows - limit:
+        _append(offset + limit, "angle-right", f"Next {limit:,}", "before")
+        _append(
+            remaining_rows - limit,
+            "angle-double-right",
+            f"Last ({remaining_rows:,})",
+            "before",
+        )
+    return rv
 
 
 @blueprint.route("/summary")
@@ -80,20 +112,22 @@ def summary() -> str:
     """Serve the summary page."""
     state = get_state_from_flask()
     state.limit = None
-    predictions = CONTROLLER.iterate_predictions(state)
-    counter = Counter((mapping.subject.prefix, mapping.object.prefix) for _, mapping in predictions)
-    rows = []
-    for (source_prefix, target_prefix), count in counter.most_common():
-        row_state = deepcopy(state)
-        row_state.source_prefix = source_prefix
-        row_state.target_prefix = target_prefix
-        rows.append((source_prefix, target_prefix, count, url_for_state(".home", row_state)))
-
-    return flask.render_template(
-        "summary.html",
-        state=state,
-        rows=rows,
-    )
+    counter = controller.get_prefix_counter(state)
+    rows = [
+        (
+            source_prefix,
+            target_prefix,
+            count,
+            url_for_state(
+                ".home",
+                state.model_copy(
+                    update={"source_prefix": source_prefix, "target_prefix": target_prefix}
+                ),
+            ),
+        )
+        for (source_prefix, target_prefix), count in counter.most_common()
+    ]
+    return flask.render_template("summary.html", state=state, rows=rows)
 
 
 @blueprint.route("/add_mapping", methods=["POST"])
@@ -102,19 +136,19 @@ def add_mapping() -> werkzeug.Response:
     form = MappingForm()
     if form.is_submitted():
         try:
-            subject = form.get_subject(CONTROLLER.converter)
+            subject = form.get_subject(controller.converter)
         except pydantic.ValidationError as e:
             flask.flash(f"Problem with source CURIE {e}", category="warning")
             return _go_home()
 
         try:
-            obj = form.get_object(CONTROLLER.converter)
+            obj = form.get_object(controller.converter)
         except pydantic.ValidationError as e:
             flask.flash(f"Problem with source CURIE {e}", category="warning")
             return _go_home()
 
-        CONTROLLER.add_mapping(subject, obj)
-        CONTROLLER.persist()
+        controller.add_mapping(subject, obj)
+        controller.persist()
     else:
         flask.flash("missing form data", category="warning")
     return _go_home()
@@ -123,11 +157,9 @@ def add_mapping() -> werkzeug.Response:
 @blueprint.route("/commit")
 def run_commit() -> werkzeug.Response:
     """Make a commit then redirect to the home page."""
-    commit_info = commit(
-        f"Curated {CONTROLLER.total_curated} mapping"
-        f"{'s' if CONTROLLER.total_curated > 1 else ''}"
-        f" ({getpass.getuser()})",
-    )
+    label = "mappings" if controller.total_curated > 1 else "mapping"
+    message = f"Curated {controller.total_curated} {label} ({getpass.getuser()})"
+    commit_info = commit(message)
     current_app.logger.warning("git commit res: %s", commit_info)
     if not_main():
         branch = get_branch()
@@ -136,15 +168,15 @@ def run_commit() -> werkzeug.Response:
     else:
         flask.flash("did not push because on master branch")
         current_app.logger.warning("did not push because on master branch")
-    CONTROLLER.total_curated = 0
+    controller.total_curated = 0
     return _go_home()
 
 
 @blueprint.route("/mark/<int:line>/<value>")
 def mark(line: int, value: str) -> werkzeug.Response:
     """Mark the given line as correct or not."""
-    CONTROLLER.mark(line, normalize_mark(value))
-    CONTROLLER.persist()
+    controller.mark(line, normalize_mark(value))
+    controller.persist()
     return _go_home()
 
 
