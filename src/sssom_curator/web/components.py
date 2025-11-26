@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
-from typing import Any, Literal, NamedTuple
+from typing import Any, Literal, NamedTuple, TypeAlias
 
 import curies
 import sssom_pydantic
@@ -29,13 +29,9 @@ __all__ = [
 DEFAULT_LIMIT = 10
 
 
-class State(BaseModel):
-    """Contains the state for queries to the curation app."""
+class Query(BaseModel):
+    """A query over SSSOM."""
 
-    limit: int | None = Field(
-        DEFAULT_LIMIT, description="If given, only iterate this number of predictions."
-    )
-    offset: int | None = Field(None, description="If given, offset the iteration by this number")
     query: str | None = Field(
         None,
         description="If given, show only mappings that have it appearing as a substring "
@@ -70,16 +66,33 @@ class State(BaseModel):
         description="If given, show only mappings that have it appearing as a "
         "substring in one of the prefixes.",
     )
-    sort: Literal["asc", "desc", "subject", "object"] | None = Field(
+    same_text: bool | None = Field(
+        None, description="If true, filter to predictions with the same label"
+    )
+
+
+Sort: TypeAlias = Literal["asc", "desc", "subject", "object"]
+MappingIt: TypeAlias = Iterator[tuple[int, SemanticMapping]]
+
+
+class Config(BaseModel):
+    """Configuration for a query over SSSOM."""
+
+    limit: int | None = Field(
+        DEFAULT_LIMIT, description="If given, only iterate this number of predictions."
+    )
+    offset: int | None = Field(None, description="If given, offset the iteration by this number")
+    sort: Sort | None = Field(
         None,
         description="If `desc`, sorts in descending confidence order. If `asc`, sorts in "
         "increasing confidence order. Otherwise, do not sort.",
     )
-    same_text: bool | None = Field(
-        None, description="If true, filter to predictions with the same label"
-    )
     show_relations: bool = True
     show_lines: bool = False
+
+
+class State(Query, Config):
+    """Contains the state for queries to the curation app."""
 
 
 class Controller:
@@ -126,30 +139,46 @@ class Controller:
             for _, mapping in self.iterate_predictions(state)
         )
 
-    def iterate_predictions(self, state: State) -> Iterable[tuple[int, SemanticMapping]]:
+    def iterate_predictions(self, state: State) -> MappingIt:
         """Iterate over pairs of positions and predicted semantic mappings."""
-        it = self._help_it_predictions(state)
+        mappings = self._help_it_predictions(state)
+        if state.sort is not None:
+            mappings = self._sort(mappings, state.sort)
         if state.offset is not None:
             try:
                 for _ in range(state.offset):
-                    next(it)
+                    next(mappings)
             except StopIteration:
                 # if next() fails, then there are no remaining entries.
                 # do not pass go, do not collect 200 euro $
                 return
         if state.limit is None:
-            yield from it
+            yield from mappings
         else:
-            for line_prediction, _ in zip(it, range(state.limit), strict=False):
+            for line_prediction, _ in zip(mappings, range(state.limit), strict=False):
                 yield line_prediction
+
+    @staticmethod
+    def _sort(mappings: MappingIt, sort: Sort) -> MappingIt:
+        if sort == "desc":
+            mappings = iter(sorted(mappings, key=_get_confidence, reverse=True))
+        elif sort == "asc":
+            mappings = iter(sorted(mappings, key=_get_confidence, reverse=False))
+        elif sort == "subject":
+            mappings = iter(sorted(mappings, key=lambda l_p: l_p[1].subject.curie))
+        elif sort == "object":
+            mappings = iter(sorted(mappings, key=lambda l_p: l_p[1].object.curie))
+        else:
+            raise ValueError(f"unknown sort type: {sort}")
+        return mappings
 
     def count_predictions(self, state: State) -> int:
         """Count the number of predictions to check for the given filters."""
         it = self._help_it_predictions(state)
         return sum(1 for _ in it)
 
-    def _help_it_predictions(self, state: State) -> Iterator[tuple[int, SemanticMapping]]:  # noqa:C901
-        mappings: Iterable[tuple[int, SemanticMapping]] = enumerate(self._predictions)
+    def _help_it_predictions(self, state: State) -> MappingIt:
+        mappings: MappingIt = enumerate(self._predictions)
         if self.target_references is not None:
             mappings = (
                 (line, mapping)
@@ -157,7 +186,12 @@ class Controller:
                 if mapping.subject in self.target_references
                 or mapping.object in self.target_references
             )
+        mappings = self._filter_by_query(state, mappings)
+        # filter to not include ones that have already been curated, but not yet persisted
+        rv = ((line, mapping) for line, mapping in mappings if line not in self._marked)
+        return rv
 
+    def _filter_by_query(self, state: Query, mappings: MappingIt) -> MappingIt:
         if state.query is not None:
             mappings = self._help_filter(
                 state.query,
@@ -202,22 +236,6 @@ class Controller:
                 mappings,
                 lambda mapping: [mapping.mapping_tool_name],
             )
-
-        def _get_confidence(t: tuple[int, SemanticMapping]) -> float:
-            return t[1].confidence or 0.0
-
-        if state.sort is not None:
-            if state.sort == "desc":
-                mappings = iter(sorted(mappings, key=_get_confidence, reverse=True))
-            elif state.sort == "asc":
-                mappings = iter(sorted(mappings, key=_get_confidence, reverse=False))
-            elif state.sort == "subject":
-                mappings = iter(sorted(mappings, key=lambda l_p: l_p[1].subject.curie))
-            elif state.sort == "object":
-                mappings = iter(sorted(mappings, key=lambda l_p: l_p[1].object.curie))
-            else:
-                raise ValueError(f"unknown sort type: {state.sort}")
-
         if state.same_text:
             mappings = (
                 (line, mapping)
@@ -227,19 +245,15 @@ class Controller:
                 and mapping.subject_name.casefold() == mapping.object_name.casefold()
                 and mapping.predicate.curie == "skos:exactMatch"
             )
-
-        rv = ((line, mapping) for line, mapping in mappings if line not in self._marked)
-        return rv
+        yield from mappings
 
     @staticmethod
     def _help_filter(
-        query: str,
-        mappings: Iterable[tuple[int, SemanticMapping]],
-        func: Callable[[SemanticMapping], list[str | None]],
-    ) -> Iterable[tuple[int, SemanticMapping]]:
+        query: str, mappings: MappingIt, get_strings: Callable[[SemanticMapping], list[str | None]]
+    ) -> MappingIt:
         query = query.casefold()
         for line, mapping in mappings:
-            if any(query in element.casefold() for element in func(mapping) if element):
+            if any(query in string.casefold() for string in get_strings(mapping) if string):
                 yield line, mapping
 
     def mark(self, line: int, value: Mark) -> None:
@@ -322,6 +336,10 @@ class Controller:
         self._marked.clear()
 
         return None
+
+
+def _get_confidence(t: tuple[int, SemanticMapping]) -> float:
+    return t[1].confidence or 0.0
 
 
 class PaginationElement(NamedTuple):
