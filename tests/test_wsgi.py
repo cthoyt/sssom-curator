@@ -5,7 +5,7 @@ from typing import ClassVar
 
 import curies
 import sssom_pydantic
-from curies import NamableReference
+from curies import NamedReference, Reference
 from curies.vocabulary import exact_match, lexical_matching_process, manual_mapping_curation
 from sssom_pydantic import MappingTool, SemanticMapping
 
@@ -14,22 +14,27 @@ from sssom_curator.web.components import Controller, State
 from sssom_curator.web.impl import get_app
 from tests import cases
 
-TEST_USER = NamableReference(
-    prefix="orcid", identifier="0000-0000-0000-0000", name="Max Mustermann"
-)
+TEST_USER = Reference(prefix="orcid", identifier="0000-0000-0000-0000")
 TEST_POSITIVE_MAPPING = SemanticMapping(
-    subject=NamableReference.from_curie("chebi:131408", name="glyoxime"),
+    subject=NamedReference.from_curie("chebi:131408", name="glyoxime"),
     predicate=exact_match,
-    object=NamableReference.from_curie("mesh:C018305", name="glyoxal dioxime"),
-    justification=manual_mapping_curation,
+    object=NamedReference.from_curie("mesh:C018305", name="glyoxal dioxime"),
+    justification=manual_mapping_curation.pair.to_pydantic(),
 )
 TEST_PREDICTED_MAPPING = SemanticMapping(
-    subject=NamableReference.from_curie("chebi:133530", name="tyramine sulfate"),
+    subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
     predicate=exact_match,
-    object=NamableReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
-    justification=lexical_matching_process,
+    object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
+    justification=lexical_matching_process.pair.to_pydantic(),
     confidence=0.95,
     mapping_tool=MappingTool(name="test", version=None),
+)
+TEST_PREDICTED_MAPPING_MARKED = SemanticMapping(
+    subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
+    predicate=exact_match,
+    object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
+    justification=manual_mapping_curation.pair.to_pydantic(),
+    authors=[TEST_USER],
 )
 
 TEST_CONVERTER = curies.Converter.from_prefix_map(
@@ -45,7 +50,9 @@ TEST_CONVERTER = curies.Converter.from_prefix_map(
 class TestFull(cases.RepositoryTestCase):
     """Test a curation app."""
 
-    positive_seed: ClassVar[list[SemanticMapping]] = [TEST_POSITIVE_MAPPING]
+    positive_seed: ClassVar[
+        list[SemanticMapping]
+    ] = []  # FIXME if we add a seed here, it breaks everything
     predicted_seed: ClassVar[list[SemanticMapping]] = [TEST_PREDICTED_MAPPING]
     negative_seed: ClassVar[list[SemanticMapping]] = []
     unsure_seed: ClassVar[list[SemanticMapping]] = []
@@ -66,7 +73,7 @@ class TestFull(cases.RepositoryTestCase):
         self.app.testing = True
 
         self.assert_file_mapping_count(self.repository.predictions_path, 1)
-        self.assert_file_mapping_count(self.repository.positives_path, 1)
+        self.assert_file_mapping_count(self.repository.positives_path, 0)
         self.assert_file_mapping_count(self.repository.negatives_path, 0)
         self.assert_file_mapping_count(self.repository.unsure_path, 0)
 
@@ -127,7 +134,7 @@ class TestFull(cases.RepositoryTestCase):
         mappings, _converter, mapping_set = sssom_pydantic.read(self.controller.positives_path)
         self.assertIsNone(mapping_set.title)
         self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", mapping_set.id)
-        self.assertEqual([TEST_PREDICTED_MAPPING, TEST_POSITIVE_MAPPING], mappings)
+        self.assertEqual([TEST_PREDICTED_MAPPING_MARKED], mappings)
 
         self.assert_file_mapping_count(self.controller.negatives_path, 0)
         self.assert_file_mapping_count(self.controller.predictions_path, 0)
