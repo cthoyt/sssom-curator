@@ -26,7 +26,7 @@ __all__ = [
 ]
 
 #: The default limit
-DEFAULT_LIMIT = 10
+DEFAULT_LIMIT: int = 10
 
 
 class Query(BaseModel):
@@ -72,7 +72,7 @@ class Query(BaseModel):
 
 
 Sort: TypeAlias = Literal["asc", "desc", "subject", "object"]
-MappingIt: TypeAlias = Iterator[tuple[int, SemanticMapping]]
+MappingIter: TypeAlias = Iterator[tuple[int, SemanticMapping]]
 
 
 class Config(BaseModel):
@@ -139,7 +139,7 @@ class Controller:
             for _, mapping in self.iterate_predictions(state)
         )
 
-    def iterate_predictions(self, state: State) -> MappingIt:
+    def iterate_predictions(self, state: State) -> MappingIter:
         """Iterate over pairs of positions and predicted semantic mappings."""
         mappings = self._help_it_predictions(state)
         if state.sort is not None:
@@ -159,7 +159,7 @@ class Controller:
                 yield line_prediction
 
     @staticmethod
-    def _sort(mappings: MappingIt, sort: Sort) -> MappingIt:
+    def _sort(mappings: MappingIter, sort: Sort) -> MappingIter:
         if sort == "desc":
             mappings = iter(sorted(mappings, key=_get_confidence, reverse=True))
         elif sort == "asc":
@@ -177,8 +177,8 @@ class Controller:
         it = self._help_it_predictions(state)
         return sum(1 for _ in it)
 
-    def _help_it_predictions(self, state: State) -> MappingIt:
-        mappings: MappingIt = enumerate(self._predictions)
+    def _help_it_predictions(self, state: State) -> MappingIter:
+        mappings: MappingIter = enumerate(self._predictions)
         if self.target_references is not None:
             mappings = (
                 (line, mapping)
@@ -191,7 +191,7 @@ class Controller:
         rv = ((line, mapping) for line, mapping in mappings if line not in self._marked)
         return rv
 
-    def _filter_by_query(self, state: Query, mappings: MappingIt) -> MappingIt:
+    def _filter_by_query(self, state: Query, mappings: MappingIter) -> MappingIter:
         if state.query is not None:
             mappings = self._help_filter(
                 state.query,
@@ -249,8 +249,10 @@ class Controller:
 
     @staticmethod
     def _help_filter(
-        query: str, mappings: MappingIt, get_strings: Callable[[SemanticMapping], list[str | None]]
-    ) -> MappingIt:
+        query: str,
+        mappings: MappingIter,
+        get_strings: Callable[[SemanticMapping], list[str | None]],
+    ) -> MappingIter:
         query = query.casefold()
         for line, mapping in mappings:
             if any(query in string.casefold() for string in get_strings(mapping) if string):
