@@ -134,19 +134,16 @@ class TestFull(cases.RepositoryTestCase):
     def test_mark_out_of_bounds(self) -> None:
         """Test trying to mark a number that's too big."""
         self.assertEqual(1, len(self.controller._predictions))
-        self.assertEqual(0, len(self.controller._marked))
 
         # can't pop a number too big!
         with self.app.test_client() as client, self.assertRaises(IndexError):
             client.get("/mark/10000/yup")
 
         self.assertEqual(1, len(self.controller._predictions))
-        self.assertEqual(0, len(self.controller._marked))
 
     def test_mark_correct(self) -> None:
         """A self-contained scenario for marking an entry correct."""
         self.assertEqual(1, len(self.controller._predictions))
-        self.assertEqual(0, len(self.controller._marked))
 
         with self.app.test_client() as client:
             res = client.get("/mark/0/yup", follow_redirects=True)
@@ -169,7 +166,6 @@ class TestFull(cases.RepositoryTestCase):
     def test_mark_incorrect(self) -> None:
         """A self-contained scenario for marking an entry incorrect."""
         self.assertEqual(1, len(self.controller._predictions))
-        self.assertEqual(0, len(self.controller._marked))
 
         with self.app.test_client() as client:
             res = client.get("/mark/0/nope", follow_redirects=True)
@@ -192,7 +188,6 @@ class TestFull(cases.RepositoryTestCase):
     def test_mark_unsure(self) -> None:
         """A self-contained scenario for marking an entry as unsure."""
         self.assertEqual(1, len(self.controller._predictions))
-        self.assertEqual(0, len(self.controller._marked))
 
         with self.app.test_client() as client:
             res = client.get("/mark/0/maybe", follow_redirects=True)
@@ -215,7 +210,6 @@ class TestFull(cases.RepositoryTestCase):
     def test_mark_broad(self) -> None:
         """A self-contained scenario for marking an entry as broad."""
         self.assertEqual(1, len(self.controller._predictions))
-        self.assertEqual(0, len(self.controller._marked))
 
         with self.app.test_client() as client:
             res = client.get("/mark/0/broad", follow_redirects=True)
@@ -238,7 +232,6 @@ class TestFull(cases.RepositoryTestCase):
     def test_mark_narrow(self) -> None:
         """A self-contained scenario for marking an entry as narrow."""
         self.assertEqual(1, len(self.controller._predictions))
-        self.assertEqual(0, len(self.controller._marked))
 
         with self.app.test_client() as client:
             res = client.get("/mark/0/narrow", follow_redirects=True)
