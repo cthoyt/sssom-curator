@@ -575,10 +575,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
                 user = NamableReference(prefix="orcid", identifier=orcid)
 
             app = get_app(
-                predictions_path=obj.predictions_path,
-                positives_path=obj.positives_path,
-                negatives_path=obj.negatives_path,
-                unsure_path=obj.unsure_path,
+                repository=obj,
                 resolver_base=resolver_base,
                 user=user,
                 title=obj.web_title or "Semantic Mapping Curator",
