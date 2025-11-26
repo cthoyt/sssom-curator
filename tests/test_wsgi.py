@@ -1,8 +1,12 @@
 """Test the web app."""
 
+from pathlib import Path
+from typing import ClassVar
+
 import curies
 import sssom_pydantic
 from curies import NamableReference
+from curies.vocabulary import exact_match, lexical_matching_process, manual_mapping_curation
 from sssom_pydantic import MappingTool, SemanticMapping
 
 from sssom_curator.constants import POSITIVES_NAME
@@ -13,11 +17,17 @@ from tests import cases
 TEST_USER = NamableReference(
     prefix="orcid", identifier="0000-0000-0000-0000", name="Max Mustermann"
 )
-TEST_MAPPING = SemanticMapping(
+TEST_POSITIVE_MAPPING = SemanticMapping(
     subject=NamableReference.from_curie("chebi:131408", name="glyoxime"),
-    predicate="skos:exactMatch",
+    predicate=exact_match,
     object=NamableReference.from_curie("mesh:C018305", name="glyoxal dioxime"),
-    justification="semapv:ManualMappingCuration",
+    justification=manual_mapping_curation,
+)
+TEST_PREDICTED_MAPPING = SemanticMapping(
+    subject=NamableReference.from_curie("chebi:133530", name="tyramine sulfate"),
+    predicate=exact_match,
+    object=NamableReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
+    justification=lexical_matching_process,
     confidence=0.95,
     mapping_tool=MappingTool(name="test", version=None),
 )
@@ -32,20 +42,39 @@ TEST_CONVERTER = curies.Converter.from_prefix_map(
 )
 
 
-class TestWeb(cases.RepositoryTestCase):
-    """Test the web app."""
+class TestFull(cases.RepositoryTestCase):
+    """Test a curation app."""
+
+    positive_seed: ClassVar[list[SemanticMapping]] = [TEST_POSITIVE_MAPPING]
+    predicted_seed: ClassVar[list[SemanticMapping]] = [TEST_PREDICTED_MAPPING]
+    negative_seed: ClassVar[list[SemanticMapping]] = []
+    unsure_seed: ClassVar[list[SemanticMapping]] = []
+    converter_seed: ClassVar[curies.Converter] = TEST_CONVERTER
 
     def setUp(self) -> None:
-        """Set up the test case with a controller."""
+        """Set up the test case."""
         super().setUp()
         self.controller = Controller(
-            user=TEST_USER,
+            predictions_path=self.repository.predictions_path,
             positives_path=self.repository.positives_path,
             negatives_path=self.repository.negatives_path,
             unsure_path=self.repository.unsure_path,
-            predictions_path=self.repository.predictions_path,
-            converter=TEST_CONVERTER,
+            user=TEST_USER,
+            converter=self.converter_seed,
         )
+        self.app = get_app(controller=self.controller)
+        self.app.testing = True
+
+        self.assert_file_mapping_count(self.repository.predictions_path, 1)
+        self.assert_file_mapping_count(self.repository.positives_path, 1)
+        self.assert_file_mapping_count(self.repository.negatives_path, 0)
+        self.assert_file_mapping_count(self.repository.unsure_path, 0)
+
+    def assert_file_mapping_count(self, path: Path, n: int) -> None:
+        """Check that a SSSOM file has the right number of mappings."""
+        self.assertTrue(path.is_file())
+        mappings, _, _ = sssom_pydantic.read(path)
+        self.assertEqual(n, len(mappings), msg=f"{path.name} had the wrong number of mappings")
 
     def test_query(self) -> None:
         """Test making a query."""
@@ -70,24 +99,6 @@ class TestWeb(cases.RepositoryTestCase):
         self.controller.count_predictions_from_state(State(limit=5_000_000))
         self.controller.count_predictions_from_state(State(offset=0))
         self.controller.count_predictions_from_state(State(offset=5_000_000))
-
-
-class TestFull(cases.RepositoryTestCase):
-    """Test a curation app."""
-
-    def setUp(self) -> None:
-        """Set up the test case."""
-        super().setUp()
-        self.controller = Controller(
-            predictions_path=self.repository.predictions_path,
-            positives_path=self.repository.positives_path,
-            negatives_path=self.repository.negatives_path,
-            unsure_path=self.repository.unsure_path,
-            user=TEST_USER,
-            converter=TEST_CONVERTER,
-        )
-        self.app = get_app(controller=self.controller)
-        self.app.testing = True
 
     def test_mark_out_of_bounds(self) -> None:
         """Test trying to mark a number that's too big."""
@@ -116,4 +127,8 @@ class TestFull(cases.RepositoryTestCase):
         mappings, _converter, mapping_set = sssom_pydantic.read(self.controller.positives_path)
         self.assertIsNone(mapping_set.title)
         self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", mapping_set.id)
-        self.assertEqual([], mappings)
+        self.assertEqual([TEST_PREDICTED_MAPPING, TEST_POSITIVE_MAPPING], mappings)
+
+        self.assert_file_mapping_count(self.controller.negatives_path, 0)
+        self.assert_file_mapping_count(self.controller.predictions_path, 0)
+        self.assert_file_mapping_count(self.controller.unsure_path, 0)
