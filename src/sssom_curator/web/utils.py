@@ -5,8 +5,6 @@ from __future__ import annotations
 from typing import Literal, TypeAlias, TypeVar, get_args
 
 __all__ = [
-    "MARK_TO_FILE",
-    "CorrectIncorrectOrUnsure",
     "Mark",
     "commit",
     "get_branch",
@@ -63,16 +61,7 @@ def _git(*args: str) -> str | None:
             return ret.strip().decode("utf-8")
 
 
-CorrectIncorrectOrUnsure: TypeAlias = Literal["correct", "incorrect", "unsure"]
-Mark: TypeAlias = CorrectIncorrectOrUnsure | Literal["broad", "narrow"]
-MARK_TO_FILE: dict[Mark, CorrectIncorrectOrUnsure] = {
-    "correct": "correct",
-    "broad": "correct",
-    "narrow": "correct",
-    "incorrect": "incorrect",
-    "unsure": "unsure",
-}
-
+Mark: TypeAlias = Literal["correct", "incorrect", "unsure", "broad", "narrow"]
 MARKS: set[Mark] = set(get_args(Mark))
 CORRECT = {"yup", "true", "t", "correct", "right", "close enough", "disco"}
 INCORRECT = {"no", "nope", "false", "f", "nada", "nein", "incorrect", "negative", "negatory"}

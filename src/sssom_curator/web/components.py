@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections import Counter, defaultdict
+from collections import Counter
 from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
 from typing import Any, Literal, NamedTuple, TypeAlias
@@ -14,7 +14,7 @@ from curies.vocabulary import broad_match, manual_mapping_curation, narrow_match
 from pydantic import BaseModel, Field
 from sssom_pydantic import SemanticMapping
 
-from .utils import MARK_TO_FILE, CorrectIncorrectOrUnsure, Mark
+from .utils import Mark
 from ..constants import insert
 from ..repository import Repository
 
@@ -122,12 +122,18 @@ class Controller:
             self.repository.predictions_path
         )
 
-        self._marked: dict[int, Mark] = {}
         self.total_curated = 0
         self.target_references = set(target_references) if target_references is not None else None
         self.converter = converter
 
         self._current_author = user
+        self.mark_to_file: dict[Mark, Path] = {
+            "correct": self.repository.positives_path,
+            "broad": self.repository.positives_path,
+            "narrow": self.repository.positives_path,
+            "incorrect": self.repository.negatives_path,
+            "unsure": self.repository.unsure_path,
+        }
 
     def _get_current_author(self) -> Reference:
         return self._current_author
@@ -187,9 +193,7 @@ class Controller:
                 or mapping.object in self.target_references
             )
         mappings = self._filter_by_query(state, mappings)
-        # filter to not include ones that have already been curated, but not yet persisted
-        rv = ((line, mapping) for line, mapping in mappings if line not in self._marked)
-        return rv
+        return mappings
 
     def _filter_by_query(self, state: Query, mappings: MappingIter) -> MappingIter:
         if state.query is not None:
@@ -258,11 +262,11 @@ class Controller:
             if any(query in string.casefold() for string in get_strings(mapping) if string):
                 yield line, mapping
 
-    def mark(self, line: int, value: Mark) -> None:
+    def mark(self, line: int, mark: Mark) -> None:
         """Mark the given mapping as correct.
 
         :param line: Position of the prediction
-        :param value: Value to mark the prediction with
+        :param mark: Value to mark the prediction with
 
         :raises ValueError: if an invalid value is used
         """
@@ -271,61 +275,33 @@ class Controller:
                 f"given line {line} is larger than the number of "
                 f"predictions {len(self._predictions):,}"
             )
-        if line not in self._marked:
-            self.total_curated += 1
-        self._marked[line] = value
-        self._persist()
+        self.total_curated += 1
 
-    def _insert(self, mappings: Iterable[SemanticMapping], path: Path) -> None:
-        insert(path=path, converter=self.converter, include_mappings=mappings)
+        mapping = self._predictions.pop(line)
 
-    def _persist(self) -> None:
-        """Save the current markings to the source files."""
-        if not self._marked:
-            # no need to persist if there are no marks
-            return None
+        update: dict[str, Any] = {
+            "authors": [self._get_current_author()],
+            "justification": manual_mapping_curation,
+            # throw the following fields away, since it's been manually curated now
+            "confidence": None,
+            "mapping_tool": None,
+        }
 
-        entries: defaultdict[CorrectIncorrectOrUnsure, list[SemanticMapping]] = defaultdict(list)
+        if mark == "broad":
+            # note these go backwards because of the way they are read
+            update["predicate"] = narrow_match
+        elif mark == "narrow":
+            # note these go backwards because of the way they are read
+            update["predicate"] = broad_match
+        elif mark == "incorrect":
+            update["predicate_modifier"] = "Not"
 
-        for line, mark in sorted(self._marked.items(), reverse=True):
-            if line > len(self._predictions):
-                raise IndexError(
-                    f"you tried popping the {line} element from the predictions list, "
-                    f"which only has {len(self._predictions):,} elements"
-                )
+        # replace some values using model_copy since the model is frozen
+        new_mapping = mapping.model_copy(update=update)
 
-            mapping = self._predictions.pop(line)
-
-            update: dict[str, Any] = {
-                "authors": [self._get_current_author()],
-                "justification": manual_mapping_curation,
-                # throw the following fields away, since it's been manually curated now
-                "confidence": None,
-                "mapping_tool": None,
-            }
-
-            if mark == "broad":
-                # note these go backwards because of the way they are read
-                update["predicate"] = narrow_match
-            elif mark == "narrow":
-                # note these go backwards because of the way they are read
-                update["predicate"] = broad_match
-            elif mark == "incorrect":
-                update["predicate_modifier"] = "Not"
-
-            # replace some values using model_copy since the model is frozen
-            new_mapping = mapping.model_copy(update=update)
-
-            entries[MARK_TO_FILE[mark]].append(new_mapping)
-
-        # no need to standardize since we assume everything was correct on load.
-        # only write files that have some values to go in them!
-        if entries["correct"]:
-            self._insert(entries["correct"], path=self.repository.positives_path)
-        if entries["incorrect"]:
-            self._insert(entries["incorrect"], path=self.repository.negatives_path)
-        if entries["unsure"]:
-            self._insert(entries["unsure"], path=self.repository.unsure_path)
+        insert(
+            path=self.mark_to_file[mark], converter=self.converter, include_mappings=[new_mapping]
+        )
 
         sssom_pydantic.write(
             self._predictions,
@@ -335,9 +311,6 @@ class Controller:
             drop_duplicates=True,
             sort=True,
         )
-        self._marked.clear()
-
-        return None
 
 
 def _get_confidence(t: tuple[int, SemanticMapping]) -> float:
