@@ -123,7 +123,7 @@ class Controller:
     ) -> None:
         """Instantiate the web controller.
 
-        :param target_references: Pairs of prefix, local unique identifiers that are the
+        :param target_references: References that are the
             target of curation. If this is given, pre-filters will be made before on
             predictions to only show ones where either the source or target appears in
             this set
@@ -171,18 +171,19 @@ class Controller:
         return sum(1 for _ in it)
 
     def _help_it_predictions(self, state: State) -> Iterator[tuple[int, SemanticMapping]]:  # noqa:C901
-        it: Iterable[tuple[int, SemanticMapping]] = enumerate(self._predictions)
+        mappings: Iterable[tuple[int, SemanticMapping]] = enumerate(self._predictions)
         if self.target_references:
-            it = (
-                (line, p)
-                for (line, p) in it
-                if p.subject in self.target_references or p.object in self.target_references
+            mappings = (
+                (line, mapping)
+                for (line, mapping) in mappings
+                if mapping.subject in self.target_references
+                or mapping.object in self.target_references
             )
 
         if state.query is not None:
-            it = self._help_filter(
+            mappings = self._help_filter(
                 state.query,
-                it,
+                mappings,
                 lambda mapping: [
                     mapping.subject.curie,
                     mapping.subject_name,
@@ -192,27 +193,35 @@ class Controller:
                 ],
             )
         if state.source_prefix is not None:
-            it = self._help_filter(state.source_prefix, it, lambda mapping: [mapping.subject.curie])
+            mappings = self._help_filter(
+                state.source_prefix, mappings, lambda mapping: [mapping.subject.curie]
+            )
         if state.source_query is not None:
-            it = self._help_filter(
+            mappings = self._help_filter(
                 state.source_query,
-                it,
+                mappings,
                 lambda mapping: [mapping.subject.curie, mapping.subject_name],
             )
         if state.target_query is not None:
-            it = self._help_filter(
-                state.target_query, it, lambda mapping: [mapping.object.curie, mapping.object_name]
+            mappings = self._help_filter(
+                state.target_query,
+                mappings,
+                lambda mapping: [mapping.object.curie, mapping.object_name],
             )
         if state.target_prefix is not None:
-            it = self._help_filter(state.target_prefix, it, lambda mapping: [mapping.object.curie])
+            mappings = self._help_filter(
+                state.target_prefix, mappings, lambda mapping: [mapping.object.curie]
+            )
         if state.prefix is not None:
-            it = self._help_filter(
-                state.prefix, it, lambda mapping: [mapping.subject.curie, mapping.object.curie]
+            mappings = self._help_filter(
+                state.prefix,
+                mappings,
+                lambda mapping: [mapping.subject.curie, mapping.object.curie],
             )
         if state.provenance is not None:
-            it = self._help_filter(
+            mappings = self._help_filter(
                 state.provenance,
-                it,
+                mappings,
                 lambda mapping: [mapping.mapping_tool_name],
             )
 
@@ -221,37 +230,37 @@ class Controller:
 
         if state.sort is not None:
             if state.sort == "desc":
-                it = iter(sorted(it, key=_get_confidence, reverse=True))
+                mappings = iter(sorted(mappings, key=_get_confidence, reverse=True))
             elif state.sort == "asc":
-                it = iter(sorted(it, key=_get_confidence, reverse=False))
+                mappings = iter(sorted(mappings, key=_get_confidence, reverse=False))
             elif state.sort == "subject":
-                it = iter(sorted(it, key=lambda l_p: l_p[1].subject.curie))
+                mappings = iter(sorted(mappings, key=lambda l_p: l_p[1].subject.curie))
             elif state.sort == "object":
-                it = iter(sorted(it, key=lambda l_p: l_p[1].object.curie))
+                mappings = iter(sorted(mappings, key=lambda l_p: l_p[1].object.curie))
             else:
                 raise ValueError(f"unknown sort type: {state.sort}")
 
         if state.same_text:
-            it = (
+            mappings = (
                 (line, mapping)
-                for line, mapping in it
+                for line, mapping in mappings
                 if mapping.subject_name
                 and mapping.object_name
                 and mapping.subject_name.casefold() == mapping.object_name.casefold()
                 and mapping.predicate.curie == "skos:exactMatch"
             )
 
-        rv = ((line, prediction) for line, prediction in it if line not in self._marked)
+        rv = ((line, mapping) for line, mapping in mappings if line not in self._marked)
         return rv
 
     @staticmethod
     def _help_filter(
         query: str,
-        it: Iterable[tuple[int, SemanticMapping]],
+        mappings: Iterable[tuple[int, SemanticMapping]],
         func: Callable[[SemanticMapping], list[str | None]],
     ) -> Iterable[tuple[int, SemanticMapping]]:
         query = query.casefold()
-        for line, mapping in it:
+        for line, mapping in mappings:
             if any(query in element.casefold() for element in func(mapping) if element):
                 yield line, mapping
 
