@@ -34,7 +34,6 @@ def get_state_from_flask() -> State:
         sort=flask.request.args.get("sort"),
         same_text=_get_bool_arg("same_text"),
         show_relations=_get_bool_arg("show_relations") or current_app.config["SHOW_RELATIONS"],
-        show_lines=_get_bool_arg("show_lines") or current_app.config["SHOW_LINES"],
     )
 
 

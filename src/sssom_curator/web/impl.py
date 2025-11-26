@@ -38,7 +38,6 @@ def get_app(
     app.config["WTF_CSRF_ENABLED"] = False
     app.config["SECRET_KEY"] = os.urandom(8)
     app.config["SHOW_RELATIONS"] = True
-    app.config["SHOW_LINES"] = False
     if controller is None:
         if repository is None or user is None:
             raise ValueError
