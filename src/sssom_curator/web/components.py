@@ -14,7 +14,7 @@ from curies import NamableReference, Reference
 from curies.vocabulary import broad_match, exact_match, manual_mapping_curation, narrow_match
 from flask import current_app
 from flask_wtf import FlaskForm
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sssom_pydantic import SemanticMapping
 from wtforms import StringField, SubmitField
 
@@ -32,17 +32,50 @@ __all__ = [
 class State(BaseModel):
     """Contains the state for queries to the curation app."""
 
-    limit: int | None = 10
-    offset: int | None = 0
-    query: str | None = None
-    source_query: str | None = None
-    source_prefix: str | None = None
-    target_query: str | None = None
-    target_prefix: str | None = None
-    provenance: str | None = None
-    prefix: str | None = None
-    sort: str | None = None
-    same_text: bool | None = None
+    limit: int | None = Field(10, description="If given, only iterate this number of predictions.")
+    offset: int | None = Field(0, description="If given, offset the iteration by this number")
+    query: str | None = Field(
+        None,
+        description="If given, show only mappings that have it appearing as a substring "
+        "in one of the source or target fields.",
+    )
+    source_query: str | None = Field(
+        None,
+        description="If given, show only mappings that have it appearing as a substring "
+        "in one of the source fields.",
+    )
+    source_prefix: str | None = Field(
+        None,
+        description="If given, show only mappings that have it appearing in the "
+        "source prefix field",
+    )
+    target_query: str | None = Field(
+        None,
+        description="If given, show only mappings that have it appearing as a substring "
+        "in one of the target fields.",
+    )
+    target_prefix: str | None = Field(
+        None,
+        description="If given, show only mappings that have it appearing in the "
+        "target prefix field",
+    )
+    # TODO rename, since this is about mapping tool
+    provenance: str | None = Field(
+        None, description="If given, filters to provenance values matching this"
+    )
+    prefix: str | None = Field(
+        None,
+        description="If given, show only mappings that have it appearing as a "
+        "substring in one of the prefixes.",
+    )
+    sort: Literal["asc", "desc", "subject", "object"] | None = Field(
+        None,
+        description="If `desc`, sorts in descending confidence order. If `asc`, sorts in "
+        "increasing confidence order. Otherwise, do not sort.",
+    )
+    same_text: bool | None = Field(
+        None, description="If true, filter to predictions with the same label"
+    )
     show_relations: bool = True
     show_lines: bool = False
 
@@ -94,10 +127,6 @@ class Controller:
             target of curation. If this is given, pre-filters will be made before on
             predictions to only show ones where either the source or target appears in
             this set
-        :param predictions_path: A custom predictions file to curate from
-        :param positives_path: A custom positives file to curate to
-        :param negatives_path: A custom negatives file to curate to
-        :param unsure_path: A custom unsure file to curate to
         """
         self.repository = repository
         self._predictions, _, self._predictions_metadata = sssom_pydantic.read(
@@ -115,138 +144,33 @@ class Controller:
     def _get_current_author(self) -> Reference:
         return self._current_author
 
-    def predictions_from_state(self, state: State) -> Iterable[tuple[int, SemanticMapping]]:
-        """Iterate over predictions from a state instance."""
-        return self.predictions(
-            offset=state.offset,
-            limit=state.limit,
-            query=state.query,
-            source_query=state.source_query,
-            source_prefix=state.source_prefix,
-            target_query=state.target_query,
-            target_prefix=state.target_prefix,
-            prefix=state.prefix,
-            sort=state.sort,
-            same_text=state.same_text,
-            provenance=state.provenance,
-        )
-
-    def predictions(
-        self,
-        *,
-        offset: int | None = None,
-        limit: int | None = None,
-        query: str | None = None,
-        source_query: str | None = None,
-        source_prefix: str | None = None,
-        target_query: str | None = None,
-        target_prefix: str | None = None,
-        prefix: str | None = None,
-        sort: str | None = None,
-        same_text: bool | None = None,
-        provenance: str | None = None,
-    ) -> Iterable[tuple[int, SemanticMapping]]:
-        """Iterate over predictions.
-
-        :param offset: If given, offset the iteration by this number
-        :param limit: If given, only iterate this number of predictions.
-        :param query: If given, show only equivalences that have it appearing as a
-            substring in one of the source or target fields.
-        :param source_query: If given, show only equivalences that have it appearing as
-            a substring in one of the source fields.
-        :param source_prefix: If given, show only mappings that have it appearing in the
-            source prefix field
-        :param target_query: If given, show only equivalences that have it appearing as
-            a substring in one of the target fields.
-        :param target_prefix: If given, show only mappings that have it appearing in the
-            target prefix field
-        :param prefix: If given, show only equivalences that have it appearing as a
-            substring in one of the prefixes.
-        :param same_text: If true, filter to predictions with the same label
-        :param sort: If "desc", sorts in descending confidence order. If "asc", sorts in
-            increasing confidence order. Otherwise, do not sort.
-        :param provenance: If given, filters to provenance values matching this
-
-        :yields: Pairs of positions and prediction dictionaries
-        """
-        if same_text is None:
-            same_text = False
-        it = self._help_it_predictions(
-            query=query,
-            source_query=source_query,
-            source_prefix=source_prefix,
-            target_query=target_query,
-            target_prefix=target_prefix,
-            prefix=prefix,
-            sort=sort,
-            same_text=same_text,
-            provenance=provenance,
-        )
-        if offset is not None:
+    def get_predictions(self, state: State) -> Iterable[tuple[int, SemanticMapping]]:
+        """Iterate over pairs of positions and predicted semantic mappings."""
+        it = self._help_it_predictions(state)
+        if state.offset is not None:
             try:
-                for _ in range(offset):
+                for _ in range(state.offset):
                     next(it)
             except StopIteration:
                 # if next() fails, then there are no remaining entries.
                 # do not pass go, do not collect 200 euro $
                 return
-        if limit is None:
+        if state.limit is None:
             yield from it
         else:
-            for line_prediction, _ in zip(it, range(limit), strict=False):
+            for line_prediction, _ in zip(it, range(state.limit), strict=False):
                 yield line_prediction
 
     def count_predictions_from_state(self, state: State) -> int:
         """Count the number of predictions to check for the given filters."""
-        return self.count_predictions(
-            query=state.query,
-            source_query=state.source_query,
-            source_prefix=state.source_prefix,
-            target_query=state.target_query,
-            target_prefix=state.target_prefix,
-            prefix=state.prefix,
-            same_text=state.same_text,
-            provenance=state.provenance,
-        )
+        return self.count_predictions(state)
 
-    def count_predictions(
-        self,
-        query: str | None = None,
-        source_query: str | None = None,
-        source_prefix: str | None = None,
-        target_query: str | None = None,
-        target_prefix: str | None = None,
-        prefix: str | None = None,
-        sort: str | None = None,
-        same_text: bool | None = None,
-        provenance: str | None = None,
-    ) -> int:
+    def count_predictions(self, state: State) -> int:
         """Count the number of predictions to check for the given filters."""
-        it = self._help_it_predictions(
-            query=query,
-            source_query=source_query,
-            source_prefix=source_prefix,
-            target_query=target_query,
-            target_prefix=target_prefix,
-            prefix=prefix,
-            sort=sort,
-            same_text=same_text,
-            provenance=provenance,
-        )
+        it = self._help_it_predictions(state)
         return sum(1 for _ in it)
 
-    def _help_it_predictions(  # noqa:C901
-        self,
-        query: str | None = None,
-        source_query: str | None = None,
-        source_prefix: str | None = None,
-        target_query: str | None = None,
-        target_prefix: str | None = None,
-        prefix: str | None = None,
-        sort: str | None = None,
-        same_text: bool | None = None,
-        provenance: str | None = None,
-    ) -> Iterator[tuple[int, SemanticMapping]]:
+    def _help_it_predictions(self, state: State) -> Iterator[tuple[int, SemanticMapping]]:  # noqa:C901
         it: Iterable[tuple[int, SemanticMapping]] = enumerate(self._predictions)
         if self.target_references:
             it = (
@@ -255,9 +179,9 @@ class Controller:
                 if p.subject in self.target_references or p.object in self.target_references
             )
 
-        if query is not None:
+        if state.query is not None:
             it = self._help_filter(
-                query,
+                state.query,
                 it,
                 lambda mapping: [
                     mapping.subject.curie,
@@ -267,25 +191,27 @@ class Controller:
                     mapping.mapping_tool_name,
                 ],
             )
-        if source_prefix is not None:
-            it = self._help_filter(source_prefix, it, lambda mapping: [mapping.subject.curie])
-        if source_query is not None:
+        if state.source_prefix is not None:
+            it = self._help_filter(state.source_prefix, it, lambda mapping: [mapping.subject.curie])
+        if state.source_query is not None:
             it = self._help_filter(
-                source_query, it, lambda mapping: [mapping.subject.curie, mapping.subject_name]
+                state.source_query,
+                it,
+                lambda mapping: [mapping.subject.curie, mapping.subject_name],
             )
-        if target_query is not None:
+        if state.target_query is not None:
             it = self._help_filter(
-                target_query, it, lambda mapping: [mapping.object.curie, mapping.object_name]
+                state.target_query, it, lambda mapping: [mapping.object.curie, mapping.object_name]
             )
-        if target_prefix is not None:
-            it = self._help_filter(target_prefix, it, lambda mapping: [mapping.object.curie])
-        if prefix is not None:
+        if state.target_prefix is not None:
+            it = self._help_filter(state.target_prefix, it, lambda mapping: [mapping.object.curie])
+        if state.prefix is not None:
             it = self._help_filter(
-                prefix, it, lambda mapping: [mapping.subject.curie, mapping.object.curie]
+                state.prefix, it, lambda mapping: [mapping.subject.curie, mapping.object.curie]
             )
-        if provenance is not None:
+        if state.provenance is not None:
             it = self._help_filter(
-                provenance,
+                state.provenance,
                 it,
                 lambda mapping: [mapping.mapping_tool_name],
             )
@@ -293,19 +219,19 @@ class Controller:
         def _get_confidence(t: tuple[int, SemanticMapping]) -> float:
             return t[1].confidence or 0.0
 
-        if sort is not None:
-            if sort == "desc":
+        if state.sort is not None:
+            if state.sort == "desc":
                 it = iter(sorted(it, key=_get_confidence, reverse=True))
-            elif sort == "asc":
+            elif state.sort == "asc":
                 it = iter(sorted(it, key=_get_confidence, reverse=False))
-            elif sort == "subject":
+            elif state.sort == "subject":
                 it = iter(sorted(it, key=lambda l_p: l_p[1].subject.curie))
-            elif sort == "object":
+            elif state.sort == "object":
                 it = iter(sorted(it, key=lambda l_p: l_p[1].object.curie))
             else:
-                raise ValueError(f"unknown sort type: {sort}")
+                raise ValueError(f"unknown sort type: {state.sort}")
 
-        if same_text:
+        if state.same_text:
             it = (
                 (line, mapping)
                 for line, mapping in it
@@ -335,7 +261,7 @@ class Controller:
         return len(self._predictions) - len(self._marked)
 
     def mark(self, line: int, value: Mark) -> None:
-        """Mark the given equivalency as correct.
+        """Mark the given mapping as correct.
 
         :param line: Position of the prediction
         :param value: Value to mark the prediction with
