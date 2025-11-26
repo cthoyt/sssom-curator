@@ -38,8 +38,8 @@ def home() -> str:
     """Serve the home page."""
     form = MappingForm()
     state = State.from_flask_globals()
-    predictions = CONTROLLER.get_predictions(state)
-    remaining_rows = CONTROLLER.count_predictions_from_state(state)
+    predictions = CONTROLLER.iterate_predictions(state)
+    remaining_rows = CONTROLLER.count_predictions(state)
     return flask.render_template(
         "home.html",
         predictions=predictions,
@@ -54,7 +54,7 @@ def summary() -> str:
     """Serve the summary page."""
     state = State.from_flask_globals()
     state.limit = None
-    predictions = CONTROLLER.get_predictions(state)
+    predictions = CONTROLLER.iterate_predictions(state)
     counter = Counter((mapping.subject.prefix, mapping.object.prefix) for _, mapping in predictions)
     rows = []
     for (source_prefix, target_prefix), count in counter.most_common():

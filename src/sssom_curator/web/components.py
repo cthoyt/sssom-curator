@@ -144,7 +144,7 @@ class Controller:
     def _get_current_author(self) -> Reference:
         return self._current_author
 
-    def get_predictions(self, state: State) -> Iterable[tuple[int, SemanticMapping]]:
+    def iterate_predictions(self, state: State) -> Iterable[tuple[int, SemanticMapping]]:
         """Iterate over pairs of positions and predicted semantic mappings."""
         it = self._help_it_predictions(state)
         if state.offset is not None:
@@ -160,10 +160,6 @@ class Controller:
         else:
             for line_prediction, _ in zip(it, range(state.limit), strict=False):
                 yield line_prediction
-
-    def count_predictions_from_state(self, state: State) -> int:
-        """Count the number of predictions to check for the given filters."""
-        return self.count_predictions(state)
 
     def count_predictions(self, state: State) -> int:
         """Count the number of predictions to check for the given filters."""
