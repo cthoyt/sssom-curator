@@ -8,11 +8,9 @@ from pathlib import Path
 from typing import Any, Literal
 
 import curies
-import flask
 import sssom_pydantic
 from curies import NamableReference, Reference
 from curies.vocabulary import broad_match, exact_match, manual_mapping_curation, narrow_match
-from flask import current_app
 from flask_wtf import FlaskForm
 from pydantic import BaseModel, Field
 from sssom_pydantic import SemanticMapping
@@ -78,32 +76,6 @@ class State(BaseModel):
     )
     show_relations: bool = True
     show_lines: bool = False
-
-    @classmethod
-    def from_flask_globals(cls) -> State:
-        """Get the state from the flask current request."""
-        return State(
-            limit=flask.request.args.get("limit", type=int, default=10),
-            offset=flask.request.args.get("offset", type=int, default=0),
-            query=flask.request.args.get("query"),
-            source_query=flask.request.args.get("source_query"),
-            source_prefix=flask.request.args.get("source_prefix"),
-            target_query=flask.request.args.get("target_query"),
-            target_prefix=flask.request.args.get("target_prefix"),
-            provenance=flask.request.args.get("provenance"),
-            prefix=flask.request.args.get("prefix"),
-            sort=flask.request.args.get("sort"),
-            same_text=_get_bool_arg("same_text"),
-            show_relations=_get_bool_arg("show_relations") or current_app.config["SHOW_RELATIONS"],
-            show_lines=_get_bool_arg("show_lines") or current_app.config["SHOW_LINES"],
-        )
-
-
-def _get_bool_arg(name: str) -> bool | None:
-    value: str | None = flask.request.args.get(name, type=str)
-    if value is not None:
-        return value.lower() in {"true", "t"}
-    return None
 
 
 class Controller:

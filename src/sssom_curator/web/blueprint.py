@@ -22,6 +22,32 @@ __all__ = [
 ]
 
 
+def get_state_from_flask() -> State:
+    """Get the state from the flask current request."""
+    return State(
+        limit=flask.request.args.get("limit", type=int, default=10),
+        offset=flask.request.args.get("offset", type=int, default=0),
+        query=flask.request.args.get("query"),
+        source_query=flask.request.args.get("source_query"),
+        source_prefix=flask.request.args.get("source_prefix"),
+        target_query=flask.request.args.get("target_query"),
+        target_prefix=flask.request.args.get("target_prefix"),
+        provenance=flask.request.args.get("provenance"),
+        prefix=flask.request.args.get("prefix"),
+        sort=flask.request.args.get("sort"),
+        same_text=_get_bool_arg("same_text"),
+        show_relations=_get_bool_arg("show_relations") or current_app.config["SHOW_RELATIONS"],
+        show_lines=_get_bool_arg("show_lines") or current_app.config["SHOW_LINES"],
+    )
+
+
+def _get_bool_arg(name: str) -> bool | None:
+    value: str | None = flask.request.args.get(name, type=str)
+    if value is not None:
+        return value.lower() in {"true", "t"}
+    return None
+
+
 def url_for_state(endpoint: str, state: State, **kwargs: Any) -> str:
     """Get the URL for an endpoint based on the state class."""
     vv = state.model_dump(exclude_none=True, exclude_defaults=True)
@@ -37,7 +63,7 @@ blueprint = flask.Blueprint("ui", __name__)
 def home() -> str:
     """Serve the home page."""
     form = MappingForm()
-    state = State.from_flask_globals()
+    state = get_state_from_flask()
     predictions = CONTROLLER.iterate_predictions(state)
     remaining_rows = CONTROLLER.count_predictions(state)
     return flask.render_template(
@@ -52,7 +78,7 @@ def home() -> str:
 @blueprint.route("/summary")
 def summary() -> str:
     """Serve the summary page."""
-    state = State.from_flask_globals()
+    state = get_state_from_flask()
     state.limit = None
     predictions = CONTROLLER.iterate_predictions(state)
     counter = Counter((mapping.subject.prefix, mapping.object.prefix) for _, mapping in predictions)
@@ -123,5 +149,5 @@ def mark(line: int, value: str) -> werkzeug.Response:
 
 
 def _go_home() -> werkzeug.Response:
-    state = State.from_flask_globals()
+    state = get_state_from_flask()
     return flask.redirect(url_for_state(".home", state))
