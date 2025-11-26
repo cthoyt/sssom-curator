@@ -6,10 +6,16 @@ from typing import ClassVar
 import curies
 import sssom_pydantic
 from curies import NamedReference, Reference
-from curies.vocabulary import exact_match, lexical_matching_process, manual_mapping_curation
+from curies.vocabulary import (
+    broad_match,
+    exact_match,
+    lexical_matching_process,
+    manual_mapping_curation,
+    narrow_match,
+)
 from sssom_pydantic import MappingTool, SemanticMapping
 
-from sssom_curator.constants import POSITIVES_NAME
+from sssom_curator.constants import NEGATIVES_NAME, POSITIVES_NAME, UNSURE_NAME
 from sssom_curator.web.components import Controller, State
 from sssom_curator.web.impl import get_app
 from tests import cases
@@ -29,12 +35,35 @@ TEST_PREDICTED_MAPPING = SemanticMapping(
     confidence=0.95,
     mapping_tool=MappingTool(name="test", version=None),
 )
-TEST_PREDICTED_MAPPING_MARKED = SemanticMapping(
+TEST_PREDICTED_MAPPING_MARKED_TRUE = SemanticMapping(
     subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
     predicate=exact_match,
     object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
     justification=manual_mapping_curation.pair.to_pydantic(),
     authors=[TEST_USER],
+)
+TEST_PREDICTED_MAPPING_MARKED_BROAD = SemanticMapping(
+    subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
+    # note this is flipped because
+    predicate=narrow_match,
+    object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
+    justification=manual_mapping_curation.pair.to_pydantic(),
+    authors=[TEST_USER],
+)
+TEST_PREDICTED_MAPPING_MARKED_NARROW = SemanticMapping(
+    subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
+    predicate=broad_match,
+    object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
+    justification=manual_mapping_curation.pair.to_pydantic(),
+    authors=[TEST_USER],
+)
+TEST_PREDICTED_MAPPING_MARKED_FALSE = SemanticMapping(
+    subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
+    predicate=exact_match,
+    object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
+    justification=manual_mapping_curation.pair.to_pydantic(),
+    authors=[TEST_USER],
+    predicate_modifier="Not",
 )
 
 TEST_CONVERTER = curies.Converter.from_prefix_map(
@@ -50,9 +79,7 @@ TEST_CONVERTER = curies.Converter.from_prefix_map(
 class TestFull(cases.RepositoryTestCase):
     """Test a curation app."""
 
-    positive_seed: ClassVar[
-        list[SemanticMapping]
-    ] = []  # FIXME if we add a seed here, it breaks everything
+    positive_seed: ClassVar[list[SemanticMapping]] = [TEST_POSITIVE_MAPPING]
     predicted_seed: ClassVar[list[SemanticMapping]] = [TEST_PREDICTED_MAPPING]
     negative_seed: ClassVar[list[SemanticMapping]] = []
     unsure_seed: ClassVar[list[SemanticMapping]] = []
@@ -73,7 +100,7 @@ class TestFull(cases.RepositoryTestCase):
         self.app.testing = True
 
         self.assert_file_mapping_count(self.repository.predictions_path, 1)
-        self.assert_file_mapping_count(self.repository.positives_path, 0)
+        self.assert_file_mapping_count(self.repository.positives_path, 1)
         self.assert_file_mapping_count(self.repository.negatives_path, 0)
         self.assert_file_mapping_count(self.repository.unsure_path, 0)
 
@@ -134,7 +161,91 @@ class TestFull(cases.RepositoryTestCase):
         mappings, _converter, mapping_set = sssom_pydantic.read(self.controller.positives_path)
         self.assertIsNone(mapping_set.title)
         self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", mapping_set.id)
-        self.assertEqual([TEST_PREDICTED_MAPPING_MARKED], mappings)
+        self.assertEqual([TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_TRUE], mappings)
+
+        self.assert_file_mapping_count(self.controller.negatives_path, 0)
+        self.assert_file_mapping_count(self.controller.predictions_path, 0)
+        self.assert_file_mapping_count(self.controller.unsure_path, 0)
+
+    def test_mark_incorrect(self) -> None:
+        """A self-contained scenario for marking an entry incorrect."""
+        self.assertEqual(1, len(self.controller._predictions))
+        self.assertEqual(0, len(self.controller._marked))
+
+        with self.app.test_client() as client:
+            res = client.get("/mark/0/nope", follow_redirects=True)
+            self.assertEqual(200, res.status_code, msg=res.text)
+
+        # now, we have one less than before~
+        self.assertEqual(0, len(self.controller._predictions))
+
+        mappings, _converter, mapping_set = sssom_pydantic.read(self.controller.negatives_path)
+        self.assertIsNone(mapping_set.title)
+        self.assertEqual(f"{self.purl_base}{NEGATIVES_NAME}", mapping_set.id)
+        self.assertEqual([TEST_PREDICTED_MAPPING_MARKED_FALSE], mappings)
+
+        self.assert_file_mapping_count(self.controller.positives_path, 1)
+        self.assert_file_mapping_count(self.controller.predictions_path, 0)
+        self.assert_file_mapping_count(self.controller.unsure_path, 0)
+
+    def test_mark_unsure(self) -> None:
+        """A self-contained scenario for marking an entry as unsure."""
+        self.assertEqual(1, len(self.controller._predictions))
+        self.assertEqual(0, len(self.controller._marked))
+
+        with self.app.test_client() as client:
+            res = client.get("/mark/0/maybe", follow_redirects=True)
+            self.assertEqual(200, res.status_code, msg=res.text)
+
+        # now, we have one less than before~
+        self.assertEqual(0, len(self.controller._predictions))
+
+        mappings, _converter, mapping_set = sssom_pydantic.read(self.controller.unsure_path)
+        self.assertIsNone(mapping_set.title)
+        self.assertEqual(f"{self.purl_base}{UNSURE_NAME}", mapping_set.id)
+        self.assertEqual([TEST_PREDICTED_MAPPING_MARKED_TRUE], mappings)
+
+        self.assert_file_mapping_count(self.controller.positives_path, 1)
+        self.assert_file_mapping_count(self.controller.predictions_path, 0)
+        self.assert_file_mapping_count(self.controller.negatives_path, 0)
+
+    def test_mark_broad(self) -> None:
+        """A self-contained scenario for marking an entry as broad."""
+        self.assertEqual(1, len(self.controller._predictions))
+        self.assertEqual(0, len(self.controller._marked))
+
+        with self.app.test_client() as client:
+            res = client.get("/mark/0/broad", follow_redirects=True)
+            self.assertEqual(200, res.status_code, msg=res.text)
+
+        # now, we have one less than before~
+        self.assertEqual(0, len(self.controller._predictions))
+
+        mappings, _converter, mapping_set = sssom_pydantic.read(self.controller.positives_path)
+        self.assertIsNone(mapping_set.title)
+        self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", mapping_set.id)
+        self.assertEqual([TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_BROAD], mappings)
+
+        self.assert_file_mapping_count(self.controller.negatives_path, 0)
+        self.assert_file_mapping_count(self.controller.predictions_path, 0)
+        self.assert_file_mapping_count(self.controller.unsure_path, 0)
+
+    def test_mark_narrow(self) -> None:
+        """A self-contained scenario for marking an entry as narrow."""
+        self.assertEqual(1, len(self.controller._predictions))
+        self.assertEqual(0, len(self.controller._marked))
+
+        with self.app.test_client() as client:
+            res = client.get("/mark/0/narrow", follow_redirects=True)
+            self.assertEqual(200, res.status_code, msg=res.text)
+
+        # now, we have one less than before~
+        self.assertEqual(0, len(self.controller._predictions))
+
+        mappings, _converter, mapping_set = sssom_pydantic.read(self.controller.positives_path)
+        self.assertIsNone(mapping_set.title)
+        self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", mapping_set.id)
+        self.assertEqual([TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_NARROW], mappings)
 
         self.assert_file_mapping_count(self.controller.negatives_path, 0)
         self.assert_file_mapping_count(self.controller.predictions_path, 0)
