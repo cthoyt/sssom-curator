@@ -8,10 +8,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
+import curies
 
 if TYPE_CHECKING:
     import jinja2
-    from sssom_pydantic import MappingSet
+    from sssom_pydantic import MappingSet, SemanticMapping
 
     from ..repository import Repository
 
@@ -55,6 +56,11 @@ def initialize_folder(  # noqa:C901
     readme_filename: str = README_NAME,
     add_license: bool = True,
     mapping_set_id: str | None = None,
+    positive_seed: list[SemanticMapping] | None = None,
+    negative_seed: list[SemanticMapping] | None = None,
+    predicted_seed: list[SemanticMapping] | None = None,
+    unsure_seed: list[SemanticMapping] | None = None,
+    converter: curies.Converter | None = None,
 ) -> Repository:
     """Create a curation repository in a folder.
 
@@ -113,54 +119,77 @@ def initialize_folder(  # noqa:C901
         )
         purl_base = purl_base.rstrip("/") + "/"
 
-    converter = curies.Converter.from_prefix_map(
-        {
-            "ex": "https://example.org/",
-            "skos": "http://www.w3.org/2004/02/skos/core#",
-        }
-    )
-    name_to_example = {
-        positive_mappings_filename: SemanticMapping(
-            subject=curies.NamedReference(prefix="ex", identifier="1", name="1"),
-            predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
-            object=curies.NamedReference(prefix="ex", identifier="2", name="2"),
-            justification=manual_mapping_curation,
-            authors=[charlie],
-        ),
-        negative_mappings_filename: SemanticMapping(
-            subject=curies.NamedReference(prefix="ex", identifier="3", name="3"),
-            predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
-            object=curies.NamedReference(prefix="ex", identifier="4", name="4"),
-            justification=manual_mapping_curation,
-            predicate_modifier="Not",
-            authors=[charlie],
-        ),
-        unsure_mappings_filename: SemanticMapping(
-            subject=curies.NamedReference(prefix="ex", identifier="5", name="5"),
-            predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
-            object=curies.NamedReference(prefix="ex", identifier="6", name="6"),
-            justification=manual_mapping_curation,
-            authors=[charlie],
-        ),
-        predicted_mappings_filename: SemanticMapping(
-            subject=curies.NamedReference(prefix="ex", identifier="7", name="7"),
-            predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
-            object=curies.NamedReference(prefix="ex", identifier="8", name="8"),
-            justification=lexical_matching_process,
-            confidence=0.77,
-        ),
+    # TODO enable passing seed converter
+    if converter is None:
+        converter = curies.Converter.from_prefix_map(
+            {
+                "ex": "https://example.org/",
+                "skos": "http://www.w3.org/2004/02/skos/core#",
+                "semapv": "https://w3id.org/semapv/vocab/",
+                "orcid": "https://orcid.org/",
+            }
+        )
+    name_to_examples: dict[str, list[SemanticMapping]] = {
+        positive_mappings_filename: [
+            SemanticMapping(
+                subject=curies.NamedReference(prefix="ex", identifier="1", name="1"),
+                predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
+                object=curies.NamedReference(prefix="ex", identifier="2", name="2"),
+                justification=manual_mapping_curation,
+                authors=[charlie],
+            )
+        ]
+        if positive_seed is None
+        else positive_seed,
+        negative_mappings_filename: [
+            SemanticMapping(
+                subject=curies.NamedReference(prefix="ex", identifier="3", name="3"),
+                predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
+                object=curies.NamedReference(prefix="ex", identifier="4", name="4"),
+                justification=manual_mapping_curation,
+                predicate_modifier="Not",
+                authors=[charlie],
+            )
+        ]
+        if negative_seed is None
+        else negative_seed,
+        unsure_mappings_filename: [
+            SemanticMapping(
+                subject=curies.NamedReference(prefix="ex", identifier="5", name="5"),
+                predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
+                object=curies.NamedReference(prefix="ex", identifier="6", name="6"),
+                justification=manual_mapping_curation,
+                authors=[charlie],
+            )
+        ]
+        if unsure_seed is None
+        else unsure_seed,
+        predicted_mappings_filename: [
+            SemanticMapping(
+                subject=curies.NamedReference(prefix="ex", identifier="7", name="7"),
+                predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
+                object=curies.NamedReference(prefix="ex", identifier="8", name="8"),
+                justification=lexical_matching_process,
+                confidence=0.77,
+            )
+        ]
+        if predicted_seed is None
+        else predicted_seed,
     }
 
     # Create the SSSOM files in a nested directory
     data_directory = directory.joinpath(DATA_DIR_NAME)
     data_directory.mkdir(exist_ok=True)
-    for name, mapping in name_to_example.items():
+    for name, mappings in name_to_examples.items():
         path = data_directory.joinpath(name)
         if path.exists():
             raise FileExistsError(f"{path} already exists. cowardly refusing to overwrite.")
 
+        # this will raise an exception if the mappings are not standard
+        mappings = [mapping.standardize(converter) for mapping in mappings]
+
         metadata = MappingSet(id=f"{purl_base}{name}")
-        sssom_pydantic.write([mapping], path, metadata=metadata, converter=converter)
+        sssom_pydantic.write(mappings, path, metadata=metadata, converter=converter)
 
     data_directory_stub = Path(DATA_DIR_NAME)
     repository = Repository(

@@ -401,8 +401,9 @@ class Controller:
             update: dict[str, Any] = {
                 "authors": [self._get_current_author()],
                 "justification": manual_mapping_curation,
-                # throw the predicted confidence away, since it's been manually curated now
+                # throw the following fields away, since it's been manually curated now
                 "confidence": None,
+                "mapping_tool": None,
             }
 
             entry_key: Literal["correct", "incorrect", "unsure"]

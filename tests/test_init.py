@@ -137,6 +137,8 @@ class TestInitializeFolder(unittest.TestCase):
             dedent(f"""\
                 #curie_map:
                 #  ex: https://example.org/
+                #  orcid: https://orcid.org/
+                #  semapv: https://w3id.org/semapv/vocab/
                 #  skos: http://www.w3.org/2004/02/skos/core#
                 #mapping_set_id: https://example.org/ms/components/{POSITIVES_NAME}
                 subject_id\tsubject_label\tpredicate_id\tobject_id\tobject_label\tmapping_justification\tauthor_id
@@ -151,6 +153,8 @@ class TestInitializeFolder(unittest.TestCase):
             dedent(f"""\
                 #curie_map:
                 #  ex: https://example.org/
+                #  orcid: https://orcid.org/
+                #  semapv: https://w3id.org/semapv/vocab/
                 #  skos: http://www.w3.org/2004/02/skos/core#
                 #mapping_set_id: https://example.org/ms/components/{NEGATIVES_NAME}
                 subject_id\tsubject_label\tpredicate_id\tpredicate_modifier\tobject_id\tobject_label\tmapping_justification\tauthor_id
@@ -165,6 +169,7 @@ class TestInitializeFolder(unittest.TestCase):
             dedent(f"""\
                 #curie_map:
                 #  ex: https://example.org/
+                #  semapv: https://w3id.org/semapv/vocab/
                 #  skos: http://www.w3.org/2004/02/skos/core#
                 #mapping_set_id: https://example.org/ms/components/{PREDICTIONS_NAME}
                 subject_id\tsubject_label\tpredicate_id\tobject_id\tobject_label\tmapping_justification\tconfidence

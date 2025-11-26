@@ -1,35 +1,40 @@
 """Test the web app."""
 
-import tempfile
-import unittest
 from pathlib import Path
+from typing import ClassVar
 
 import curies
 import sssom_pydantic
-from curies import NamableReference
-from sssom_pydantic import MappingSet, MappingTool, SemanticMapping
+from curies import NamedReference, Reference
+from curies.vocabulary import exact_match, lexical_matching_process, manual_mapping_curation
+from sssom_pydantic import MappingTool, SemanticMapping
 
-from sssom_curator import Repository
-from sssom_curator.constants import (
-    NEGATIVES_NAME,
-    POSITIVES_NAME,
-    PREDICTIONS_NAME,
-    STUB_SSSOM_COLUMNS,
-    UNSURE_NAME,
-)
+from sssom_curator.constants import POSITIVES_NAME
 from sssom_curator.web.components import Controller, State
 from sssom_curator.web.impl import get_app
+from tests import cases
 
-TEST_USER = NamableReference(
-    prefix="orcid", identifier="0000-0000-0000-0000", name="Max Mustermann"
+TEST_USER = Reference(prefix="orcid", identifier="0000-0000-0000-0000")
+TEST_POSITIVE_MAPPING = SemanticMapping(
+    subject=NamedReference.from_curie("chebi:131408", name="glyoxime"),
+    predicate=exact_match,
+    object=NamedReference.from_curie("mesh:C018305", name="glyoxal dioxime"),
+    justification=manual_mapping_curation.pair.to_pydantic(),
 )
-TEST_MAPPING = SemanticMapping(
-    subject=NamableReference.from_curie("chebi:131408", name="glyoxime"),
-    predicate="skos:exactMatch",
-    object=NamableReference.from_curie("mesh:C018305", name="glyoxal dioxime"),
-    justification="semapv:ManualMappingCuration",
+TEST_PREDICTED_MAPPING = SemanticMapping(
+    subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
+    predicate=exact_match,
+    object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
+    justification=lexical_matching_process.pair.to_pydantic(),
     confidence=0.95,
     mapping_tool=MappingTool(name="test", version=None),
+)
+TEST_PREDICTED_MAPPING_MARKED = SemanticMapping(
+    subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
+    predicate=exact_match,
+    object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
+    justification=manual_mapping_curation.pair.to_pydantic(),
+    authors=[TEST_USER],
 )
 
 TEST_CONVERTER = curies.Converter.from_prefix_map(
@@ -42,57 +47,41 @@ TEST_CONVERTER = curies.Converter.from_prefix_map(
 )
 
 
-def make_repository(directory: str | Path) -> Repository:
-    """Make a dummy repository."""
-    directory = Path(directory).resolve()
-    repository = Repository(
-        positives_path=directory.joinpath(POSITIVES_NAME),
-        predictions_path=directory.joinpath(PREDICTIONS_NAME),
-        negatives_path=directory.joinpath(NEGATIVES_NAME),
-        unsure_path=directory.joinpath(UNSURE_NAME),
-        mapping_set=MappingSet(id="https://example.org/positive.tsv"),
-        purl_base="https://example.org/",
-    )
-    sssom_pydantic.write(
-        [TEST_MAPPING],
-        path=repository.predictions_path,
-        metadata={
-            "mapping_set_id": f"https://example.org/{repository.predictions_path.name}",
-            "license": "https://creativecommons.org/licenses/by/4.0",
-        },
-        converter=TEST_CONVERTER,
-    )
-    for path in repository.curated_paths:
-        with path.open("w") as file:
-            print("#curie_map:", file=file)
-            print("#  chebi: http://purl.obolibrary.org/obo/CHEBI_", file=file)
-            print("#  mesh:  http://id.nlm.nih.gov/mesh/", file=file)
-            print(f"#mapping_set_id: https://example.org/{path.name}", file=file)
-            print(*STUB_SSSOM_COLUMNS, sep="\t", file=file)
+class TestFull(cases.RepositoryTestCase):
+    """Test a curation app."""
 
-    return repository
-
-
-class TestWeb(unittest.TestCase):
-    """Test the web app."""
+    positive_seed: ClassVar[
+        list[SemanticMapping]
+    ] = []  # FIXME if we add a seed here, it breaks everything
+    predicted_seed: ClassVar[list[SemanticMapping]] = [TEST_PREDICTED_MAPPING]
+    negative_seed: ClassVar[list[SemanticMapping]] = []
+    unsure_seed: ClassVar[list[SemanticMapping]] = []
+    converter_seed: ClassVar[curies.Converter] = TEST_CONVERTER
 
     def setUp(self) -> None:
-        """Set up the test case with a controller."""
-        self.directory = tempfile.TemporaryDirectory()
-        repository = make_repository(self.directory.name)
-
+        """Set up the test case."""
+        super().setUp()
         self.controller = Controller(
+            predictions_path=self.repository.predictions_path,
+            positives_path=self.repository.positives_path,
+            negatives_path=self.repository.negatives_path,
+            unsure_path=self.repository.unsure_path,
             user=TEST_USER,
-            positives_path=repository.positives_path,
-            negatives_path=repository.negatives_path,
-            unsure_path=repository.unsure_path,
-            predictions_path=repository.predictions_path,
             converter=TEST_CONVERTER,
         )
+        self.app = get_app(controller=self.controller)
+        self.app.testing = True
 
-    def tearDown(self) -> None:
-        """Tear down the test case."""
-        self.directory.cleanup()
+        self.assert_file_mapping_count(self.repository.predictions_path, 1)
+        self.assert_file_mapping_count(self.repository.positives_path, 0)
+        self.assert_file_mapping_count(self.repository.negatives_path, 0)
+        self.assert_file_mapping_count(self.repository.unsure_path, 0)
+
+    def assert_file_mapping_count(self, path: Path, n: int) -> None:
+        """Check that a SSSOM file has the right number of mappings."""
+        self.assertTrue(path.is_file())
+        mappings, _, _ = sssom_pydantic.read(path)
+        self.assertEqual(n, len(mappings), msg=f"{path.name} had the wrong number of mappings")
 
     def test_query(self) -> None:
         """Test making a query."""
@@ -117,32 +106,6 @@ class TestWeb(unittest.TestCase):
         self.controller.count_predictions_from_state(State(limit=5_000_000))
         self.controller.count_predictions_from_state(State(offset=0))
         self.controller.count_predictions_from_state(State(offset=5_000_000))
-
-
-class TestFull(unittest.TestCase):
-    """Test a curation app."""
-
-    def setUp(self) -> None:
-        """Set up the test case."""
-        self.temporary_directory = tempfile.TemporaryDirectory()
-
-        directory = Path(self.temporary_directory.name)
-        repository = make_repository(directory)
-
-        self.controller = Controller(
-            predictions_path=repository.predictions_path,
-            positives_path=repository.positives_path,
-            negatives_path=repository.negatives_path,
-            unsure_path=repository.unsure_path,
-            user=TEST_USER,
-            converter=TEST_CONVERTER,
-        )
-        self.app = get_app(controller=self.controller)
-        self.app.testing = True
-
-    def tearDown(self) -> None:
-        """Tear down the test case."""
-        self.temporary_directory.cleanup()
 
     def test_mark_out_of_bounds(self) -> None:
         """Test trying to mark a number that's too big."""
@@ -170,5 +133,9 @@ class TestFull(unittest.TestCase):
 
         mappings, _converter, mapping_set = sssom_pydantic.read(self.controller.positives_path)
         self.assertIsNone(mapping_set.title)
-        self.assertEqual(f"https://example.org/{POSITIVES_NAME}", mapping_set.id)
-        self.assertEqual(1, len(mappings))
+        self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", mapping_set.id)
+        self.assertEqual([TEST_PREDICTED_MAPPING_MARKED], mappings)
+
+        self.assert_file_mapping_count(self.controller.negatives_path, 0)
+        self.assert_file_mapping_count(self.controller.predictions_path, 0)
+        self.assert_file_mapping_count(self.controller.unsure_path, 0)
