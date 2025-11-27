@@ -73,17 +73,17 @@ def summary() -> str:
     counter = controller.get_prefix_counter(state)
     rows = [
         (
-            source_prefix,
-            target_prefix,
+            subject_prefix,
+            object_prefix,
             count,
             url_for_state(
                 ".home",
                 state.model_copy(
-                    update={"source_prefix": source_prefix, "target_prefix": target_prefix}
+                    update={"subject_prefix": subject_prefix, "object_prefix": object_prefix}
                 ),
             ),
         )
-        for (source_prefix, target_prefix), count in counter.most_common()
+        for (subject_prefix, object_prefix), count in counter.most_common()
     ]
     return flask.render_template("summary.html", state=state, rows=rows)
 
