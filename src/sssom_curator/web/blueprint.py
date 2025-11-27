@@ -7,6 +7,7 @@ from typing import Any, cast
 
 import flask
 import werkzeug
+from curies import Reference
 from flask import current_app
 from werkzeug.local import LocalProxy
 
@@ -111,10 +112,11 @@ def run_commit() -> werkzeug.Response:
     return _go_home()
 
 
-@blueprint.route("/mark/<int:line>/<value>")
-def mark(line: int, value: str) -> werkzeug.Response:
+@blueprint.route("/mark/<curie>/<value>")
+def mark(curie: str, value: str) -> werkzeug.Response:
     """Mark the given line as correct or not."""
-    controller.mark(line, normalize_mark(value))
+    reference = Reference.from_curie(curie)
+    controller.mark(reference, normalize_mark(value))
     return _go_home()
 
 

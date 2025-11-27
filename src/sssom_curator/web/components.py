@@ -94,11 +94,12 @@ class State(Query, Config):
     """Contains the state for queries to the curation app."""
 
 
-HashType: TypeAlias = int
+DEFAULT_HASH_PREFIX = curies.Prefix("ssssom.record.v1")
 
 
-def _default_hash(m: SemanticMapping) -> HashType:
-    return hash(m) & ((1 << 64) - 1)
+def _default_hash(m: SemanticMapping) -> Reference:
+    v = hash(m) & ((1 << 64) - 1)
+    return Reference(prefix=DEFAULT_HASH_PREFIX, identifier=str(v))
 
 
 class Controller:
@@ -107,7 +108,7 @@ class Controller:
     converter: curies.Converter
     repository: Repository
     target_references: set[Reference] | None
-    _predictions: dict[HashType, SemanticMapping]
+    _predictions: dict[Reference, SemanticMapping]
 
     def __init__(
         self,
@@ -116,7 +117,7 @@ class Controller:
         repository: Repository,
         user: Reference,
         converter: curies.Converter,
-        mapping_hash: Callable[[SemanticMapping], HashType] = _default_hash,
+        mapping_hash: Callable[[SemanticMapping], Reference] = _default_hash,
     ) -> None:
         """Instantiate the web controller.
 
@@ -130,7 +131,12 @@ class Controller:
         predicted_mappings, _, self._predictions_metadata = sssom_pydantic.read(
             self.repository.predictions_path
         )
-        self._predictions = {self.mapping_hash(p): p for p in predicted_mappings}
+        self._predictions = {}
+        for mapping in predicted_mappings:  # this is fast
+            if mapping.record:
+                raise RuntimeError("SSSOM Curator doesn't yet support custom record_ids")
+            reference = self.mapping_hash(mapping)
+            self._predictions[reference] = mapping.model_copy(update={"record": reference})
 
         self.total_curated = 0
         self.target_references = set(target_references) if target_references is not None else None
@@ -272,23 +278,26 @@ class Controller:
             if any(query in string.casefold() for string in get_strings(mapping) if string):
                 yield mapping
 
-    def mark(self, mapping_hash: HashType | SemanticMapping, mark: Mark) -> None:
+    def mark(self, reference: Reference | SemanticMapping, mark: Mark) -> None:
         """Mark the given mapping as correct.
 
-        :param mapping_hash: Position of the prediction
+        :param reference: The reference for the mapping, corresponding to the ``record`` field
         :param mark: Value to mark the prediction with
 
-        :raises ValueError: if an invalid value is used
+        :raises KeyError:
+            if there's no predicted mapping whose record corresponds to the given reference
         """
-        if isinstance(mapping_hash, SemanticMapping):
-            mapping_hash = self.mapping_hash(mapping_hash)
+        if isinstance(reference, SemanticMapping):
+            if not reference.record:
+                raise RuntimeError("all predicted mappings should have pre-calculated records")
+            reference = reference.record
 
-        if mapping_hash not in self._predictions:
-            raise KeyError(f"the mapping with hash {mapping_hash} is not present")
+        if reference not in self._predictions:
+            raise KeyError(f"the mapping with hash {reference.curie} is not present")
 
         self.total_curated += 1
 
-        mapping = self._predictions.pop(mapping_hash)
+        mapping = self._predictions.pop(reference)
 
         update: dict[str, Any] = {
             "authors": [self._get_current_author()],
@@ -311,7 +320,10 @@ class Controller:
         new_mapping = mapping.model_copy(update=update)
 
         insert(
-            path=self.mark_to_file[mark], converter=self.converter, include_mappings=[new_mapping]
+            path=self.mark_to_file[mark],
+            converter=self.converter,
+            include_mappings=[new_mapping],
+            exclude_columns=["record_id", "predicate_label"],
         )
 
         sssom_pydantic.write(
@@ -321,6 +333,9 @@ class Controller:
             converter=self.converter,
             drop_duplicates=True,
             sort=True,
+            exclude_columns=["record_id", "predicate_label"],
+            # TODO is there a way of pre-calculating some things to make this faster?
+            #  e.g., say "no condensation"
         )
 
 

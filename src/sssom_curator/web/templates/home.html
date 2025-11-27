@@ -112,35 +112,35 @@
                             </td>
                             <td>
                                 <a data-toggle="tooltip" title="The {{ p.predicate.curie }} relationship is correct."
-                                   href="{{ url_for_state('.mark', state, line=controller.mapping_hash(p), value='yup') }}">
+                                   href="{{ url_for_state('.mark', state, curie=p.record.curie, value='yup') }}">
                                     <i class="far fa-thumbs-up"></i>
                                 </a>
                             </td>
                             <td class="text-nowrap">
                                 <a data-toggle="tooltip"
                                    title="{{ p.subject_name }} (source) is broader than {{ p.object_name }} (object)."
-                                   href="{{ url_for_state('.mark', state, line=controller.mapping_hash(p), value='broad') }}">
+                                   href="{{ url_for_state('.mark', state, curie=p.record.curie, value='broad') }}">
                                     <i class="fas fa-greater-than"></i>
                                 </a>
                             </td>
                             <td class="text-nowrap">
                                 <a data-toggle="tooltip"
                                    title="{{ p.subject_name }} (source) is narrower than {{ p.object_name }} (object)."
-                                   href="{{ url_for_state('.mark', state, line=controller.mapping_hash(p), value='narrow') }}">
+                                   href="{{ url_for_state('.mark', state, curie=p.record.curie, value='narrow') }}">
                                    <i class="fas fa-less-than"></i>
                                 </a>
                             </td>
                             <td>
                                 <a data-toggle="tooltip"
                                    title="These two entities do not have the {{ p.predicate.curie }} relationship. You should still click this even if you think there could be a different relationship."
-                                   href="{{ url_for_state('.mark', state, line=controller.mapping_hash(p), value='nope') }}">
+                                   href="{{ url_for_state('.mark', state, curie=p.record.curie, value='nope') }}">
                                     <i class="far fa-thumbs-down"></i>
                                 </a>
                             </td>
                             <td>
                                 <a style="color: darkgoldenrod;" data-toggle="tooltip"
                                    title="I'm not sure if this is correct or not"
-                                   href="{{ url_for_state('.mark', state, line=controller.mapping_hash(p), value='idk') }}">
+                                   href="{{ url_for_state('.mark', state, curie=p.record.curie, value='idk') }}">
                                     <i class="far fa-question-circle"></i>
                                 </a>
                             </td>

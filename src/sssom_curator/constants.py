@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TypeAlias
@@ -85,6 +85,7 @@ def insert(
     *,
     converter: curies.Converter | None = None,
     include_mappings: Iterable[SemanticMapping] | None = None,
+    exclude_columns: Collection[str] | None = None,
 ) -> None:
     """Append eagerly with linting at the same time."""
     import sssom_pydantic
@@ -108,4 +109,5 @@ def insert(
         metadata=metadata,
         sort=True,
         drop_duplicates=True,
+        exclude_columns=exclude_columns,
     )
