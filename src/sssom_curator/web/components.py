@@ -14,6 +14,7 @@ from curies.vocabulary import broad_match, manual_mapping_curation, narrow_match
 from pydantic import BaseModel, Field
 from sssom_pydantic import SemanticMapping
 
+from .query import Query, filter_mappings
 from .utils import Mark
 from ..constants import default_hash, insert
 from ..repository import Repository
@@ -31,51 +32,7 @@ DEFAULT_LIMIT: int = 10
 #: The default offset
 DEFAULT_OFFSET: int = 0
 
-
-class Query(BaseModel):
-    """A query over SSSOM."""
-
-    query: str | None = Field(
-        None,
-        description="If given, show only mappings that have it appearing as a substring "
-        "in one of the source or target fields.",
-    )
-    source_query: str | None = Field(
-        None,
-        description="If given, show only mappings that have it appearing as a substring "
-        "in one of the source fields.",
-    )
-    source_prefix: str | None = Field(
-        None,
-        description="If given, show only mappings that have it appearing in the "
-        "source prefix field",
-    )
-    target_query: str | None = Field(
-        None,
-        description="If given, show only mappings that have it appearing as a substring "
-        "in one of the target fields.",
-    )
-    target_prefix: str | None = Field(
-        None,
-        description="If given, show only mappings that have it appearing in the "
-        "target prefix field",
-    )
-    # TODO rename, since this is about mapping tool
-    provenance: str | None = Field(
-        None, description="If given, filters to provenance values matching this"
-    )
-    prefix: str | None = Field(
-        None,
-        description="If given, show only mappings that have it appearing as a "
-        "substring in one of the prefixes.",
-    )
-    same_text: bool | None = Field(
-        None, description="If true, filter to predictions with the same label"
-    )
-
-
 Sort: TypeAlias = Literal["asc", "desc", "subject", "object"]
-MappingIter: TypeAlias = Iterator[SemanticMapping]
 
 
 class Config(BaseModel):
@@ -155,7 +112,7 @@ class Controller:
             for mapping in self.iterate_predictions(state)
         )
 
-    def iterate_predictions(self, state: State) -> MappingIter:
+    def iterate_predictions(self, state: State) -> Iterator[SemanticMapping]:
         """Iterate over pairs of positions and predicted semantic mappings."""
         mappings = self._help_it_predictions(state)
         if state.sort is not None:
@@ -175,7 +132,7 @@ class Controller:
                 yield line_prediction
 
     @staticmethod
-    def _sort(mappings: MappingIter, sort: Sort) -> MappingIter:
+    def _sort(mappings: Iterator[SemanticMapping], sort: Sort) -> Iterator[SemanticMapping]:
         if sort == "desc":
             mappings = iter(sorted(mappings, key=_get_confidence, reverse=True))
         elif sort == "asc":
@@ -193,7 +150,7 @@ class Controller:
         it = self._help_it_predictions(state)
         return sum(1 for _ in it)
 
-    def _help_it_predictions(self, state: State) -> MappingIter:
+    def _help_it_predictions(self, state: State) -> Iterator[SemanticMapping]:
         mappings = iter(self._predictions.values())
         if self.target_references is not None:
             mappings = (
@@ -202,75 +159,8 @@ class Controller:
                 if mapping.subject in self.target_references
                 or mapping.object in self.target_references
             )
-        mappings = self._filter_by_query(state, mappings)
+        mappings = filter_mappings(mappings, state)
         return mappings
-
-    def _filter_by_query(self, state: Query, mappings: MappingIter) -> MappingIter:
-        if state.query is not None:
-            mappings = self._help_filter(
-                state.query,
-                mappings,
-                lambda mapping: [
-                    mapping.subject.curie,
-                    mapping.subject_name,
-                    mapping.object.curie,
-                    mapping.object_name,
-                    mapping.mapping_tool_name,
-                ],
-            )
-        if state.source_prefix is not None:
-            mappings = self._help_filter(
-                state.source_prefix, mappings, lambda mapping: [mapping.subject.curie]
-            )
-        if state.source_query is not None:
-            mappings = self._help_filter(
-                state.source_query,
-                mappings,
-                lambda mapping: [mapping.subject.curie, mapping.subject_name],
-            )
-        if state.target_query is not None:
-            mappings = self._help_filter(
-                state.target_query,
-                mappings,
-                lambda mapping: [mapping.object.curie, mapping.object_name],
-            )
-        if state.target_prefix is not None:
-            mappings = self._help_filter(
-                state.target_prefix, mappings, lambda mapping: [mapping.object.curie]
-            )
-        if state.prefix is not None:
-            mappings = self._help_filter(
-                state.prefix,
-                mappings,
-                lambda mapping: [mapping.subject.curie, mapping.object.curie],
-            )
-        if state.provenance is not None:
-            mappings = self._help_filter(
-                state.provenance,
-                mappings,
-                lambda mapping: [mapping.mapping_tool_name],
-            )
-        if state.same_text:
-            mappings = (
-                mapping
-                for mapping in mappings
-                if mapping.subject_name
-                and mapping.object_name
-                and mapping.subject_name.casefold() == mapping.object_name.casefold()
-                and mapping.predicate.curie == "skos:exactMatch"
-            )
-        yield from mappings
-
-    @staticmethod
-    def _help_filter(
-        query: str,
-        mappings: MappingIter,
-        get_strings: Callable[[SemanticMapping], list[str | None]],
-    ) -> MappingIter:
-        query = query.casefold()
-        for mapping in mappings:
-            if any(query in string.casefold() for string in get_strings(mapping) if string):
-                yield mapping
 
     def mark(self, reference: Reference | SemanticMapping, mark: Mark) -> None:
         """Mark the given mapping as correct.
