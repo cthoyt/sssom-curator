@@ -24,6 +24,7 @@ __all__ = [
     "PaginationElement",
     "State",
     "get_pagination_elements",
+    "curate_mapping",
 ]
 
 #: The default limit
@@ -183,25 +184,7 @@ class Controller:
 
         mapping = self._predictions.pop(reference)
 
-        update: dict[str, Any] = {
-            "authors": [self._get_current_author()],
-            "justification": manual_mapping_curation,
-            # throw the following fields away, since it's been manually curated now
-            "confidence": None,
-            "mapping_tool": None,
-        }
-
-        if mark == "broad":
-            # note these go backwards because of the way they are read
-            update["predicate"] = narrow_match
-        elif mark == "narrow":
-            # note these go backwards because of the way they are read
-            update["predicate"] = broad_match
-        elif mark == "incorrect":
-            update["predicate_modifier"] = "Not"
-
-        # replace some values using model_copy since the model is frozen
-        new_mapping = mapping.model_copy(update=update)
+        new_mapping = curate_mapping(mapping, [self._get_current_author()], mark)
 
         insert(
             path=self.mark_to_file[mark],
@@ -221,6 +204,32 @@ class Controller:
             # TODO is there a way of pre-calculating some things to make this faster?
             #  e.g., say "no condensation"
         )
+
+
+def curate_mapping(
+    mapping: SemanticMapping, authors: list[Reference], mark: Mark
+) -> SemanticMapping:
+    """Curate the mapping."""
+    update: dict[str, Any] = {
+        "authors": authors,
+        "justification": manual_mapping_curation,
+        # throw the following fields away, since it's been manually curated now
+        "confidence": None,
+        "mapping_tool": None,
+    }
+
+    if mark == "broad":
+        # note these go backwards because of the way they are read
+        update["predicate"] = narrow_match
+    elif mark == "narrow":
+        # note these go backwards because of the way they are read
+        update["predicate"] = broad_match
+    elif mark == "incorrect":
+        update["predicate_modifier"] = "Not"
+
+    # replace some values using model_copy since the model is frozen
+    new_mapping = mapping.model_copy(update=update)
+    return new_mapping
 
 
 def _get_confidence(t: SemanticMapping) -> float:
