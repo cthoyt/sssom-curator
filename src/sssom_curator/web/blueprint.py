@@ -22,20 +22,14 @@ __all__ = [
 
 def get_state_from_flask() -> State:
     """Get the state from the flask current request."""
-    return State(
-        limit=flask.request.args.get("limit", type=int, default=10),
-        offset=flask.request.args.get("offset", type=int, default=0),
-        query=flask.request.args.get("query"),
-        source_query=flask.request.args.get("source_query"),
-        source_prefix=flask.request.args.get("source_prefix"),
-        target_query=flask.request.args.get("target_query"),
-        target_prefix=flask.request.args.get("target_prefix"),
-        provenance=flask.request.args.get("provenance"),
-        prefix=flask.request.args.get("prefix"),
-        sort=flask.request.args.get("sort"),
-        same_text=_get_bool_arg("same_text"),
-        show_relations=_get_bool_arg("show_relations") or current_app.config["SHOW_RELATIONS"],
-    )
+    request_dict: dict[str, Any] = flask.request.args.copy()
+    if same_text := request_dict.get("same_text"):
+        request_dict['same_text'] = same_text.lower() in {"true", "t"}
+    if show_relations := request_dict.get('show_relations'):
+        request_dict['show_relations'] = show_relations.lower() in {"true", "t"}
+    else:
+        request_dict['show_relations'] = current_app.config["SHOW_RELATIONS"]
+    return State.model_validate(request_dict)
 
 
 def _get_bool_arg(name: str) -> bool | None:
