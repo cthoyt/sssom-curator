@@ -52,7 +52,7 @@ def get_app(
             f"There are no predictions to curate in {controller.repository.predictions_path}"
         )
     app.config["controller"] = controller
-    flask_bootstrap.Bootstrap4(app)
+    flask_bootstrap.Bootstrap5(app)
     app.register_blueprint(blueprint)
 
     if not resolver_base:
