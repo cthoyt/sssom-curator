@@ -22,13 +22,13 @@ __all__ = [
 
 def get_state_from_flask() -> State:
     """Get the state from the flask current request."""
-    request_dict: dict[str, Any] = flask.request.args.copy()
+    request_dict: dict[str, Any] = flask.request.args.to_dict()
     if same_text := request_dict.get("same_text"):
-        request_dict['same_text'] = same_text.lower() in {"true", "t"}
-    if show_relations := request_dict.get('show_relations'):
-        request_dict['show_relations'] = show_relations.lower() in {"true", "t"}
+        request_dict["same_text"] = same_text.lower() in {"true", "t"}
+    if show_relations := request_dict.get("show_relations"):
+        request_dict["show_relations"] = show_relations.lower() in {"true", "t"}
     else:
-        request_dict['show_relations'] = current_app.config["SHOW_RELATIONS"]
+        request_dict["show_relations"] = current_app.config["SHOW_RELATIONS"]
     return State.model_validate(request_dict)
 
 
