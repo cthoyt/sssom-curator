@@ -108,7 +108,6 @@ class Controller:
     converter: curies.Converter
     repository: Repository
     target_references: set[Reference] | None
-    _predictions: dict[Reference, SemanticMapping]
 
     def __init__(
         self,
