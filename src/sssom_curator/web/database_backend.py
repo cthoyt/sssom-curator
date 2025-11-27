@@ -18,8 +18,7 @@ from sssom_pydantic.database import SemanticMappingModel
 from tqdm import tqdm
 
 from sssom_curator import Repository
-from sssom_curator.constants import default_hash
-from sssom_curator.web.components import Controller, State, _curate_mapping
+from sssom_curator.web.components import Controller, State
 from sssom_curator.web.utils import Mark
 
 __all__ = [
@@ -49,7 +48,7 @@ class DatabaseController(Controller):
         user: Reference,
         converter: curies.Converter,
         target_references: Iterable[Reference] | None = None,
-        load: bool = False,
+        load: bool = True,
     ) -> Self:
         """Create an in-memory database."""
         if target_references is not None:
@@ -61,19 +60,17 @@ class DatabaseController(Controller):
             # sqlite:///:memory:
             connection_uri = f"sqlite:///{path}"
         rv = cls(connection_uri, user=user)
-        if load or True:
+        if load:
             SQLModel.metadata.create_all(rv.engine)
-            with rv.get_session() as s:
-                s.add_all(
-                    SemanticMappingModel.from_semantic_mapping(
-                        mapping.model_copy(update={"record": default_hash(mapping)})
-                    )
+            with rv.get_session() as session:
+                session.add_all(
+                    SemanticMappingModel.from_semantic_mapping(mapping)
                     for path in tqdm(repository.paths, desc="loading database")
                     for mapping in tqdm(
                         sssom_pydantic.read(path)[0], leave=False, desc=path.name, unit_scale=True
                     )
                 )
-                s.commit()
+                session.commit()
         return rv
 
     @contextlib.contextmanager

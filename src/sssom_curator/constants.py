@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Collection, Iterable
 from functools import lru_cache
 from pathlib import Path
@@ -24,7 +25,6 @@ __all__ = [
     "ensure_converter",
     "insert",
 ]
-
 
 RecognitionMethod: TypeAlias = Literal["ner", "grounding"]
 PredictionMethod: TypeAlias = Literal["ner", "grounding", "embedding"]
@@ -81,13 +81,15 @@ STUB_SSSOM_COLUMNS = [
     "predicate_modifier",
 ]
 
-DEFAULT_HASH_PREFIX = "sssom-curator-hash-v1"
+DEFAULT_HASH_PREFIX = "sssom-curator-hash-v2"
+DEFAULT_HASH_EXCLUDE: set[str] = {"record", "cardinality", "cardinality_scope"}
 
 
 def default_hash(m: SemanticMapping) -> Reference:
     """Hash a mapping into a reference."""
-    v = hash(m) & ((1 << 64) - 1)
-    return Reference(prefix=DEFAULT_HASH_PREFIX, identifier=str(v))
+    h = hashlib.md5()
+    h.update(m.model_dump_json(exclude=DEFAULT_HASH_EXCLUDE).encode("utf8"))
+    return Reference(prefix=DEFAULT_HASH_PREFIX, identifier=h.hexdigest())
 
 
 def insert(
