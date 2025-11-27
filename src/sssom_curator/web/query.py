@@ -14,7 +14,7 @@ __all__ = [
 
 
 class Query(BaseModel):
-    """A query over SSSOM."""
+    """A query over semantic mappings."""
 
     query: str | None = Field(
         None,
