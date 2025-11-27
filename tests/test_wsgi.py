@@ -101,7 +101,9 @@ class TestFull(cases.RepositoryTestCase):
         self.assert_file_mapping_count(self.repository.negatives_path, 0)
         self.assert_file_mapping_count(self.repository.unsure_path, 0)
 
-        self.test_prediction_hash = self.controller.mapping_hash(TEST_PREDICTED_MAPPING)
+        self.test_prediction_record_curie = self.controller.mapping_hash(
+            TEST_PREDICTED_MAPPING
+        ).curie
 
     def assert_file_mapping_count(self, path: Path, n: int) -> None:
         """Check that a SSSOM file has the right number of mappings."""
@@ -139,7 +141,7 @@ class TestFull(cases.RepositoryTestCase):
 
         # can't pop a number too big!
         with self.app.test_client() as client, self.assertRaises(KeyError):
-            client.get("/mark/10000/yup")
+            client.get("/mark/nope:nope/yup")
 
         self.assertEqual(1, len(self.controller._predictions))
 
@@ -148,7 +150,9 @@ class TestFull(cases.RepositoryTestCase):
         self.assertEqual(1, len(self.controller._predictions))
 
         with self.app.test_client() as client:
-            res = client.get(f"/mark/{self.test_prediction_hash}/yup", follow_redirects=True)
+            res = client.get(
+                f"/mark/{self.test_prediction_record_curie}/yup", follow_redirects=True
+            )
             self.assertEqual(200, res.status_code, msg=res.text)
 
         # now, we have one less than before~
@@ -170,7 +174,9 @@ class TestFull(cases.RepositoryTestCase):
         self.assertEqual(1, len(self.controller._predictions))
 
         with self.app.test_client() as client:
-            res = client.get(f"/mark/{self.test_prediction_hash}/nope", follow_redirects=True)
+            res = client.get(
+                f"/mark/{self.test_prediction_record_curie}/nope", follow_redirects=True
+            )
             self.assertEqual(200, res.status_code, msg=res.text)
 
         # now, we have one less than before~
@@ -192,7 +198,9 @@ class TestFull(cases.RepositoryTestCase):
         self.assertEqual(1, len(self.controller._predictions))
 
         with self.app.test_client() as client:
-            res = client.get(f"/mark/{self.test_prediction_hash}/maybe", follow_redirects=True)
+            res = client.get(
+                f"/mark/{self.test_prediction_record_curie}/maybe", follow_redirects=True
+            )
             self.assertEqual(200, res.status_code, msg=res.text)
 
         # now, we have one less than before~
@@ -214,7 +222,9 @@ class TestFull(cases.RepositoryTestCase):
         self.assertEqual(1, len(self.controller._predictions))
 
         with self.app.test_client() as client:
-            res = client.get(f"/mark/{self.test_prediction_hash}/broad", follow_redirects=True)
+            res = client.get(
+                f"/mark/{self.test_prediction_record_curie}/broad", follow_redirects=True
+            )
             self.assertEqual(200, res.status_code, msg=res.text)
 
         # now, we have one less than before~
@@ -236,7 +246,9 @@ class TestFull(cases.RepositoryTestCase):
         self.assertEqual(1, len(self.controller._predictions))
 
         with self.app.test_client() as client:
-            res = client.get(f"/mark/{self.test_prediction_hash}/narrow", follow_redirects=True)
+            res = client.get(
+                f"/mark/{self.test_prediction_record_curie}/narrow", follow_redirects=True
+            )
             self.assertEqual(200, res.status_code, msg=res.text)
 
         # now, we have one less than before~
