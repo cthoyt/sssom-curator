@@ -208,8 +208,8 @@ def _graph_from_mappings(
             mapping.subject,
             mapping.object,
             relation=mapping.predicate.curie,
-            provenance=mapping.author.curie if mapping.author else None,
-            type=mapping.justification.curie,
+            author=mapping.author.curie if mapping.author else None,
+            justification=mapping.justification.curie,
             strata=strata,
         )
     return graph

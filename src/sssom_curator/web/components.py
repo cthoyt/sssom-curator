@@ -40,29 +40,28 @@ class Query(BaseModel):
         description="If given, show only mappings that have it appearing as a substring "
         "in one of the source or target fields.",
     )
-    source_query: str | None = Field(
+    subject_query: str | None = Field(
         None,
         description="If given, show only mappings that have it appearing as a substring "
         "in one of the source fields.",
     )
-    source_prefix: str | None = Field(
+    subject_prefix: str | None = Field(
         None,
         description="If given, show only mappings that have it appearing in the "
         "source prefix field",
     )
-    target_query: str | None = Field(
+    object_query: str | None = Field(
         None,
         description="If given, show only mappings that have it appearing as a substring "
         "in one of the target fields.",
     )
-    target_prefix: str | None = Field(
+    object_prefix: str | None = Field(
         None,
         description="If given, show only mappings that have it appearing in the "
         "target prefix field",
     )
-    # TODO rename, since this is about mapping tool
-    provenance: str | None = Field(
-        None, description="If given, filters to provenance values matching this"
+    mapping_tool: str | None = Field(
+        None, description="If given, filters to mapping tool names matching this"
     )
     prefix: str | None = Field(
         None,
@@ -218,25 +217,25 @@ class Controller:
                     mapping.mapping_tool_name,
                 ],
             )
-        if state.source_prefix is not None:
+        if state.subject_prefix is not None:
             mappings = self._help_filter(
-                state.source_prefix, mappings, lambda mapping: [mapping.subject.curie]
+                state.subject_prefix, mappings, lambda mapping: [mapping.subject.curie]
             )
-        if state.source_query is not None:
+        if state.subject_query is not None:
             mappings = self._help_filter(
-                state.source_query,
+                state.subject_query,
                 mappings,
                 lambda mapping: [mapping.subject.curie, mapping.subject_name],
             )
-        if state.target_query is not None:
+        if state.object_query is not None:
             mappings = self._help_filter(
-                state.target_query,
+                state.object_query,
                 mappings,
                 lambda mapping: [mapping.object.curie, mapping.object_name],
             )
-        if state.target_prefix is not None:
+        if state.object_prefix is not None:
             mappings = self._help_filter(
-                state.target_prefix, mappings, lambda mapping: [mapping.object.curie]
+                state.object_prefix, mappings, lambda mapping: [mapping.object.curie]
             )
         if state.prefix is not None:
             mappings = self._help_filter(
@@ -244,9 +243,9 @@ class Controller:
                 mappings,
                 lambda mapping: [mapping.subject.curie, mapping.object.curie],
             )
-        if state.provenance is not None:
+        if state.mapping_tool is not None:
             mappings = self._help_filter(
-                state.provenance,
+                state.mapping_tool,
                 mappings,
                 lambda mapping: [mapping.mapping_tool_name],
             )
