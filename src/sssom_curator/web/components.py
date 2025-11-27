@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from sssom_pydantic import SemanticMapping
 
 from .utils import Mark
-from ..constants import insert
+from ..constants import default_hash, insert
 from ..repository import Repository
 
 __all__ = [
@@ -72,7 +72,7 @@ class Query(BaseModel):
 
 
 Sort: TypeAlias = Literal["asc", "desc", "subject", "object"]
-MappingIter: TypeAlias = Iterator[tuple[int, SemanticMapping]]
+MappingIter: TypeAlias = Iterator[SemanticMapping]
 
 
 class Config(BaseModel):
@@ -88,7 +88,6 @@ class Config(BaseModel):
         "increasing confidence order. Otherwise, do not sort.",
     )
     show_relations: bool = True
-    show_lines: bool = False
 
 
 class State(Query, Config):
@@ -109,6 +108,7 @@ class Controller:
         repository: Repository,
         user: Reference,
         converter: curies.Converter,
+        mapping_hash: Callable[[SemanticMapping], Reference] = default_hash,
     ) -> None:
         """Instantiate the web controller.
 
@@ -118,9 +118,16 @@ class Controller:
             this set
         """
         self.repository = repository
-        self._predictions, _, self._predictions_metadata = sssom_pydantic.read(
+        self.mapping_hash = mapping_hash
+        predicted_mappings, _, self._predictions_metadata = sssom_pydantic.read(
             self.repository.predictions_path
         )
+        self._predictions = {}
+        for mapping in predicted_mappings:  # this is fast
+            if mapping.record:
+                raise ValueError("SSSOM Curator doesn't yet support custom record_ids")
+            reference = self.mapping_hash(mapping)
+            self._predictions[reference] = mapping.model_copy(update={"record": reference})
 
         self.total_curated = 0
         self.target_references = set(target_references) if target_references is not None else None
@@ -142,7 +149,7 @@ class Controller:
         """Get a subject/object prefix counter."""
         return Counter(
             (mapping.subject.prefix, mapping.object.prefix)
-            for _, mapping in self.iterate_predictions(state)
+            for mapping in self.iterate_predictions(state)
         )
 
     def iterate_predictions(self, state: State) -> MappingIter:
@@ -171,9 +178,9 @@ class Controller:
         elif sort == "asc":
             mappings = iter(sorted(mappings, key=_get_confidence, reverse=False))
         elif sort == "subject":
-            mappings = iter(sorted(mappings, key=lambda l_p: l_p[1].subject.curie))
+            mappings = iter(sorted(mappings, key=lambda m: m.subject.curie))
         elif sort == "object":
-            mappings = iter(sorted(mappings, key=lambda l_p: l_p[1].object.curie))
+            mappings = iter(sorted(mappings, key=lambda m: m.object.curie))
         else:
             raise ValueError(f"unknown sort type: {sort}")
         return mappings
@@ -184,11 +191,11 @@ class Controller:
         return sum(1 for _ in it)
 
     def _help_it_predictions(self, state: State) -> MappingIter:
-        mappings: MappingIter = enumerate(self._predictions)
+        mappings = iter(self._predictions.values())
         if self.target_references is not None:
             mappings = (
-                (line, mapping)
-                for (line, mapping) in mappings
+                mapping
+                for mapping in mappings
                 if mapping.subject in self.target_references
                 or mapping.object in self.target_references
             )
@@ -242,8 +249,8 @@ class Controller:
             )
         if state.same_text:
             mappings = (
-                (line, mapping)
-                for line, mapping in mappings
+                mapping
+                for mapping in mappings
                 if mapping.subject_name
                 and mapping.object_name
                 and mapping.subject_name.casefold() == mapping.object_name.casefold()
@@ -258,26 +265,30 @@ class Controller:
         get_strings: Callable[[SemanticMapping], list[str | None]],
     ) -> MappingIter:
         query = query.casefold()
-        for line, mapping in mappings:
+        for mapping in mappings:
             if any(query in string.casefold() for string in get_strings(mapping) if string):
-                yield line, mapping
+                yield mapping
 
-    def mark(self, line: int, mark: Mark) -> None:
+    def mark(self, reference: Reference | SemanticMapping, mark: Mark) -> None:
         """Mark the given mapping as correct.
 
-        :param line: Position of the prediction
+        :param reference: The reference for the mapping, corresponding to the ``record`` field
         :param mark: Value to mark the prediction with
 
-        :raises ValueError: if an invalid value is used
+        :raises KeyError:
+            if there's no predicted mapping whose record corresponds to the given reference
         """
-        if line > len(self._predictions):
-            raise IndexError(
-                f"given line {line} is larger than the number of "
-                f"predictions {len(self._predictions):,}"
-            )
+        if isinstance(reference, SemanticMapping):
+            if not reference.record:
+                raise RuntimeError("all predicted mappings should have pre-calculated records")
+            reference = reference.record
+
+        if reference not in self._predictions:
+            raise KeyError(f"the mapping with hash {reference.curie} is not present")
+
         self.total_curated += 1
 
-        mapping = self._predictions.pop(line)
+        mapping = self._predictions.pop(reference)
 
         update: dict[str, Any] = {
             "authors": [self._get_current_author()],
@@ -300,21 +311,27 @@ class Controller:
         new_mapping = mapping.model_copy(update=update)
 
         insert(
-            path=self.mark_to_file[mark], converter=self.converter, include_mappings=[new_mapping]
+            path=self.mark_to_file[mark],
+            converter=self.converter,
+            include_mappings=[new_mapping],
+            exclude_columns=["record_id", "predicate_label"],
         )
 
         sssom_pydantic.write(
-            self._predictions,
+            self._predictions.values(),
             self.repository.predictions_path,
             metadata=self._predictions_metadata,
             converter=self.converter,
             drop_duplicates=True,
             sort=True,
+            exclude_columns=["record_id", "predicate_label"],
+            # TODO is there a way of pre-calculating some things to make this faster?
+            #  e.g., say "no condensation"
         )
 
 
-def _get_confidence(t: tuple[int, SemanticMapping]) -> float:
-    return t[1].confidence or 0.0
+def _get_confidence(t: SemanticMapping) -> float:
+    return t.confidence or 0.0
 
 
 class PaginationElement(NamedTuple):

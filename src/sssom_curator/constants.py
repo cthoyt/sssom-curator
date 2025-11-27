@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TypeAlias
+
+from curies import Reference
 
 if TYPE_CHECKING:
     import curies
@@ -79,12 +81,21 @@ STUB_SSSOM_COLUMNS = [
     "predicate_modifier",
 ]
 
+DEFAULT_HASH_PREFIX = "sssom-curator-hash-v1"
+
+
+def default_hash(m: SemanticMapping) -> Reference:
+    """Hash a mapping into a reference."""
+    v = hash(m) & ((1 << 64) - 1)
+    return Reference(prefix=DEFAULT_HASH_PREFIX, identifier=str(v))
+
 
 def insert(
     path: Path,
     *,
     converter: curies.Converter | None = None,
     include_mappings: Iterable[SemanticMapping] | None = None,
+    exclude_columns: Collection[str] | None = None,
 ) -> None:
     """Append eagerly with linting at the same time."""
     import sssom_pydantic
@@ -97,9 +108,11 @@ def insert(
             prefixes.update(mapping.get_prefixes())
             mappings.append(mapping)
 
+        if DEFAULT_HASH_PREFIX in prefixes:
+            prefixes.remove(DEFAULT_HASH_PREFIX)
         for prefix in prefixes:
             if not converter_processed.standardize_prefix(prefix):
-                raise NotImplementedError("amending prefixes not yet implemented")
+                raise NotImplementedError(f"amending prefixes not yet implemented: {prefix}")
 
     sssom_pydantic.write(
         mappings,
@@ -108,4 +121,5 @@ def insert(
         metadata=metadata,
         sort=True,
         drop_duplicates=True,
+        exclude_columns=exclude_columns,
     )
