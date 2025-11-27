@@ -28,7 +28,8 @@ __all__ = [
 #: The default limit
 DEFAULT_LIMIT: int = 10
 
-DEFAULT_OFFSET : int = 0
+#: The default offset
+DEFAULT_OFFSET: int = 0
 
 
 class Query(BaseModel):
