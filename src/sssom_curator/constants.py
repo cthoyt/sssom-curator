@@ -7,6 +7,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TypeAlias
 
+from curies import Reference
+
 if TYPE_CHECKING:
     import curies
     from sssom_pydantic import SemanticMapping
@@ -79,6 +81,14 @@ STUB_SSSOM_COLUMNS = [
     "predicate_modifier",
 ]
 
+DEFAULT_HASH_PREFIX = "sssom-curator-hash-v1"
+
+
+def default_hash(m: SemanticMapping) -> Reference:
+    """Hash a mapping into a reference."""
+    v = hash(m) & ((1 << 64) - 1)
+    return Reference(prefix=DEFAULT_HASH_PREFIX, identifier=str(v))
+
 
 def insert(
     path: Path,
@@ -98,9 +108,11 @@ def insert(
             prefixes.update(mapping.get_prefixes())
             mappings.append(mapping)
 
+        if DEFAULT_HASH_PREFIX in prefixes:
+            prefixes.remove(DEFAULT_HASH_PREFIX)
         for prefix in prefixes:
             if not converter_processed.standardize_prefix(prefix):
-                raise NotImplementedError("amending prefixes not yet implemented")
+                raise NotImplementedError(f"amending prefixes not yet implemented: {prefix}")
 
     sssom_pydantic.write(
         mappings,

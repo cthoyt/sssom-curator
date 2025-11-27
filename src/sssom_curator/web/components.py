@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from sssom_pydantic import SemanticMapping
 
 from .utils import Mark
-from ..constants import insert
+from ..constants import default_hash, insert
 from ..repository import Repository
 
 __all__ = [
@@ -94,14 +94,6 @@ class State(Query, Config):
     """Contains the state for queries to the curation app."""
 
 
-DEFAULT_HASH_PREFIX = curies.Prefix("ssssom.record.v1")
-
-
-def _default_hash(m: SemanticMapping) -> Reference:
-    v = hash(m) & ((1 << 64) - 1)
-    return Reference(prefix=DEFAULT_HASH_PREFIX, identifier=str(v))
-
-
 class Controller:
     """A module for interacting with the predictions and mappings."""
 
@@ -116,7 +108,7 @@ class Controller:
         repository: Repository,
         user: Reference,
         converter: curies.Converter,
-        mapping_hash: Callable[[SemanticMapping], Reference] = _default_hash,
+        mapping_hash: Callable[[SemanticMapping], Reference] = default_hash,
     ) -> None:
         """Instantiate the web controller.
 
