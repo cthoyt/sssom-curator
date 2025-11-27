@@ -91,7 +91,6 @@ typing = [
     "types-PyYAML",
     "types-tabulate",
     "types-flask",
-    "types-wtforms",
 ]
 docs-lint = [
     { include-group = "docs" },
@@ -128,7 +127,6 @@ release = [
 web = [
     "flask",
     "bootstrap-flask",
-    "flask-wtf",
 ]
 predict-lexical = [
     "pyobo[gilda-slim]>=0.12.11",
