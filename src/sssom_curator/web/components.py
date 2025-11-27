@@ -133,7 +133,7 @@ class Controller:
         self._predictions = {}
         for mapping in predicted_mappings:  # this is fast
             if mapping.record:
-                raise RuntimeError("SSSOM Curator doesn't yet support custom record_ids")
+                raise ValueError("SSSOM Curator doesn't yet support custom record_ids")
             reference = self.mapping_hash(mapping)
             self._predictions[reference] = mapping.model_copy(update={"record": reference})
 
