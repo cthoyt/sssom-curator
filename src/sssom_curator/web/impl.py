@@ -10,7 +10,8 @@ import flask
 import flask_bootstrap
 
 from .blueprint import blueprint, url_for_state
-from .components import Controller
+from .components import Controller, State
+from .database_backend import DatabaseController
 from ..constants import DEFAULT_RESOLVER_BASE, ensure_converter
 from ..repository import Repository
 
@@ -41,16 +42,15 @@ def get_app(
     if controller is None:
         if repository is None or user is None:
             raise ValueError
-        controller = Controller(
+        controller = DatabaseController.memory(
             target_references=target_references,
             repository=repository,
             user=user,
             converter=ensure_converter(converter),
         )
-    if not controller._predictions:
-        raise RuntimeError(
-            f"There are no predictions to curate in {controller.repository.predictions_path}"
-        )
+        if not controller.count_predictions(State()):
+            raise ValueError("There are no predictions to curate")
+
     app.config["controller"] = controller
     flask_bootstrap.Bootstrap5(app)
     app.register_blueprint(blueprint)

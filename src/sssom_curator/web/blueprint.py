@@ -11,7 +11,7 @@ from curies import Reference
 from flask import current_app
 from werkzeug.local import LocalProxy
 
-from .components import Controller, State, get_pagination_elements
+from .components import Controller, FileController, State, get_pagination_elements
 from .utils import commit, get_branch, normalize_mark, not_main, push
 
 __all__ = [
@@ -91,6 +91,9 @@ def summary() -> str:
 @blueprint.route("/commit")
 def run_commit() -> werkzeug.Response:
     """Make a commit then redirect to the home page."""
+    if not isinstance(controller, FileController):
+        raise flask.abort(404, "incorrect backend for making commits")
+
     label = "mappings" if controller.total_curated > 1 else "mapping"
     message = f"Curated {controller.total_curated} {label} ({getpass.getuser()})"
     commit_info = commit(message)

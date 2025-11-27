@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from collections import Counter
 from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
@@ -20,7 +21,7 @@ from ..constants import default_hash, insert
 from ..repository import Repository
 
 __all__ = [
-    "Controller",
+    "FileController",
     "PaginationElement",
     "State",
     "get_pagination_elements",
@@ -54,8 +55,28 @@ class State(Query, Config):
     """Contains the state for queries to the curation app."""
 
 
-class Controller:
-    """A module for interacting with the predictions and mappings."""
+class Controller(ABC):
+    """A module for interacting with mappings."""
+
+    @abstractmethod
+    def get_prefix_counter(self, state: State) -> Counter[tuple[str, str]]:
+        """Get a subject/object prefix counter."""
+
+    @abstractmethod
+    def iterate_predictions(self, state: State) -> Iterator[SemanticMapping]:
+        """Iterate over pairs of positions and predicted semantic mappings."""
+
+    @abstractmethod
+    def count_predictions(self, state: State) -> int:
+        """Count the number of predictions to check for the given filters."""
+
+    @abstractmethod
+    def mark(self, reference: Reference, mark: Mark) -> None:
+        """Mark the given mapping as correct."""
+
+
+class FileController(Controller):
+    """A controller that interacts with the file system."""
 
     converter: curies.Converter
     repository: Repository

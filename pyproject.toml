@@ -91,6 +91,7 @@ typing = [
     "types-PyYAML",
     "types-tabulate",
     "types-flask",
+    "sqlmodel",
 ]
 docs-lint = [
     { include-group = "docs" },
