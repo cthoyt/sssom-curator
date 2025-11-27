@@ -28,6 +28,9 @@ __all__ = [
 #: The default limit
 DEFAULT_LIMIT: int = 10
 
+#: The default offset
+DEFAULT_OFFSET: int = 0
+
 
 class Query(BaseModel):
     """A query over SSSOM."""
@@ -81,7 +84,7 @@ class Config(BaseModel):
     limit: int | None = Field(
         DEFAULT_LIMIT, description="If given, only iterate this number of predictions."
     )
-    offset: int | None = Field(None, description="If given, offset the iteration by this number")
+    offset: int = Field(DEFAULT_OFFSET, description="If given, offset the iteration by this number")
     sort: Sort | None = Field(
         None,
         description="If `desc`, sorts in descending confidence order. If `asc`, sorts in "
@@ -352,7 +355,7 @@ def get_pagination_elements(state: State, remaining_rows: int) -> list[Paginatio
     ) -> None:
         rv.append(PaginationElement(offset, icon, text, position))
 
-    offset = state.offset or 0
+    offset = state.offset or DEFAULT_OFFSET
     limit = state.limit or DEFAULT_LIMIT
     if 0 <= offset - limit:
         _append(None, "skip-start-circle", "First", "after")

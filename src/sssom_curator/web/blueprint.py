@@ -47,7 +47,7 @@ def _get_bool_arg(name: str) -> bool | None:
 
 def url_for_state(endpoint: str, state: State, **kwargs: Any) -> str:
     """Get the URL for an endpoint based on the state class."""
-    vv = state.model_dump(exclude_none=True, exclude_defaults=True)
+    vv = state.model_dump(exclude_none=True, exclude_defaults=True, exclude_unset=True)
     vv.update(kwargs)  # make sure stuff explicitly set overrides state
     return flask.url_for(endpoint, **vv)
 
