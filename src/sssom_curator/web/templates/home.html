@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% import "bootstrap4/utils.html" as util %}
+{% import "bootstrap5/utils.html" as util %}
 
 {% block title %}{{ title }} ({{ "{:,d}".format(n_predictions) }}){% endblock %}
 
@@ -15,19 +15,16 @@
 {%- endmacro %}
 
 {% macro render_pagination_element(state, b) %}
-<a href="{{ url_for_state('.home', state, offset=b.offset) }}">
-    {% if b.position == "before" %}
-    {{ b.text }} <i class="fas fa-{{ b.icon }}"></i>
-    {% else %}
-    <i class="fas fa-{{ b.icon }}"></i> {{ b.text }}
-    {% endif %}
+<a class="btn btn-sm btn-outline-dark" href="{{ url_for_state('.home', state, offset=b.offset) }}">
+    {% if b.position == "after" %}<i class="bi bi-{{ b.icon }}"></i>{% endif %}
+    {{ b.text }}
+    {% if b.position == "before" %}<i class="bi bi-{{ b.icon }}"></i>{% endif %}
 </a>
 {% endmacro %}
 
 {% block content %}
     <div class="container" style="margin-top: 50px; margin-bottom: 50px">
         {{ util.render_messages(dismissible=True, container=False) }}
-        <div class="row">
             <div class="card">
                 <h5 class="card-header text-center">
                     <a class="btn btn-primary btn-sm" style="float: right;"
@@ -111,37 +108,37 @@
                                 </div>
                             </td>
                             <td>
-                                <a data-toggle="tooltip" title="The {{ p.predicate.curie }} relationship is correct."
+                                <a data-bs-toggle="tooltip" title="The {{ p.predicate.curie }} relationship is correct."
                                    href="{{ url_for_state('.mark', state, curie=p.record.curie, value='yup') }}">
-                                    <i class="far fa-thumbs-up"></i>
+                                    <i class="bi bi-hand-thumbs-up"></i>
                                 </a>
                             </td>
                             <td class="text-nowrap">
-                                <a data-toggle="tooltip"
+                                <a data-bs-toggle="tooltip"
                                    title="{{ p.subject_name }} (source) is broader than {{ p.object_name }} (object)."
                                    href="{{ url_for_state('.mark', state, curie=p.record.curie, value='broad') }}">
-                                    <i class="fas fa-greater-than"></i>
+                                    <i class="bi bi-chevron-left"></i>
                                 </a>
                             </td>
                             <td class="text-nowrap">
-                                <a data-toggle="tooltip"
+                                <a data-bs-toggle="tooltip"
                                    title="{{ p.subject_name }} (source) is narrower than {{ p.object_name }} (object)."
                                    href="{{ url_for_state('.mark', state, curie=p.record.curie, value='narrow') }}">
-                                   <i class="fas fa-less-than"></i>
+                                   <i class="bi bi-chevron-right"></i>
                                 </a>
                             </td>
                             <td>
-                                <a data-toggle="tooltip"
+                                <a data-bs-toggle="tooltip"
                                    title="These two entities do not have the {{ p.predicate.curie }} relationship. You should still click this even if you think there could be a different relationship."
                                    href="{{ url_for_state('.mark', state, curie=p.record.curie, value='nope') }}">
-                                    <i class="far fa-thumbs-down"></i>
+                                    <i class="bi bi-hand-thumbs-down"></i>
                                 </a>
                             </td>
                             <td>
-                                <a style="color: darkgoldenrod;" data-toggle="tooltip"
+                                <a style="color: darkgoldenrod;" data-bs-toggle="tooltip"
                                    title="I'm not sure if this is correct or not"
                                    href="{{ url_for_state('.mark', state, curie=p.record.curie, value='idk') }}">
-                                    <i class="far fa-question-circle"></i>
+                                    <i class="bi bi-question-circle"></i>
                                 </a>
                             </td>
                         </tr>
@@ -156,6 +153,5 @@
                     {% endfor %}
                 </div>
             </div>
-        </div>
     </div>
 {% endblock %}

@@ -355,13 +355,13 @@ def get_pagination_elements(state: State, remaining_rows: int) -> list[Paginatio
     offset = state.offset or 0
     limit = state.limit or DEFAULT_LIMIT
     if 0 <= offset - limit:
-        _append(None, "angle-double-left", "First", "after")
-        _append(offset - limit, "angle-left", f"Previous {limit:,}", "after")
+        _append(None, "skip-start-circle", "First", "after")
+        _append(offset - limit, "skip-backward-circle", f"Previous {limit:,}", "after")
     if offset < remaining_rows - limit:
-        _append(offset + limit, "angle-right", f"Next {limit:,}", "before")
+        _append(offset + limit, "skip-forward-circle", f"Next {limit:,}", "before")
         _append(
             remaining_rows - limit,
-            "angle-double-right",
+            "skip-end-circle",
             f"Last ({remaining_rows:,})",
             "before",
         )

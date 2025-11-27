@@ -29,7 +29,7 @@
             </style>
         {% endblock %}
 
-        <script src="https://kit.fontawesome.com/4c86883252.js" crossorigin="anonymous"></script>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
 
         <title>{% block title %}{% endblock %}</title>
     {% endblock %}
@@ -45,7 +45,7 @@
         Based on <a href="https://github.com/cthoyt/sssom-curator">SSSOM-Curator</a>, developed with ❤️ by <a href="https://github.com/cthoyt">@cthoyt</a>
         {% else %}
         SSSOM-Curator is developed with ❤️ by <a href="https://github.com/cthoyt">@cthoyt</a>
-        (<a href="https://github.com/cthoyt/sssom-curator">Source code</a>)
+        (<a href="https://github.com/cthoyt/sssom-curator"><i class="bi bi-github"></i> Source code</a>).
         {% endif %}
     </p>
 </footer>
@@ -55,8 +55,10 @@
     {{ bootstrap.load_js() }}
 
     <script>
-        $(function () {
-            $('[data-toggle="tooltip"]').tooltip()
+        // see https://getbootstrap.com/docs/5.0/components/tooltips/#example-enable-tooltips-everywhere
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+          return new bootstrap.Tooltip(tooltipTriggerEl)
         })
     </script>
 {% endblock %}
