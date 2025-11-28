@@ -6,7 +6,6 @@ import contextlib
 from collections import Counter
 from collections.abc import Generator, Iterable, Iterator
 from pathlib import Path
-from typing import Self
 
 import curies
 import sqlmodel
@@ -16,6 +15,7 @@ from curies.vocabulary import manual_mapping_curation
 from sssom_pydantic import SemanticMapping
 from sssom_pydantic.database import SemanticMappingModel
 from tqdm import tqdm
+from typing_extensions import Self
 
 from sssom_curator import Repository
 from sssom_curator.constants import default_hash
