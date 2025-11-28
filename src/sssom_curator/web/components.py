@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from collections import Counter
 from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
-from typing import Any, Literal, NamedTuple, TypeAlias
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypeAlias, TypeVar
 
 import curies
 import sssom_pydantic
@@ -20,12 +20,15 @@ from .utils import Mark
 from ..constants import default_hash, insert
 from ..repository import Repository
 
+if TYPE_CHECKING:
+    from sssom_pydantic.database import SemanticMappingModel
+
 __all__ = [
     "FileController",
     "PaginationElement",
     "State",
-    "get_pagination_elements",
     "curate_mapping",
+    "get_pagination_elements",
 ]
 
 #: The default limit
@@ -227,9 +230,10 @@ class FileController(Controller):
         )
 
 
-def curate_mapping(
-    mapping: SemanticMapping, authors: list[Reference], mark: Mark
-) -> SemanticMapping:
+M = TypeVar("M", SemanticMapping, "SemanticMappingModel")
+
+
+def curate_mapping(mapping: M, authors: list[Reference], mark: Mark) -> M:
     """Curate the mapping."""
     update: dict[str, Any] = {
         "authors": authors,

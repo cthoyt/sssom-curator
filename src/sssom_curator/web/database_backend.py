@@ -18,7 +18,7 @@ from sssom_pydantic.database import SemanticMappingModel
 from tqdm import tqdm
 
 from sssom_curator import Repository
-from sssom_curator.web.components import Controller, State
+from sssom_curator.web.components import Controller, State, curate_mapping
 from sssom_curator.web.utils import Mark
 
 __all__ = [
@@ -131,7 +131,7 @@ class DatabaseController(Controller):
             mapping = session.exec(statement).one()
 
             # replace some values using model_copy since the model is frozen
-            new_mapping = _curate_mapping(mapping, self.current_author, mark)
+            new_mapping = curate_mapping(mapping, [self.current_author], mark)
 
             session.add(new_mapping)
             session.delete(mapping)

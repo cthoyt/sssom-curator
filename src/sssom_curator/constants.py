@@ -87,7 +87,7 @@ DEFAULT_HASH_EXCLUDE: set[str] = {"record", "cardinality", "cardinality_scope"}
 
 def default_hash(m: SemanticMapping) -> Reference:
     """Hash a mapping into a reference."""
-    h = hashlib.md5()
+    h = hashlib.md5(usedforsecurity=False)
     h.update(m.model_dump_json(exclude=DEFAULT_HASH_EXCLUDE).encode("utf8"))
     return Reference(prefix=DEFAULT_HASH_PREFIX, identifier=h.hexdigest())
 
