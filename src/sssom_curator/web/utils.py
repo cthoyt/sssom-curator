@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Literal, TypeAlias, TypeVar, get_args
+from typing import TypeVar, get_args
+
+from curies.vocabulary import semantic_mapping_scopes
+from sssom_pydantic.process import Mark
 
 __all__ = [
     "Mark",
@@ -61,7 +64,6 @@ def _git(*args: str) -> str | None:
             return ret.strip().decode("utf-8")
 
 
-Mark: TypeAlias = Literal["correct", "incorrect", "unsure", "broad", "narrow"]
 MARKS: set[Mark] = set(get_args(Mark))
 CORRECT = {"yup", "true", "t", "correct", "right", "close enough", "disco"}
 INCORRECT = {"no", "nope", "false", "f", "nada", "nein", "incorrect", "negative", "negatory"}
@@ -77,9 +79,9 @@ def normalize_mark(value: str) -> Mark:
         return "incorrect"
     elif value in UNSURE:
         return "unsure"
-    elif value in {"broader", "broad"}:
-        return "broad"
-    elif value in {"narrow", "narrower"}:
-        return "narrow"
+    elif value in semantic_mapping_scopes:
+        return value
+    elif value.upper() in semantic_mapping_scopes:
+        return value
     else:
         raise ValueError
