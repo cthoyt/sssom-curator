@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING
 import flask
 import flask_bootstrap
 
+from .backend.base import Controller, State
 from .blueprint import blueprint, url_for_state
-from .components import Controller, State
 from .database_backend import DatabaseController
 from ..constants import DEFAULT_RESOLVER_BASE, ensure_converter
 from ..repository import Repository

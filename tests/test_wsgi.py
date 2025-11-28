@@ -16,7 +16,8 @@ from curies.vocabulary import (
 from sssom_pydantic import MappingTool, SemanticMapping
 
 from sssom_curator.constants import NEGATIVES_NAME, POSITIVES_NAME, UNSURE_NAME
-from sssom_curator.web.components import FileController, State
+from sssom_curator.web.backend.base import State
+from sssom_curator.web.backend.filesystem import FileSystemController
 from sssom_curator.web.impl import get_app
 from tests import cases
 
@@ -88,7 +89,7 @@ class TestFull(cases.RepositoryTestCase):
     def setUp(self) -> None:
         """Set up the test case."""
         super().setUp()
-        self.controller = FileController(
+        self.controller = FileSystemController(
             repository=self.repository,
             user=TEST_USER,
             converter=TEST_CONVERTER,

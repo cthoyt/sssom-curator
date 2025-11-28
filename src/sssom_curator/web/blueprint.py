@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import getpass
-from typing import Any, cast
+from typing import Any, Literal, NamedTuple, cast
 
 import flask
 import werkzeug
@@ -11,7 +11,8 @@ from curies import Reference
 from flask import current_app
 from werkzeug.local import LocalProxy
 
-from .components import Controller, FileController, State, get_pagination_elements
+from .backend.base import DEFAULT_LIMIT, DEFAULT_OFFSET, Controller, State
+from .backend.filesystem import FileSystemController
 from .utils import commit, get_branch, normalize_mark, not_main, push
 
 __all__ = [
@@ -54,7 +55,7 @@ blueprint = flask.Blueprint("ui", __name__)
 def home() -> str:
     """Serve the home page."""
     state = get_state_from_flask()
-    predictions = controller.iterate_predictions(state)
+    predictions = controller.get_predictions(state)
     n_predictions = controller.count_predictions(state)
     return flask.render_template(
         "home.html",
@@ -91,7 +92,7 @@ def summary() -> str:
 @blueprint.route("/commit")
 def run_commit() -> werkzeug.Response:
     """Make a commit then redirect to the home page."""
-    if not isinstance(controller, FileController):
+    if not isinstance(controller, FileSystemController):
         raise flask.abort(404, "incorrect backend for making commits")
 
     label = "mappings" if controller.total_curated > 1 else "mapping"
@@ -120,3 +121,37 @@ def mark(curie: str, value: str) -> werkzeug.Response:
 def _go_home() -> werkzeug.Response:
     state = get_state_from_flask()
     return flask.redirect(url_for_state(".home", state))
+
+
+class PaginationElement(NamedTuple):
+    """Represents pagination element."""
+
+    offset: int | None
+    icon: str
+    text: str
+    position: Literal["before", "after"]
+
+
+def get_pagination_elements(state: State, remaining_rows: int) -> list[PaginationElement]:
+    """Get pagination elements."""
+    rv = []
+
+    def _append(
+        offset: int | None, icon: str, text: str, position: Literal["before", "after"]
+    ) -> None:
+        rv.append(PaginationElement(offset, icon, text, position))
+
+    offset = state.offset or DEFAULT_OFFSET
+    limit = state.limit or DEFAULT_LIMIT
+    if 0 <= offset - limit:
+        _append(None, "skip-start-circle", "First", "after")
+        _append(offset - limit, "skip-backward-circle", f"Previous {limit:,}", "after")
+    if offset < remaining_rows - limit:
+        _append(offset + limit, "skip-forward-circle", f"Next {limit:,}", "before")
+        _append(
+            remaining_rows - limit,
+            "skip-end-circle",
+            f"Last ({remaining_rows:,})",
+            "before",
+        )
+    return rv
