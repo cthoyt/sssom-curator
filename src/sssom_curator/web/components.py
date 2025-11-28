@@ -71,7 +71,7 @@ class Controller(ABC):
         """Iterate over pairs of positions and predicted semantic mappings."""
 
     @abstractmethod
-    def count_predictions(self, state: State) -> int:
+    def count_predictions(self, state: Query) -> int:
         """Count the number of predictions to check for the given filters."""
 
     @abstractmethod
@@ -170,12 +170,12 @@ class FileController(Controller):
             raise ValueError(f"unknown sort type: {sort}")
         return mappings
 
-    def count_predictions(self, state: State) -> int:
+    def count_predictions(self, state: Query) -> int:
         """Count the number of predictions to check for the given filters."""
         it = self._help_it_predictions(state)
         return sum(1 for _ in it)
 
-    def _help_it_predictions(self, state: State) -> Iterator[SemanticMapping]:
+    def _help_it_predictions(self, state: Query) -> Iterator[SemanticMapping]:
         mappings = iter(self._predictions.values())
         if self.target_references is not None:
             mappings = (

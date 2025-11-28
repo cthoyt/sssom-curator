@@ -18,7 +18,9 @@ from sssom_pydantic.database import SemanticMappingModel
 from tqdm import tqdm
 
 from sssom_curator import Repository
+from sssom_curator.constants import default_hash
 from sssom_curator.web.components import Controller, State, curate_mapping
+from sssom_curator.web.query import Query
 from sssom_curator.web.utils import Mark
 
 __all__ = [
@@ -48,7 +50,7 @@ class DatabaseController(Controller):
         user: Reference,
         converter: curies.Converter,
         target_references: Iterable[Reference] | None = None,
-        load: bool = True,
+        load: bool = False,
     ) -> Self:
         """Create an in-memory database."""
         if target_references is not None:
@@ -62,9 +64,12 @@ class DatabaseController(Controller):
         rv = cls(connection_uri, user=user)
         if load:
             SQLModel.metadata.create_all(rv.engine)
+
             with rv.get_session() as session:
                 session.add_all(
-                    SemanticMappingModel.from_semantic_mapping(mapping)
+                    SemanticMappingModel.from_semantic_mapping(
+                        mapping.model_copy(update={"record": default_hash(mapping)})
+                    )
                     for path in tqdm(repository.paths, desc="loading database")
                     for mapping in tqdm(
                         sssom_pydantic.read(path)[0], leave=False, desc=path.name, unit_scale=True
@@ -79,21 +84,15 @@ class DatabaseController(Controller):
         with self.session_cls(self.engine) as s:
             yield s
 
-    def count_predictions(self, state: State) -> int:
+    def count_predictions(self, state: Query) -> int:
         """Count predictions (i.e., anything that's not manually curated)."""
         from sqlalchemy import func
         from sqlmodel import select
 
         with self.get_session() as session:
-            statement = select(func.count()).where(self._predicted_clause)
-            if state.limit is not None:
-                statement = statement.limit(state.limit)
-            if state.offset is not None:
-                statement = statement.offset(state.offset)
+            statement = select(func.count(SemanticMappingModel.id))
+            statement = statement.where(self._predicted_clause)
             count = session.exec(statement).one()
-
-        if not isinstance(count, int):
-            raise TypeError
 
         return count
 
