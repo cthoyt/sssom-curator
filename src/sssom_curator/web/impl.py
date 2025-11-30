@@ -11,7 +11,7 @@ import flask_bootstrap
 
 from .backend.base import Controller, State
 from .blueprint import blueprint, url_for_state
-from .database_backend import DatabaseController
+from .backend.database import DatabaseController
 from ..constants import DEFAULT_RESOLVER_BASE, ensure_converter
 from ..repository import Repository
 
