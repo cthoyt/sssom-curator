@@ -87,9 +87,9 @@ class FileSystemController(Controller):
         """Get predicted semantic mappings."""
         return list(self.iterate_predictions(state))
 
-    def iterate_predictions(self, state: State) -> Iterator[SemanticMapping]:
+    def iterate_predictions(self, state: State) -> Iterable[SemanticMapping]:
         """Iterate over pairs of positions and predicted semantic mappings."""
-        mappings = self._help_it_predictions(state)
+        mappings = iter(self._help_it_predictions(state))
         if state.sort is not None:
             mappings = self._sort(mappings, state.sort)
         if state.offset is not None:
@@ -125,7 +125,7 @@ class FileSystemController(Controller):
         it = self._help_it_predictions(state)
         return sum(1 for _ in it)
 
-    def _help_it_predictions(self, state: Query) -> Iterator[SemanticMapping]:
+    def _help_it_predictions(self, state: Query) -> Iterable[SemanticMapping]:
         mappings = iter(self._predictions.values())
         if self.target_references is not None:
             mappings = (
@@ -134,8 +134,7 @@ class FileSystemController(Controller):
                 if mapping.subject in self.target_references
                 or mapping.object in self.target_references
             )
-        mappings = filter_mappings(mappings, state)
-        return mappings
+        yield from filter_mappings(mappings, state)
 
     def mark(self, reference: Reference | SemanticMapping, mark: Mark) -> None:
         """Mark the given mapping as correct.

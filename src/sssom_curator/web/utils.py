@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TypeVar, get_args
+from typing import TypeVar, cast, get_args
 
-from curies.vocabulary import semantic_mapping_scopes
+from curies.vocabulary import SemanticMappingScope, semantic_mapping_scopes
 from sssom_pydantic.process import Mark
 
 __all__ = [
@@ -80,8 +80,8 @@ def normalize_mark(value: str) -> Mark:
     elif value in UNSURE:
         return "unsure"
     elif value in semantic_mapping_scopes:
-        return value
+        return cast(SemanticMappingScope, value)
     elif value.upper() in semantic_mapping_scopes:
-        return value
+        return cast(SemanticMappingScope, value.upper())
     else:
         raise ValueError

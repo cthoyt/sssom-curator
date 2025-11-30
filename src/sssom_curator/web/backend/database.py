@@ -61,15 +61,13 @@ class DatabaseController(Controller):
             ]
             _write_stub(mappings, path)
 
-        unsure, predicted = [], []
-        for mapping in self.db.get_mappings(UNCURATED_CLAUSE):
-            if (
-                mapping.curation_rule_text
-                and self.db.get_mapping(UNCURATED_CLAUSE) in mapping.curation_rule_text
-            ):
-                unsure.append(mapping)
+        unsure: list[SemanticMapping] = []
+        predicted: list[SemanticMapping] = []
+        for mapping in self.db.get_mappings([UNCURATED_CLAUSE]):
+            if mapping.curation_rule_text and UNSURE in mapping.curation_rule_text:
+                unsure.append(mapping.to_semantic_mapping())
             else:
-                predicted.append(mapping)
+                predicted.append(mapping.to_semantic_mapping())
 
         _write_stub(unsure, repository.unsure_path)
         _write_stub(predicted, repository.predictions_path)
