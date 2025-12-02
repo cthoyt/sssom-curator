@@ -1,10 +1,10 @@
 """Test the web app."""
 
+import datetime
+from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar
 
-from pydantic import BaseModel
-import datetime
 import curies
 import sssom_pydantic
 from curies import NamedReference, Reference
@@ -15,13 +15,14 @@ from curies.vocabulary import (
     manual_mapping_curation,
     narrow_match,
 )
+from pydantic import BaseModel
 from sssom_pydantic import MappingTool, SemanticMapping
+from sssom_pydantic.process import UNSURE
 
 from sssom_curator.constants import NEGATIVES_NAME, POSITIVES_NAME, UNSURE_NAME
 from sssom_curator.web.backend.base import State
 from sssom_curator.web.backend.filesystem import FileSystemController
 from sssom_curator.web.impl import get_app
-from sssom_pydantic.process import UNSURE
 from tests import cases
 
 today = datetime.date.today()
@@ -130,8 +131,10 @@ class TestFull(cases.RepositoryTestCase):
         mappings, _, _ = sssom_pydantic.read(path)
         self.assertEqual(n, len(mappings), msg=f"{path.name} had the wrong number of mappings")
 
-    def assert_models_equal(self, expected: list[BaseModel], actual: list[BaseModel]) -> None:
-        """Assert that a list of models are equal"""
+    def assert_models_equal(
+        self, expected: Sequence[BaseModel], actual: Sequence[BaseModel]
+    ) -> None:
+        """Assert that a list of models are equal."""
         self.assertEqual(
             [m.model_dump(exclude_none=True, exclude_unset=True) for m in expected],
             [m.model_dump(exclude_none=True, exclude_unset=True) for m in actual],
@@ -189,7 +192,9 @@ class TestFull(cases.RepositoryTestCase):
         )
         self.assertIsNone(mapping_set.title)
         self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", mapping_set.id)
-        self.assert_models_equal([TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_TRUE], mappings)
+        self.assert_models_equal(
+            [TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_TRUE], mappings
+        )
 
         self.assert_file_mapping_count(self.controller.repository.negatives_path, 0)
         self.assert_file_mapping_count(self.controller.repository.predictions_path, 0)
@@ -261,7 +266,9 @@ class TestFull(cases.RepositoryTestCase):
         )
         self.assertIsNone(mapping_set.title)
         self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", mapping_set.id)
-        self.assert_models_equal([TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_BROAD], mappings)
+        self.assert_models_equal(
+            [TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_BROAD], mappings
+        )
 
         self.assert_file_mapping_count(self.controller.repository.negatives_path, 0)
         self.assert_file_mapping_count(self.controller.repository.predictions_path, 0)
@@ -285,7 +292,9 @@ class TestFull(cases.RepositoryTestCase):
         )
         self.assertIsNone(mapping_set.title)
         self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", mapping_set.id)
-        self.assert_models_equal([TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_NARROW], mappings)
+        self.assert_models_equal(
+            [TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_NARROW], mappings
+        )
 
         self.assert_file_mapping_count(self.controller.repository.negatives_path, 0)
         self.assert_file_mapping_count(self.controller.repository.predictions_path, 0)
