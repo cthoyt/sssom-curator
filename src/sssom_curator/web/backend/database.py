@@ -34,43 +34,18 @@ __all__ = [
 class DatabaseController(Controller):
     """A controller that interacts with a database."""
 
-    def __init__(self, connection: str, user: Reference) -> None:
+    def __init__(self, *, repository: Repository, connection: str, user: Reference) -> None:
         """Initialize the database controller."""
         self.db = SemanticMappingDatabase.from_connection(
             connection=connection, semantic_mapping_hash=default_hash
         )
         self.current_author = user
         self.total_curated = 0
+        self.repository = repository
 
-    def save(self, repository: Repository) -> None:
+    def save(self) -> None:
         """Save mappings to disk."""
-        converter = repository.get_converter()
-
-        def _write_stub(m: list[SemanticMapping], p: Path) -> None:
-            if repository.purl_base is None:
-                raise NotImplementedError
-            mapping_set = MappingSet(id=repository.purl_base + p.name)
-            sssom_pydantic.write(m, p, converter=converter, metadata=mapping_set)
-
-        for clause, path in [
-            (POSITIVE_MAPPING_CLAUSE, repository.positives_path),
-            (NEGATIVE_MAPPING_CLAUSE, repository.negatives_path),
-        ]:
-            mappings = [
-                m.to_semantic_mapping() for m in self.db.get_mappings(where_clauses=[clause])
-            ]
-            _write_stub(mappings, path)
-
-        unsure: list[SemanticMapping] = []
-        predicted: list[SemanticMapping] = []
-        for mapping in self.db.get_mappings([UNCURATED_CLAUSE]):
-            if mapping.curation_rule_text and UNSURE in mapping.curation_rule_text:
-                unsure.append(mapping.to_semantic_mapping())
-            else:
-                predicted.append(mapping.to_semantic_mapping())
-
-        _write_stub(unsure, repository.unsure_path)
-        _write_stub(predicted, repository.predictions_path)
+        save(self.db, self.repository)
 
     @classmethod
     def memory(
@@ -87,13 +62,13 @@ class DatabaseController(Controller):
             raise NotImplementedError
 
         if connection_uri is not None:
-            controller = cls(connection_uri, user=user)
+            controller = cls(connection=connection_uri, user=user, repository=repository)
         else:
             path = Path.home().joinpath("Desktop", "biomappings.sqlite")
             # sqlite:///:memory:
             connection_uri = f"sqlite:///{path}"
             if not path.is_file():
-                controller = cls(connection_uri, user=user)
+                controller = cls(connection=connection_uri, user=user, repository=repository)
                 controller.db.add_mappings(
                     mapping
                     for path in tqdm(repository.paths, desc="loading database")
@@ -116,7 +91,7 @@ class DatabaseController(Controller):
                     )
                 )
             else:
-                controller = cls(connection_uri, user=user)
+                controller = cls(connection=connection_uri, user=user, repository=repository)
 
         return controller
 
@@ -141,3 +116,37 @@ class DatabaseController(Controller):
         """Mark the given mapping as correct."""
         self.total_curated += 1
         self.db.curate(reference, mark=mark, authors=self.current_author)
+        self.save()
+
+
+def save(db: SemanticMappingDatabase, repository: Repository) -> None:
+    """Save mappings to disk."""
+    converter = repository.get_converter()
+
+    def _write_stub(m: list[SemanticMapping], p: Path) -> None:
+        if repository.purl_base is None:
+            raise NotImplementedError
+        mapping_set = MappingSet(id=repository.purl_base.rstrip("/") + "/" + p.name)
+        sssom_pydantic.write(
+            m, p, converter=converter, metadata=mapping_set, exclude_columns=["record_id"]
+        )
+
+    for clause, path in [
+        (POSITIVE_MAPPING_CLAUSE, repository.positives_path),
+        (NEGATIVE_MAPPING_CLAUSE, repository.negatives_path),
+    ]:
+        mappings = [
+            m.to_semantic_mapping() for m in db.get_mappings(where_clauses=[clause])
+        ]
+        _write_stub(mappings, path)
+
+    unsure: list[SemanticMapping] = []
+    predicted: list[SemanticMapping] = []
+    for mapping in db.get_mappings([UNCURATED_CLAUSE]):
+        if mapping.curation_rule_text and UNSURE in mapping.curation_rule_text:
+            unsure.append(mapping.to_semantic_mapping())
+        else:
+            predicted.append(mapping.to_semantic_mapping())
+
+    _write_stub(unsure, repository.unsure_path)
+    _write_stub(predicted, repository.predictions_path)
