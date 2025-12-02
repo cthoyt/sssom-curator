@@ -23,8 +23,8 @@ __all__ = [
     "Controller",
     "PaginationElement",
     "State",
-    "get_pagination_elements",
     "curate_mapping",
+    "get_pagination_elements",
 ]
 
 #: The default limit
