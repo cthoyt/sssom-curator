@@ -1,5 +1,7 @@
 """Test the web app."""
 
+import datetime
+from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar
 
@@ -13,12 +15,17 @@ from curies.vocabulary import (
     manual_mapping_curation,
     narrow_match,
 )
+from pydantic import BaseModel
 from sssom_pydantic import MappingTool, SemanticMapping
+from sssom_pydantic.process import UNSURE
 
 from sssom_curator.constants import NEGATIVES_NAME, POSITIVES_NAME, UNSURE_NAME
-from sssom_curator.web.components import Controller, State
+from sssom_curator.web.backend.base import State
+from sssom_curator.web.backend.filesystem import FileSystemController
 from sssom_curator.web.impl import get_app
 from tests import cases
+
+today = datetime.date.today()
 
 TEST_USER = Reference(prefix="orcid", identifier="0000-0000-0000-0000")
 TEST_POSITIVE_MAPPING = SemanticMapping(
@@ -41,21 +48,33 @@ TEST_PREDICTED_MAPPING_MARKED_TRUE = SemanticMapping(
     object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
     justification=manual_mapping_curation.pair.to_pydantic(),
     authors=[TEST_USER],
+    mapping_date=today,
+)
+TEST_PREDICTED_MAPPING_MARKED_UNSURE = SemanticMapping(
+    subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
+    predicate=exact_match,
+    object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
+    justification=lexical_matching_process.pair.to_pydantic(),
+    confidence=0.95,
+    mapping_tool=MappingTool(name="test", version=None),
+    curation_rule_text=[UNSURE],
 )
 TEST_PREDICTED_MAPPING_MARKED_BROAD = SemanticMapping(
     subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
     # note this is flipped because
-    predicate=narrow_match,
-    object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
-    justification=manual_mapping_curation.pair.to_pydantic(),
-    authors=[TEST_USER],
-)
-TEST_PREDICTED_MAPPING_MARKED_NARROW = SemanticMapping(
-    subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
     predicate=broad_match,
     object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
     justification=manual_mapping_curation.pair.to_pydantic(),
     authors=[TEST_USER],
+    mapping_date=today,
+)
+TEST_PREDICTED_MAPPING_MARKED_NARROW = SemanticMapping(
+    subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
+    predicate=narrow_match,
+    object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
+    justification=manual_mapping_curation.pair.to_pydantic(),
+    authors=[TEST_USER],
+    mapping_date=today,
 )
 TEST_PREDICTED_MAPPING_MARKED_FALSE = SemanticMapping(
     subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
@@ -64,6 +83,7 @@ TEST_PREDICTED_MAPPING_MARKED_FALSE = SemanticMapping(
     justification=manual_mapping_curation.pair.to_pydantic(),
     authors=[TEST_USER],
     predicate_modifier="Not",
+    mapping_date=today,
 )
 
 TEST_CONVERTER = curies.Converter.from_prefix_map(
@@ -88,7 +108,7 @@ class TestFull(cases.RepositoryTestCase):
     def setUp(self) -> None:
         """Set up the test case."""
         super().setUp()
-        self.controller = Controller(
+        self.controller = FileSystemController(
             repository=self.repository,
             user=TEST_USER,
             converter=TEST_CONVERTER,
@@ -110,6 +130,15 @@ class TestFull(cases.RepositoryTestCase):
         self.assertTrue(path.is_file())
         mappings, _, _ = sssom_pydantic.read(path)
         self.assertEqual(n, len(mappings), msg=f"{path.name} had the wrong number of mappings")
+
+    def assert_models_equal(
+        self, expected: Sequence[BaseModel], actual: Sequence[BaseModel]
+    ) -> None:
+        """Assert that a list of models are equal."""
+        self.assertEqual(
+            [m.model_dump(exclude_none=True, exclude_unset=True) for m in expected],
+            [m.model_dump(exclude_none=True, exclude_unset=True) for m in actual],
+        )
 
     def test_query(self) -> None:
         """Test making a query."""
@@ -163,7 +192,9 @@ class TestFull(cases.RepositoryTestCase):
         )
         self.assertIsNone(mapping_set.title)
         self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", mapping_set.id)
-        self.assertEqual([TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_TRUE], mappings)
+        self.assert_models_equal(
+            [TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_TRUE], mappings
+        )
 
         self.assert_file_mapping_count(self.controller.repository.negatives_path, 0)
         self.assert_file_mapping_count(self.controller.repository.predictions_path, 0)
@@ -187,7 +218,7 @@ class TestFull(cases.RepositoryTestCase):
         )
         self.assertIsNone(mapping_set.title)
         self.assertEqual(f"{self.purl_base}{NEGATIVES_NAME}", mapping_set.id)
-        self.assertEqual([TEST_PREDICTED_MAPPING_MARKED_FALSE], mappings)
+        self.assert_models_equal([TEST_PREDICTED_MAPPING_MARKED_FALSE], mappings)
 
         self.assert_file_mapping_count(self.controller.repository.positives_path, 1)
         self.assert_file_mapping_count(self.controller.repository.predictions_path, 0)
@@ -211,7 +242,7 @@ class TestFull(cases.RepositoryTestCase):
         )
         self.assertIsNone(mapping_set.title)
         self.assertEqual(f"{self.purl_base}{UNSURE_NAME}", mapping_set.id)
-        self.assertEqual([TEST_PREDICTED_MAPPING_MARKED_TRUE], mappings)
+        self.assert_models_equal([TEST_PREDICTED_MAPPING_MARKED_UNSURE], mappings)
 
         self.assert_file_mapping_count(self.controller.repository.positives_path, 1)
         self.assert_file_mapping_count(self.controller.repository.predictions_path, 0)
@@ -235,7 +266,9 @@ class TestFull(cases.RepositoryTestCase):
         )
         self.assertIsNone(mapping_set.title)
         self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", mapping_set.id)
-        self.assertEqual([TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_BROAD], mappings)
+        self.assert_models_equal(
+            [TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_BROAD], mappings
+        )
 
         self.assert_file_mapping_count(self.controller.repository.negatives_path, 0)
         self.assert_file_mapping_count(self.controller.repository.predictions_path, 0)
@@ -259,7 +292,9 @@ class TestFull(cases.RepositoryTestCase):
         )
         self.assertIsNone(mapping_set.title)
         self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", mapping_set.id)
-        self.assertEqual([TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_NARROW], mappings)
+        self.assert_models_equal(
+            [TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_NARROW], mappings
+        )
 
         self.assert_file_mapping_count(self.controller.repository.negatives_path, 0)
         self.assert_file_mapping_count(self.controller.repository.predictions_path, 0)

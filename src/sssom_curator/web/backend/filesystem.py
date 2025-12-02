@@ -1,62 +1,29 @@
-"""Components."""
+"""A backend based on the local filesystem."""
 
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from pathlib import Path
-from typing import Any, Literal, NamedTuple, TypeAlias
 
 import curies
 import sssom_pydantic
 from curies import Reference
-from curies.vocabulary import broad_match, manual_mapping_curation, narrow_match
-from pydantic import BaseModel, Field
 from sssom_pydantic import SemanticMapping
+from sssom_pydantic.process import Mark, curate
+from sssom_pydantic.query import Query, filter_mappings
 
-from .query import Query, filter_mappings
-from .utils import Mark
-from ..constants import default_hash, insert
-from ..repository import Repository
+from sssom_curator import Repository
+from sssom_curator.constants import default_hash, insert
+from sssom_curator.web.backend.base import Controller, Sort, State
 
 __all__ = [
-    "Controller",
-    "PaginationElement",
-    "State",
-    "get_pagination_elements",
-    "curate_mapping",
+    "FileSystemController",
 ]
 
-#: The default limit
-DEFAULT_LIMIT: int = 10
 
-#: The default offset
-DEFAULT_OFFSET: int = 0
-
-Sort: TypeAlias = Literal["asc", "desc", "subject", "object"]
-
-
-class Config(BaseModel):
-    """Configuration for a query over SSSOM."""
-
-    limit: int | None = Field(
-        DEFAULT_LIMIT, description="If given, only iterate this number of predictions."
-    )
-    offset: int = Field(DEFAULT_OFFSET, description="If given, offset the iteration by this number")
-    sort: Sort | None = Field(
-        None,
-        description="If `desc`, sorts in descending confidence order. If `asc`, sorts in "
-        "increasing confidence order. Otherwise, do not sort.",
-    )
-    show_relations: bool = True
-
-
-class State(Query, Config):
-    """Contains the state for queries to the curation app."""
-
-
-class Controller:
-    """A module for interacting with the predictions and mappings."""
+class FileSystemController(Controller):
+    """A controller that interacts with the file system."""
 
     converter: curies.Converter
     repository: Repository
@@ -96,11 +63,14 @@ class Controller:
 
         self._current_author = user
         self.mark_to_file: dict[Mark, Path] = {
-            "correct": self.repository.positives_path,
-            "broad": self.repository.positives_path,
-            "narrow": self.repository.positives_path,
-            "incorrect": self.repository.negatives_path,
             "unsure": self.repository.unsure_path,
+            "incorrect": self.repository.negatives_path,
+            "correct": self.repository.positives_path,
+            "EXACT": self.repository.positives_path,
+            "RELATED": self.repository.positives_path,
+            "CLOSE": self.repository.positives_path,
+            "BROAD": self.repository.positives_path,
+            "NARROW": self.repository.positives_path,
         }
 
     def _get_current_author(self) -> Reference:
@@ -113,9 +83,13 @@ class Controller:
             for mapping in self.iterate_predictions(state)
         )
 
-    def iterate_predictions(self, state: State) -> Iterator[SemanticMapping]:
+    def get_predictions(self, state: State) -> Sequence[SemanticMapping]:
+        """Get predicted semantic mappings."""
+        return list(self.iterate_predictions(state))
+
+    def iterate_predictions(self, state: State) -> Iterable[SemanticMapping]:
         """Iterate over pairs of positions and predicted semantic mappings."""
-        mappings = self._help_it_predictions(state)
+        mappings = iter(self._help_it_predictions(state))
         if state.sort is not None:
             mappings = self._sort(mappings, state.sort)
         if state.offset is not None:
@@ -146,12 +120,12 @@ class Controller:
             raise ValueError(f"unknown sort type: {sort}")
         return mappings
 
-    def count_predictions(self, state: State) -> int:
+    def count_predictions(self, state: Query) -> int:
         """Count the number of predictions to check for the given filters."""
         it = self._help_it_predictions(state)
         return sum(1 for _ in it)
 
-    def _help_it_predictions(self, state: State) -> Iterator[SemanticMapping]:
+    def _help_it_predictions(self, state: Query) -> Iterable[SemanticMapping]:
         mappings = iter(self._predictions.values())
         if self.target_references is not None:
             mappings = (
@@ -160,8 +134,7 @@ class Controller:
                 if mapping.subject in self.target_references
                 or mapping.object in self.target_references
             )
-        mappings = filter_mappings(mappings, state)
-        return mappings
+        yield from filter_mappings(mappings, state)
 
     def mark(self, reference: Reference | SemanticMapping, mark: Mark) -> None:
         """Mark the given mapping as correct.
@@ -184,7 +157,7 @@ class Controller:
 
         mapping = self._predictions.pop(reference)
 
-        new_mapping = curate_mapping(mapping, [self._get_current_author()], mark)
+        new_mapping = curate(mapping, [self._get_current_author()], mark)
 
         insert(
             path=self.mark_to_file[mark],
@@ -206,65 +179,5 @@ class Controller:
         )
 
 
-def curate_mapping(
-    mapping: SemanticMapping, authors: list[Reference], mark: Mark
-) -> SemanticMapping:
-    """Curate the mapping."""
-    update: dict[str, Any] = {
-        "authors": authors,
-        "justification": manual_mapping_curation,
-        # throw the following fields away, since it's been manually curated now
-        "confidence": None,
-        "mapping_tool": None,
-    }
-
-    if mark == "broad":
-        # note these go backwards because of the way they are read
-        update["predicate"] = narrow_match
-    elif mark == "narrow":
-        # note these go backwards because of the way they are read
-        update["predicate"] = broad_match
-    elif mark == "incorrect":
-        update["predicate_modifier"] = "Not"
-
-    # replace some values using model_copy since the model is frozen
-    new_mapping = mapping.model_copy(update=update)
-    return new_mapping
-
-
 def _get_confidence(t: SemanticMapping) -> float:
     return t.confidence or 0.0
-
-
-class PaginationElement(NamedTuple):
-    """Represents pagination element."""
-
-    offset: int | None
-    icon: str
-    text: str
-    position: Literal["before", "after"]
-
-
-def get_pagination_elements(state: State, remaining_rows: int) -> list[PaginationElement]:
-    """Get pagination elements."""
-    rv = []
-
-    def _append(
-        offset: int | None, icon: str, text: str, position: Literal["before", "after"]
-    ) -> None:
-        rv.append(PaginationElement(offset, icon, text, position))
-
-    offset = state.offset or DEFAULT_OFFSET
-    limit = state.limit or DEFAULT_LIMIT
-    if 0 <= offset - limit:
-        _append(None, "skip-start-circle", "First", "after")
-        _append(offset - limit, "skip-backward-circle", f"Previous {limit:,}", "after")
-    if offset < remaining_rows - limit:
-        _append(offset + limit, "skip-forward-circle", f"Next {limit:,}", "before")
-        _append(
-            remaining_rows - limit,
-            "skip-end-circle",
-            f"Last ({remaining_rows:,})",
-            "before",
-        )
-    return rv
