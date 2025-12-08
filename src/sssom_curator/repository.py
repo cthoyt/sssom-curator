@@ -695,6 +695,11 @@ def get_predict_command(
         is_flag=True,
         help="Don't just predict from source to targets, but also between all targets",
     )
+    @click.option(
+        "--identifiers-are-names",
+        is_flag=True,
+        help="Consider identifiers as names. This is typical for data models/schemas",
+    )
     @click.pass_obj
     def lexical(
         obj: Repository,
@@ -708,6 +713,7 @@ def get_predict_command(
         force: bool,
         force_process: bool,
         all_by_all: bool,
+        identifiers_are_names: bool,
     ) -> None:
         """Predict semantic mappings with lexical methods."""
         from .predict.lexical import append_lexical_predictions
@@ -725,6 +731,7 @@ def get_predict_command(
             force=force,
             force_process=force_process,
             all_by_all=all_by_all,
+            identifiers_are_names=identifiers_are_names,
         )
 
     return predict
