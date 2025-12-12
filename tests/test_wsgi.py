@@ -16,11 +16,11 @@ from curies.vocabulary import (
 )
 from pydantic import BaseModel
 from sssom_pydantic import MappingTool, SemanticMapping
+from sssom_pydantic.process import UNSURE
 
 from sssom_curator.constants import NEGATIVES_NAME, POSITIVES_NAME, UNSURE_NAME
 from sssom_curator.web.components import Controller, State
 from sssom_curator.web.impl import get_app
-from sssom_pydantic.process import UNSURE
 from tests import cases
 
 TEST_USER = Reference(prefix="orcid", identifier="0000-0000-0000-0000")
