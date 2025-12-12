@@ -49,15 +49,13 @@ def get_app(
             raise ValueError
         impls = {"dict": Controller, "sqlite": DatabaseController}
         impl_cls = impls[implementation] if implementation else Controller
-        converter = ensure_converter(converter)
         controller = impl_cls(
             target_references=target_references,
             repository=repository,
-            converter=converter,
+            converter=ensure_converter(converter),
         )
-        if not controller.count_predictions(State()):
-            raise ValueError("There are no predictions to curate")
-
+    if not controller.count_predictions():
+        raise ValueError("There are no predictions to curate")
     app.config["controller"] = controller
     app.config["get_current_user_reference"] = lambda: user
     flask_bootstrap.Bootstrap5(app)

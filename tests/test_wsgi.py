@@ -136,12 +136,9 @@ class TestFull(cases.RepositoryTestCase):
 
     def assert_prediction_count(self, expected: int) -> None:
         """Assert there are a correct number of predictions loaded in the controller."""
-        state = State()
-        actual_predictions = self.controller.get_predictions(state)
         self.assertEqual(
             expected,
-            self.controller.count_predictions(state),
-            msg=str(actual_predictions),
+            self.controller.count_predictions(),
         )
 
     def test_query(self) -> None:
