@@ -1,9 +1,8 @@
 """Test the web app."""
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import ClassVar, Sequence
-
-from pydantic import BaseModel
+from typing import ClassVar
 
 import curies
 import sssom_pydantic
@@ -15,6 +14,7 @@ from curies.vocabulary import (
     manual_mapping_curation,
     narrow_match,
 )
+from pydantic import BaseModel
 from sssom_pydantic import MappingTool, SemanticMapping
 
 from sssom_curator.constants import NEGATIVES_NAME, POSITIVES_NAME, UNSURE_NAME
@@ -180,7 +180,9 @@ class TestFull(cases.RepositoryTestCase):
         )
         self.assertIsNone(mapping_set.title)
         self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", mapping_set.id)
-        self.assert_models_equal([TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_TRUE], mappings)
+        self.assert_models_equal(
+            [TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_TRUE], mappings
+        )
 
         self.assert_file_mapping_count(self.controller.repository.negatives_path, 0)
         self.assert_file_mapping_count(self.controller.repository.predictions_path, 0)
@@ -252,7 +254,9 @@ class TestFull(cases.RepositoryTestCase):
         )
         self.assertIsNone(mapping_set.title)
         self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", mapping_set.id)
-        self.assert_models_equal([TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_BROAD], mappings)
+        self.assert_models_equal(
+            [TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_BROAD], mappings
+        )
 
         self.assert_file_mapping_count(self.controller.repository.negatives_path, 0)
         self.assert_file_mapping_count(self.controller.repository.predictions_path, 0)
@@ -276,7 +280,9 @@ class TestFull(cases.RepositoryTestCase):
         )
         self.assertIsNone(mapping_set.title)
         self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", mapping_set.id)
-        self.assert_models_equal([TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_NARROW], mappings)
+        self.assert_models_equal(
+            [TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_NARROW], mappings
+        )
 
         self.assert_file_mapping_count(self.controller.repository.negatives_path, 0)
         self.assert_file_mapping_count(self.controller.repository.predictions_path, 0)

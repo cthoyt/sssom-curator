@@ -185,7 +185,10 @@ class Controller:
 
         mapping = self._predictions.pop(reference)
 
-        new_mapping = curate(mapping, authors=[self._get_current_author()], mark=mark)
+        # TODO start using dates!
+        new_mapping = curate(
+            mapping, authors=[self._get_current_author()], mark=mark, add_date=False
+        )
 
         insert(
             path=self.mark_to_file[mark],
