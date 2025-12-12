@@ -9,9 +9,9 @@ from typing import TYPE_CHECKING
 import flask
 import flask_bootstrap
 
-from .backend.base import Controller, State
-from .backend.database import DatabaseController
 from .blueprint import blueprint, url_for_state
+from .components import AbstractController, State
+from .database import DatabaseController
 from ..constants import DEFAULT_RESOLVER_BASE, ensure_converter
 from ..repository import Repository
 
@@ -27,7 +27,7 @@ def get_app(
     *,
     target_references: Iterable[Reference] | None = None,
     repository: Repository | None = None,
-    controller: Controller | None = None,
+    controller: AbstractController | None = None,
     user: Reference | None = None,
     resolver_base: str | None = None,
     title: str | None = None,

@@ -2,27 +2,76 @@
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from collections import Counter
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from pathlib import Path
+from typing import Literal, TypeAlias
 
 import curies
 import sssom_pydantic
 from curies import Reference
+from pydantic import BaseModel, Field
 from sssom_pydantic import SemanticMapping
 from sssom_pydantic.process import Mark, curate
 from sssom_pydantic.query import Query, filter_mappings
 
 from sssom_curator import Repository
 from sssom_curator.constants import default_hash, insert
-from sssom_curator.web.backend.base import Controller, Sort, State
 
 __all__ = [
-    "FileSystemController",
+    "Controller",
 ]
 
+#: The default limit
+DEFAULT_LIMIT: int = 10
 
-class FileSystemController(Controller):
+#: The default offset
+DEFAULT_OFFSET: int = 0
+
+Sort: TypeAlias = Literal["asc", "desc", "subject", "object"]
+
+
+class Config(BaseModel):
+    """Configuration for a query over SSSOM."""
+
+    limit: int | None = Field(
+        DEFAULT_LIMIT, description="If given, only iterate this number of predictions."
+    )
+    offset: int = Field(DEFAULT_OFFSET, description="If given, offset the iteration by this number")
+    sort: Sort | None = Field(
+        None,
+        description="If `desc`, sorts in descending confidence order. If `asc`, sorts in "
+        "increasing confidence order. Otherwise, do not sort.",
+    )
+    show_relations: bool = True
+
+
+class State(Query, Config):
+    """Contains the state for queries to the curation app."""
+
+
+class AbstractController(ABC):
+    """A module for interacting with mappings."""
+
+    @abstractmethod
+    def get_prefix_counter(self, state: State) -> Counter[tuple[str, str]]:
+        """Get a subject/object prefix counter."""
+
+    @abstractmethod
+    def get_predictions(self, state: State) -> Sequence[SemanticMapping]:
+        """Get predicted semantic mappings."""
+
+    @abstractmethod
+    def count_predictions(self, state: Query) -> int:
+        """Count the number of predictions to check for the given filters."""
+
+    @abstractmethod
+    def mark(self, reference: Reference, mark: Mark) -> None:
+        """Mark the given mapping as correct."""
+
+
+class Controller(AbstractController):
     """A controller that interacts with the file system."""
 
     converter: curies.Converter

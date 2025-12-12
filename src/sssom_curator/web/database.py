@@ -24,14 +24,15 @@ from typing_extensions import Self
 
 from sssom_curator import Repository
 from sssom_curator.constants import default_hash
-from sssom_curator.web.backend.base import Controller, State
+
+from .components import AbstractController, State
 
 __all__ = [
     "DatabaseController",
 ]
 
 
-class DatabaseController(Controller):
+class DatabaseController(AbstractController):
     """A controller that interacts with a database."""
 
     def __init__(self, *, repository: Repository, connection: str, user: Reference) -> None:
@@ -135,9 +136,7 @@ def save(db: SemanticMappingDatabase, repository: Repository) -> None:
         (POSITIVE_MAPPING_CLAUSE, repository.positives_path),
         (NEGATIVE_MAPPING_CLAUSE, repository.negatives_path),
     ]:
-        mappings = [
-            m.to_semantic_mapping() for m in db.get_mappings(where_clauses=[clause])
-        ]
+        mappings = [m.to_semantic_mapping() for m in db.get_mappings(where_clauses=[clause])]
         _write_stub(mappings, path)
 
     unsure: list[SemanticMapping] = []

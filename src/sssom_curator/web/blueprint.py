@@ -11,7 +11,7 @@ from curies import Reference
 from flask import current_app
 from werkzeug.local import LocalProxy
 
-from .backend.base import DEFAULT_LIMIT, DEFAULT_OFFSET, Controller, State
+from .backend.base import DEFAULT_LIMIT, DEFAULT_OFFSET, AbstractController, State
 from .backend.filesystem import FileSystemController
 from .utils import commit, get_branch, normalize_mark, not_main, push
 
@@ -47,7 +47,9 @@ def url_for_state(endpoint: str, state: State, **kwargs: Any) -> str:
     return flask.url_for(endpoint, **vv)
 
 
-controller: Controller = cast(Controller, LocalProxy(lambda: current_app.config["controller"]))
+controller: AbstractController = cast(
+    AbstractController, LocalProxy(lambda: current_app.config["controller"])
+)
 blueprint = flask.Blueprint("ui", __name__)
 
 
