@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import Any, Literal, NamedTuple, TypeAlias
 
@@ -13,10 +13,12 @@ from curies import Reference
 from curies.vocabulary import broad_match, manual_mapping_curation, narrow_match
 from pydantic import BaseModel, Field
 from sssom_pydantic import SemanticMapping
+from sssom_pydantic.api import SemanticMappingHash
+from sssom_pydantic.api import mapping_hash_v1 as default_hash
+from sssom_pydantic.process import Mark
+from sssom_pydantic.query import Query, filter_mappings
 
-from .query import Query, filter_mappings
-from .utils import Mark
-from ..constants import default_hash, insert
+from ..constants import insert
 from ..repository import Repository
 
 __all__ = [
@@ -69,7 +71,7 @@ class Controller:
         repository: Repository,
         user: Reference,
         converter: curies.Converter,
-        mapping_hash: Callable[[SemanticMapping], Reference] = default_hash,
+        mapping_hash: SemanticMappingHash = default_hash,
     ) -> None:
         """Instantiate the web controller.
 
@@ -96,11 +98,14 @@ class Controller:
 
         self._current_author = user
         self.mark_to_file: dict[Mark, Path] = {
-            "correct": self.repository.positives_path,
-            "broad": self.repository.positives_path,
-            "narrow": self.repository.positives_path,
-            "incorrect": self.repository.negatives_path,
             "unsure": self.repository.unsure_path,
+            "incorrect": self.repository.negatives_path,
+            "correct": self.repository.positives_path,
+            "EXACT": self.repository.positives_path,
+            "RELATED": self.repository.positives_path,
+            "CLOSE": self.repository.positives_path,
+            "BROAD": self.repository.positives_path,
+            "NARROW": self.repository.positives_path,
         }
 
     def _get_current_author(self) -> Reference:
@@ -160,8 +165,7 @@ class Controller:
                 if mapping.subject in self.target_references
                 or mapping.object in self.target_references
             )
-        mappings = filter_mappings(mappings, state)
-        return mappings
+        return iter(filter_mappings(mappings, state))
 
     def mark(self, reference: Reference | SemanticMapping, mark: Mark) -> None:
         """Mark the given mapping as correct.
@@ -218,10 +222,10 @@ def curate_mapping(
         "mapping_tool": None,
     }
 
-    if mark == "broad":
+    if mark == "BROAD":
         # note these go backwards because of the way they are read
         update["predicate"] = narrow_match
-    elif mark == "narrow":
+    elif mark == "NARROW":
         # note these go backwards because of the way they are read
         update["predicate"] = broad_match
     elif mark == "incorrect":
