@@ -10,7 +10,7 @@ import flask
 import flask_bootstrap
 
 from .blueprint import blueprint, url_for_state
-from .components import AbstractController, Controller, State
+from .components import AbstractController, Controller
 from .database import DatabaseController
 from ..constants import DEFAULT_RESOLVER_BASE, ensure_converter
 from ..repository import Repository
