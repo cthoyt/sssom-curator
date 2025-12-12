@@ -55,6 +55,10 @@ def url_for_state(endpoint: str, state: State, **kwargs: Any) -> str:
 controller: AbstractController = cast(
     AbstractController, LocalProxy(lambda: current_app.config["controller"])
 )
+current_user_reference = cast(
+    Reference, LocalProxy(lambda: current_app.config["get_current_user_reference"]())
+)
+
 blueprint = flask.Blueprint("ui", __name__)
 
 
@@ -123,7 +127,7 @@ def mark(curie: str, value: Mark) -> werkzeug.Response:
     reference = Reference.from_curie(curie)
     if value not in MARKS:
         raise flask.abort(400)
-    controller.mark(reference, value)
+    controller.mark(reference, value, authors=current_user_reference)
     return _go_home()
 
 

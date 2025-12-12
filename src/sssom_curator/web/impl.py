@@ -43,21 +43,19 @@ def get_app(
     app.config["SECRET_KEY"] = os.urandom(8)
     app.config["SHOW_RELATIONS"] = True
     if controller is None:
-        if repository is None or user is None:
+        if repository is None:
             raise ValueError
         converter = ensure_converter(converter)
         if implementation is None or implementation == "dict":
             controller = Controller(
                 target_references=target_references,
                 repository=repository,
-                user=user,
                 converter=converter,
             )
         elif implementation == "sqlite":
             controller = DatabaseController.memory(
                 target_references=target_references,
                 repository=repository,
-                user=user,
                 converter=converter,
             )
         else:
@@ -67,6 +65,7 @@ def get_app(
             raise ValueError("There are no predictions to curate")
 
     app.config["controller"] = controller
+    app.config["get_current_user_reference"] = lambda: user
     flask_bootstrap.Bootstrap5(app)
     app.register_blueprint(blueprint)
 

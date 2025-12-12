@@ -87,7 +87,6 @@ class Controller(AbstractController):
         *,
         target_references: Iterable[Reference] | None = None,
         repository: Repository,
-        user: Reference,
         converter: curies.Converter,
         mapping_hash: SemanticMappingHash | None = None,
     ) -> None:
@@ -114,7 +113,6 @@ class Controller(AbstractController):
         self.target_references = set(target_references) if target_references is not None else None
         self.converter = converter
 
-        self._current_author = user
         self.mark_to_file: dict[Mark, Path] = {
             "unsure": self.repository.unsure_path,
             "incorrect": self.repository.negatives_path,
@@ -125,9 +123,6 @@ class Controller(AbstractController):
             "BROAD": self.repository.positives_path,
             "NARROW": self.repository.positives_path,
         }
-
-    def _get_current_author(self) -> Reference:
-        return self._current_author
 
     def get_prefix_counter(self, state: State) -> Counter[tuple[str, str]]:
         """Get a subject/object prefix counter."""
@@ -189,11 +184,17 @@ class Controller(AbstractController):
             )
         yield from filter_mappings(mappings, state)
 
-    def mark(self, reference: Reference | SemanticMapping, mark: Mark) -> None:
+    def mark(
+        self,
+        reference: Reference | SemanticMapping,
+        mark: Mark,
+        authors: Reference | list[Reference],
+    ) -> None:
         """Mark the given mapping as correct.
 
         :param reference: The reference for the mapping, corresponding to the ``record`` field
         :param mark: Value to mark the prediction with
+        :param authors: Author or author of the mark
 
         :raises KeyError:
             if there's no predicted mapping whose record corresponds to the given reference
@@ -211,9 +212,7 @@ class Controller(AbstractController):
         mapping = self._predictions.pop(reference)
 
         # TODO start using dates!
-        new_mapping = curate(
-            mapping, authors=[self._get_current_author()], mark=mark, add_date=False
-        )
+        new_mapping = curate(mapping, authors=authors, mark=mark, add_date=False)
 
         insert(
             path=self.mark_to_file[mark],
