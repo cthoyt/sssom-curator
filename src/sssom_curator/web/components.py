@@ -12,7 +12,7 @@ import sssom_pydantic
 from curies import Reference
 from pydantic import BaseModel, Field
 from sssom_pydantic import SemanticMapping
-from sssom_pydantic.api import SemanticMappingHash
+from sssom_pydantic.api import SemanticMappingHash, mapping_hash_v1
 from sssom_pydantic.process import MARK_TO_CALL, Call, Mark, curate
 from sssom_pydantic.query import Query, filter_mappings
 
@@ -22,7 +22,7 @@ from .utils import (
     commit,
     push,
 )
-from ..constants import default_hash, insert
+from ..constants import insert
 from ..repository import Repository
 
 __all__ = [
@@ -63,6 +63,17 @@ class State(Query, Config):
 class AbstractController(ABC):
     """A module for interacting with mappings."""
 
+    def __init__(
+        self,
+        *,
+        repository: Repository,
+        semantic_mapping_hash: SemanticMappingHash | None = None,
+    ) -> None:
+        """Initialize the controller."""
+        self.repository = repository
+        self.mapping_hash = semantic_mapping_hash or mapping_hash_v1
+        self.total_curated = 0
+
     @abstractmethod
     def get_prefix_counter(self, state: State) -> Counter[tuple[str, str]]:
         """Get a subject/object prefix counter."""
@@ -76,8 +87,37 @@ class AbstractController(ABC):
         """Count the number of predictions to check for the given filters."""
 
     @abstractmethod
-    def mark(self, reference: Reference, mark: Mark) -> None:
+    def mark(self, reference: Reference, mark: Mark, authors: Reference | list[Reference]) -> None:
         """Mark the given mapping as correct."""
+
+    @abstractmethod
+    def persist(self) -> None:
+        """Mark the given mapping as correct."""
+
+    def persist_remote(self, author: Reference) -> PersistRemoteSuccess | PersistRemoteFailure:
+        """Persist remotely."""
+        branch_res = check_current_branch(self.repository)
+        if isinstance(branch_res, GitCommandFailure):
+            return PersistRemoteFailure("branch check", branch_res.message)
+        if not branch_res.usable:
+            return PersistRemoteFailure(
+                "branch name", f"refusing to push to {branch_res.name} - make a branch first."
+            )
+
+        label = "mappings" if self.total_curated > 1 else "mapping"
+        message = f"Curated {self.total_curated} {label} ({author.curie})"
+        commit_res = commit(self.repository, message)
+        if isinstance(commit_res, GitCommandFailure):
+            return PersistRemoteFailure("commit", commit_res.message)
+
+        # TODO what happens if there's no corresponding on remote?
+        push_res = push(self.repository, branch=branch_res.name)
+        if isinstance(push_res, GitCommandFailure):
+            return PersistRemoteFailure("push", push_res.message)
+
+        self.total_curated = 0
+
+        return PersistRemoteSuccess(commit_res.output + "\n" + push_res.output)
 
 
 class Controller(AbstractController):
@@ -102,8 +142,7 @@ class Controller(AbstractController):
             predictions to only show ones where either the source or target appears in
             this set
         """
-        self.repository = repository
-        self.mapping_hash = mapping_hash if mapping_hash is not None else default_hash
+        super().__init__(repository=repository, semantic_mapping_hash=mapping_hash)
         predicted_mappings, _, self._predictions_metadata = sssom_pydantic.read(
             self.repository.predictions_path
         )
@@ -114,7 +153,6 @@ class Controller(AbstractController):
             reference = self.mapping_hash(mapping)
             self._predictions[reference] = mapping.model_copy(update={"record": reference})
 
-        self.total_curated = 0
         self.target_references = set(target_references) if target_references is not None else None
         self.converter = converter
         self.curations: defaultdict[Call, list[SemanticMapping]] = defaultdict(list)
@@ -235,29 +273,6 @@ class Controller(AbstractController):
                 # TODO is there a way of pre-calculating some things to make this faster?
                 #  e.g., say "no condensation"
             )
-
-    def persist_remote(self, author: Reference) -> PersistRemoteSuccess | PersistRemoteFailure:
-        """Persist remotely."""
-        branch_res = check_current_branch(self.repository)
-        if isinstance(branch_res, GitCommandFailure):
-            return PersistRemoteFailure("branch check", branch_res.message)
-        if not branch_res.usable:
-            return PersistRemoteFailure(
-                "branch name", f"refusing to push to {branch_res.name} - make a branch first."
-            )
-
-        label = "mappings" if self.total_curated > 1 else "mapping"
-        message = f"Curated {self.total_curated} {label} ({author.curie})"
-        commit_res = commit(self.repository, message)
-        if isinstance(commit_res, GitCommandFailure):
-            return PersistRemoteFailure("commit", commit_res.message)
-
-        # TODO what happens if there's no corresponding on remote?
-        push_res = push(self.repository, branch=branch_res.name)
-        if isinstance(push_res, GitCommandFailure):
-            return PersistRemoteFailure("push", push_res.message)
-
-        return PersistRemoteSuccess(commit_res.output + "\n" + push_res.output)
 
 
 class PersistRemoteSuccess(NamedTuple):

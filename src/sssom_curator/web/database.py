@@ -10,7 +10,7 @@ import curies
 import sssom_pydantic
 from curies import Reference
 from sssom_pydantic import MappingSet, SemanticMapping
-from sssom_pydantic.api import SemanticMappingHash, mapping_hash_v1
+from sssom_pydantic.api import SemanticMappingHash
 from sssom_pydantic.database import (
     NEGATIVE_MAPPING_CLAUSE,
     POSITIVE_MAPPING_CLAUSE,
@@ -41,22 +41,13 @@ class DatabaseController(AbstractController):
         *,
         repository: Repository,
         connection: str,
-        user: Reference,
         semantic_mapping_hash: SemanticMappingHash | None = None,
     ) -> None:
         """Initialize the database controller."""
-        if semantic_mapping_hash is None:
-            semantic_mapping_hash = mapping_hash_v1
+        super().__init__(repository=repository, semantic_mapping_hash=semantic_mapping_hash)
         self.db = SemanticMappingDatabase.from_connection(
-            connection=connection, semantic_mapping_hash=semantic_mapping_hash
+            connection=connection, semantic_mapping_hash=self.mapping_hash
         )
-        self.current_author = user
-        self.total_curated = 0
-        self.repository = repository
-
-    def save(self) -> None:
-        """Save mappings to disk."""
-        save(self.db, self.repository)
 
     @classmethod
     def memory(
@@ -64,7 +55,6 @@ class DatabaseController(AbstractController):
         *,
         connection_uri: str | None = None,
         repository: Repository,
-        user: Reference,
         converter: curies.Converter,
         target_references: Iterable[Reference] | None = None,
         semantic_mapping_hash: SemanticMappingHash | None = None,
@@ -76,7 +66,6 @@ class DatabaseController(AbstractController):
         if connection_uri is not None:
             controller = cls(
                 connection=connection_uri,
-                user=user,
                 repository=repository,
                 semantic_mapping_hash=semantic_mapping_hash,
             )
@@ -87,7 +76,6 @@ class DatabaseController(AbstractController):
             if not path.is_file():
                 controller = cls(
                     connection=connection_uri,
-                    user=user,
                     repository=repository,
                     semantic_mapping_hash=semantic_mapping_hash,
                 )
@@ -115,7 +103,6 @@ class DatabaseController(AbstractController):
             else:
                 controller = cls(
                     connection=connection_uri,
-                    user=user,
                     repository=repository,
                     semantic_mapping_hash=semantic_mapping_hash,
                 )
@@ -139,11 +126,14 @@ class DatabaseController(AbstractController):
         """Count the number of predictions to check for the given filters."""
         return Counter((m.subject.prefix, m.object.prefix) for m in self.get_predictions(state))
 
-    def mark(self, reference: Reference, mark: Mark) -> None:
+    def mark(self, reference: Reference, mark: Mark, authors: Reference | list[Reference]) -> None:
         """Mark the given mapping as correct."""
         self.total_curated += 1
-        self.db.curate(reference, mark=mark, authors=self.current_author)
-        self.save()
+        self.db.curate(reference, mark=mark, authors=authors)
+
+    def persist(self) -> None:
+        """Save mappings to disk."""
+        save(self.db, self.repository)
 
 
 def save(db: SemanticMappingDatabase, repository: Repository) -> None:
