@@ -14,11 +14,10 @@ from curies.vocabulary import broad_match, manual_mapping_curation, narrow_match
 from pydantic import BaseModel, Field
 from sssom_pydantic import SemanticMapping
 from sssom_pydantic.api import SemanticMappingHash
-from sssom_pydantic.api import mapping_hash_v1 as default_hash
 from sssom_pydantic.process import Mark
 from sssom_pydantic.query import Query, filter_mappings
 
-from ..constants import insert
+from ..constants import default_hash, insert
 from ..repository import Repository
 
 __all__ = [
