@@ -2,20 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TypeVar
-
-from sssom_pydantic.process import Mark
-
 __all__ = [
-    "Mark",
     "commit",
     "get_branch",
     "not_main",
     "push",
 ]
-
-X = TypeVar("X")
-Y = TypeVar("Y")
 
 
 def commit(message: str) -> str | None:
@@ -32,8 +24,8 @@ def push(branch_name: str | None = None) -> str | None:
 
 
 def not_main() -> bool:
-    """Return if on the master branch."""
-    return "master" != _git("rev-parse", "--abbrev-ref", "HEAD")
+    """Return if on the master/main branch."""
+    return _git("rev-parse", "--abbrev-ref", "HEAD") not in {"master", "main"}
 
 
 def get_branch() -> str:
