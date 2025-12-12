@@ -15,6 +15,12 @@ from sssom_pydantic.api import SemanticMappingHash
 from sssom_pydantic.process import MARK_TO_CALL, Call, Mark, curate
 from sssom_pydantic.query import Query, filter_mappings
 
+from .utils import (
+    GitCommandFailure,
+    check_current_branch,
+    commit,
+    push,
+)
 from ..constants import default_hash, insert
 from ..repository import Repository
 
@@ -209,6 +215,42 @@ class Controller:
                 # TODO is there a way of pre-calculating some things to make this faster?
                 #  e.g., say "no condensation"
             )
+
+    def persist_remote(self, author: Reference) -> PersistRemoteSuccess | PersistRemoteFailure:
+        """Persist remotely."""
+        branch_res = check_current_branch(self.repository)
+        if isinstance(branch_res, GitCommandFailure):
+            return PersistRemoteFailure("branch check", branch_res.message)
+        if not branch_res.usable:
+            return PersistRemoteFailure(
+                "branch name", f"refusing to push to {branch_res.name} - make a branch first."
+            )
+
+        label = "mappings" if self.total_curated > 1 else "mapping"
+        message = f"Curated {self.total_curated} {label} ({author.curie})"
+        commit_res = commit(self.repository, message)
+        if isinstance(commit_res, GitCommandFailure):
+            return PersistRemoteFailure("commit", commit_res.message)
+
+        # TODO what happens if there's no corresponding on remote?
+        push_res = push(self.repository, branch=branch_res.name)
+        if isinstance(push_res, GitCommandFailure):
+            return PersistRemoteFailure("push", push_res.message)
+
+        return PersistRemoteSuccess(commit_res.output + "\n" + push_res.output)
+
+
+class PersistRemoteSuccess(NamedTuple):
+    """Represents success message."""
+
+    message: str
+
+
+class PersistRemoteFailure(NamedTuple):
+    """Represents failure message."""
+
+    step: str
+    message: str
 
 
 def _get_confidence(t: SemanticMapping) -> float:

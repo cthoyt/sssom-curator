@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import getpass
 from typing import Any, cast
 
 import flask
@@ -12,8 +11,13 @@ from flask import current_app
 from sssom_pydantic.process import MARKS, Mark
 from werkzeug.local import LocalProxy
 
-from .components import Controller, State, get_pagination_elements
-from .utils import commit, get_branch, not_main, push
+from .components import (
+    Controller,
+    PersistRemoteFailure,
+    PersistRemoteSuccess,
+    State,
+    get_pagination_elements,
+)
 
 __all__ = [
     "blueprint",
@@ -96,18 +100,13 @@ def summary() -> str:
 @blueprint.route("/commit")
 def run_commit() -> werkzeug.Response:
     """Make a commit then redirect to the home page."""
-    label = "mappings" if controller.total_curated > 1 else "mapping"
-    message = f"Curated {controller.total_curated} {label} ({getpass.getuser()})"
-    commit_info = commit(message)
-    current_app.logger.warning("git commit res: %s", commit_info)
-    if not_main():
-        branch = get_branch()
-        push_output = push(branch_name=branch)
-        current_app.logger.warning("git push res: %s", push_output)
-    else:
-        flask.flash("did not push because on master branch")
-        current_app.logger.warning("did not push because on master branch")
-    controller.total_curated = 0
+    match controller.persist_remote(current_user_reference):
+        case PersistRemoteSuccess(message):
+            current_app.logger.info(message)
+            controller.total_curated = 0
+        case PersistRemoteFailure(_step, failure_text):
+            flask.flash(failure_text)
+            current_app.logger.warning(failure_text)
     return _go_home()
 
 
