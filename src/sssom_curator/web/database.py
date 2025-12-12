@@ -10,6 +10,7 @@ import curies
 import sssom_pydantic
 from curies import Reference
 from sssom_pydantic import MappingSet, SemanticMapping
+from sssom_pydantic.api import SemanticMappingHash, mapping_hash_v1
 from sssom_pydantic.database import (
     NEGATIVE_MAPPING_CLAUSE,
     POSITIVE_MAPPING_CLAUSE,
@@ -35,10 +36,19 @@ __all__ = [
 class DatabaseController(AbstractController):
     """A controller that interacts with a database."""
 
-    def __init__(self, *, repository: Repository, connection: str, user: Reference) -> None:
+    def __init__(
+        self,
+        *,
+        repository: Repository,
+        connection: str,
+        user: Reference,
+        semantic_mapping_hash: SemanticMappingHash | None = None,
+    ) -> None:
         """Initialize the database controller."""
+        if semantic_mapping_hash is None:
+            semantic_mapping_hash = mapping_hash_v1
         self.db = SemanticMappingDatabase.from_connection(
-            connection=connection, semantic_mapping_hash=default_hash
+            connection=connection, semantic_mapping_hash=semantic_mapping_hash
         )
         self.current_author = user
         self.total_curated = 0
@@ -57,19 +67,30 @@ class DatabaseController(AbstractController):
         user: Reference,
         converter: curies.Converter,
         target_references: Iterable[Reference] | None = None,
+        semantic_mapping_hash: SemanticMappingHash | None = None,
     ) -> Self:
         """Create an in-memory database."""
         if target_references is not None:
             raise NotImplementedError
 
         if connection_uri is not None:
-            controller = cls(connection=connection_uri, user=user, repository=repository)
+            controller = cls(
+                connection=connection_uri,
+                user=user,
+                repository=repository,
+                semantic_mapping_hash=semantic_mapping_hash,
+            )
         else:
             path = Path.home().joinpath("Desktop", "biomappings.sqlite")
             # sqlite:///:memory:
             connection_uri = f"sqlite:///{path}"
             if not path.is_file():
-                controller = cls(connection=connection_uri, user=user, repository=repository)
+                controller = cls(
+                    connection=connection_uri,
+                    user=user,
+                    repository=repository,
+                    semantic_mapping_hash=semantic_mapping_hash,
+                )
                 controller.db.add_mappings(
                     mapping
                     for path in tqdm(repository.paths, desc="loading database")
@@ -92,7 +113,12 @@ class DatabaseController(AbstractController):
                     )
                 )
             else:
-                controller = cls(connection=connection_uri, user=user, repository=repository)
+                controller = cls(
+                    connection=connection_uri,
+                    user=user,
+                    repository=repository,
+                    semantic_mapping_hash=semantic_mapping_hash,
+                )
 
         return controller
 

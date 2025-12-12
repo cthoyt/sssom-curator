@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, TypeAlias
 
 import flask
 import flask_bootstrap
 
 from .blueprint import blueprint, url_for_state
-from .components import AbstractController, State
+from .components import AbstractController, Controller, State
 from .database import DatabaseController
 from ..constants import DEFAULT_RESOLVER_BASE, ensure_converter
 from ..repository import Repository
@@ -21,6 +21,8 @@ if TYPE_CHECKING:
 __all__ = [
     "get_app",
 ]
+
+Implementation: TypeAlias = Literal["dict", "sqlite"]
 
 
 def get_app(
@@ -33,6 +35,7 @@ def get_app(
     title: str | None = None,
     footer: str | None = None,
     converter: Converter | None = None,
+    implementation: Implementation | None = None,
 ) -> flask.Flask:
     """Get a curation flask app."""
     app = flask.Flask(__name__)
@@ -42,12 +45,24 @@ def get_app(
     if controller is None:
         if repository is None or user is None:
             raise ValueError
-        controller = DatabaseController.memory(
-            target_references=target_references,
-            repository=repository,
-            user=user,
-            converter=ensure_converter(converter),
-        )
+        converter = ensure_converter(converter)
+        if implementation is None or implementation == "dict":
+            controller = Controller(
+                target_references=target_references,
+                repository=repository,
+                user=user,
+                converter=converter,
+            )
+        elif implementation == "sqlite":
+            controller = DatabaseController.memory(
+                target_references=target_references,
+                repository=repository,
+                user=user,
+                converter=converter,
+            )
+        else:
+            raise ValueError(f"invalid implementation: {implementation}")
+
         if not controller.count_predictions(State()):
             raise ValueError("There are no predictions to curate")
 
