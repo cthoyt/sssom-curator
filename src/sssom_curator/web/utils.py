@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TypeVar, get_args
+from typing import TypeVar
 
 from sssom_pydantic.process import Mark
 
@@ -60,7 +60,3 @@ def _git(*args: str) -> str | None:
             return None
         else:
             return ret.strip().decode("utf-8")
-
-
-#: The set of all possible curation marks
-MARKS: set[Mark] = set(get_args(Mark))
