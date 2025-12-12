@@ -67,7 +67,7 @@ class Controller:
         target_references: Iterable[Reference] | None = None,
         repository: Repository,
         converter: curies.Converter,
-        mapping_hash: SemanticMappingHash = default_hash,
+        mapping_hash: SemanticMappingHash | None = None,
     ) -> None:
         """Instantiate the web controller.
 
@@ -77,7 +77,7 @@ class Controller:
             this set
         """
         self.repository = repository
-        self.mapping_hash = mapping_hash
+        self.mapping_hash = mapping_hash if mapping_hash is not None else default_hash
         predicted_mappings, _, self._predictions_metadata = sssom_pydantic.read(
             self.repository.predictions_path
         )
