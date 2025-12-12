@@ -564,8 +564,16 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
         )
         @click.option("--orcid", help="Your ORCID, if not automatically loadable")
         @click.option("--port", type=int, default=5003, show_default=True)
+        @click.option(
+            "--eager-persist",
+            is_flag=True,
+            help="If set, will persist after each curation instead of waiting for the commit "
+            "button to be pushed",
+        )
         @click.pass_obj
-        def web(obj: Repository, resolver_base: str | None, orcid: str, port: int) -> None:
+        def web(
+            obj: Repository, resolver_base: str | None, orcid: str, port: int, eager_persist: bool
+        ) -> None:
             """Run the semantic mappings curation app."""
             import webbrowser
 
@@ -590,6 +598,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
                 user=user,
                 title=obj.web_title or "Semantic Mapping Curator",
                 footer=obj.web_footer,
+                eager_persist=eager_persist,
             )
 
             webbrowser.open_new_tab(f"http://localhost:{port}")

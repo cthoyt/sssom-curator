@@ -100,6 +100,7 @@ def summary() -> str:
 @blueprint.route("/commit")
 def run_commit() -> werkzeug.Response:
     """Make a commit then redirect to the home page."""
+    controller.persist()
     match controller.persist_remote(current_user_reference):
         case PersistRemoteSuccess(message):
             current_app.logger.info(message)
@@ -117,6 +118,8 @@ def mark(curie: str, value: Mark) -> werkzeug.Response:
     if value not in MARKS:
         raise flask.abort(400)
     controller.mark(reference, value, authors=current_user_reference)
+    if current_app.config["EAGER_PERSIST"]:
+        controller.persist()
     return _go_home()
 
 

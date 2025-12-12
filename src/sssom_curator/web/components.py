@@ -188,7 +188,6 @@ class Controller:
         # TODO start using dates!
         new_mapping = curate(mapping, authors=authors, mark=mark, add_date=False)
         self.curations[MARK_TO_CALL[mark]].append(new_mapping)
-        self.persist()
 
     def persist(self) -> None:
         """Persist the curated mappings."""
