@@ -40,13 +40,16 @@ class DatabaseController(AbstractController):
         self,
         *,
         repository: Repository,
-        connection: str,
+        connection: str | None = None,
         semantic_mapping_hash: SemanticMappingHash | None = None,
+        converter: curies.Converter,
     ) -> None:
         """Initialize the database controller."""
-        super().__init__(repository=repository, semantic_mapping_hash=semantic_mapping_hash)
+        super().__init__(
+            repository=repository, semantic_mapping_hash=semantic_mapping_hash, converter=converter
+        )
         self.db = SemanticMappingDatabase.from_connection(
-            connection=connection, semantic_mapping_hash=self.mapping_hash
+            connection=connection or "sqlite:///:memory:", semantic_mapping_hash=self.mapping_hash
         )
 
     @classmethod
@@ -68,6 +71,7 @@ class DatabaseController(AbstractController):
                 connection=connection_uri,
                 repository=repository,
                 semantic_mapping_hash=semantic_mapping_hash,
+                converter=converter,
             )
         else:
             path = Path.home().joinpath("Desktop", "biomappings.sqlite")
@@ -78,6 +82,7 @@ class DatabaseController(AbstractController):
                     connection=connection_uri,
                     repository=repository,
                     semantic_mapping_hash=semantic_mapping_hash,
+                    converter=converter,
                 )
                 controller.db.add_mappings(
                     mapping
@@ -105,6 +110,7 @@ class DatabaseController(AbstractController):
                     connection=connection_uri,
                     repository=repository,
                     semantic_mapping_hash=semantic_mapping_hash,
+                    converter=converter,
                 )
 
         return controller
