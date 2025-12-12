@@ -99,11 +99,7 @@ class TestFull(cases.RepositoryTestCase):
     def setUp(self) -> None:
         """Set up the test case."""
         super().setUp()
-        self.controller = Controller(
-            repository=self.repository,
-            user=TEST_USER,
-            converter=TEST_CONVERTER,
-        )
+        self.controller = Controller(repository=self.repository, converter=TEST_CONVERTER)
         self.app = get_app(controller=self.controller)
         self.app.testing = True
 

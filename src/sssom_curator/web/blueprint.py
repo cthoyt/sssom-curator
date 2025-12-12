@@ -51,6 +51,11 @@ controller: Controller = cast(Controller, LocalProxy(lambda: current_app.config[
 blueprint = flask.Blueprint("ui", __name__)
 
 
+def get_current_user_reference() -> Reference:
+    """Get the current user reference, usually using ORCID."""
+    return cast(Reference, current_app.config["current_user"])
+
+
 @blueprint.route("/")
 def home() -> str:
     """Serve the home page."""
@@ -113,7 +118,10 @@ def mark(curie: str, value: Mark) -> werkzeug.Response:
     reference = Reference.from_curie(curie)
     if value not in MARKS:
         raise flask.abort(400)
-    controller.mark(reference, value)
+
+    # this uses the get_current_user_reference() function to
+    # enable using flask-auth or flask-dance later
+    controller.mark(reference, value, authors=get_current_user_reference())
     return _go_home()
 
 

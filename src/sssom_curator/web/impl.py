@@ -38,13 +38,13 @@ def get_app(
     app.config["WTF_CSRF_ENABLED"] = False
     app.config["SECRET_KEY"] = os.urandom(8)
     app.config["SHOW_RELATIONS"] = True
+    app.config["current_user"] = user
     if controller is None:
         if repository is None or user is None:
             raise ValueError
         controller = Controller(
             target_references=target_references,
             repository=repository,
-            user=user,
             converter=ensure_converter(converter),
         )
     if not controller._predictions:
