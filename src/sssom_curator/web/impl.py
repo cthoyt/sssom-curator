@@ -51,7 +51,7 @@ def get_app(
             f"There are no predictions to curate in {controller.repository.predictions_path}"
         )
     app.config["controller"] = controller
-    app.config["current_user"] = user
+    app.config["get_current_user_reference"] = lambda: user
     flask_bootstrap.Bootstrap5(app)
     app.register_blueprint(blueprint)
 
