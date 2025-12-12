@@ -71,7 +71,6 @@ POSITIVES_NAME = "positive.sssom.tsv"
 NEGATIVES_NAME = "negative.sssom.tsv"
 UNSURE_NAME = "unsure.sssom.tsv"
 
-
 DEFAULT_HASH_PREFIX = MAPPING_HASH_V1_PREFIX
 
 
