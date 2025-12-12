@@ -112,7 +112,7 @@ def mark(curie: str, value: Mark) -> werkzeug.Response:
     """Mark the given line as correct or not."""
     reference = Reference.from_curie(curie)
     if value not in MARKS:
-        raise ValueError(f"Invalid mark: {value}. Should be one of {MARKS}")
+        raise flask.abort(400)
     controller.mark(reference, value)
     return _go_home()
 
