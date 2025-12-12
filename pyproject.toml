@@ -148,6 +148,9 @@ predict-embeddings = [
 import-ontoportal = [
     "ontoportal-client>=0.0.7",
 ]
+database = [
+    "sssom-pydantic[database]",
+]
 
 # See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#urls
 # and also https://packaging.python.org/en/latest/specifications/well-known-project-urls/
