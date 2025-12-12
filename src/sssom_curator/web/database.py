@@ -58,69 +58,6 @@ class DatabaseController(AbstractController):
             connection=connection or "sqlite:///:memory:", semantic_mapping_hash=self.mapping_hash
         )
 
-    @classmethod
-    def memory(
-        cls,
-        *,
-        connection_uri: str | None = None,
-        repository: Repository,
-        converter: curies.Converter,
-        target_references: Iterable[Reference] | None = None,
-        semantic_mapping_hash: SemanticMappingHash | None = None,
-    ) -> Self:
-        """Create an in-memory database."""
-        if target_references is not None:
-            raise NotImplementedError
-
-        if connection_uri is not None:
-            controller = cls(
-                connection=connection_uri,
-                repository=repository,
-                semantic_mapping_hash=semantic_mapping_hash,
-                converter=converter,
-            )
-        else:
-            path = Path.home().joinpath("Desktop", "biomappings.sqlite")
-            # sqlite:///:memory:
-            connection_uri = f"sqlite:///{path}"
-            if not path.is_file():
-                controller = cls(
-                    connection=connection_uri,
-                    repository=repository,
-                    semantic_mapping_hash=semantic_mapping_hash,
-                    converter=converter,
-                )
-                controller.db.add_mappings(
-                    mapping
-                    for path in tqdm(repository.paths, desc="loading database")
-                    for mapping in tqdm(
-                        sssom_pydantic.read(path)[0], leave=False, desc=path.name, unit_scale=True
-                    )
-                )
-                controller.db.add_mappings(
-                    mapping.model_copy(
-                        update={
-                            "curation_rule_text": [UNSURE],
-                            "record": default_hash(mapping),
-                        }
-                    )
-                    for mapping in tqdm(
-                        repository.read_unsure_mappings(),
-                        leave=False,
-                        desc="unsure",
-                        unit_scale=True,
-                    )
-                )
-            else:
-                controller = cls(
-                    connection=connection_uri,
-                    repository=repository,
-                    semantic_mapping_hash=semantic_mapping_hash,
-                    converter=converter,
-                )
-
-        return controller
-
     def count_predictions(self, state: Query) -> int:
         """Count predictions (i.e., anything that's not manually curated)."""
         return self.db.count_mappings(where_clauses=[UNCURATED_CLAUSE, *clauses_from_query(state)])
