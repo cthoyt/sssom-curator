@@ -38,9 +38,8 @@ def get_app(
     app.config["WTF_CSRF_ENABLED"] = False
     app.config["SECRET_KEY"] = os.urandom(8)
     app.config["SHOW_RELATIONS"] = True
-    app.config["current_user"] = user
     if controller is None:
-        if repository is None or user is None:
+        if repository is None:
             raise ValueError
         controller = Controller(
             target_references=target_references,
@@ -52,6 +51,7 @@ def get_app(
             f"There are no predictions to curate in {controller.repository.predictions_path}"
         )
     app.config["controller"] = controller
+    app.config["current_user"] = user
     flask_bootstrap.Bootstrap5(app)
     app.register_blueprint(blueprint)
 
