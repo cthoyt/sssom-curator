@@ -43,11 +43,17 @@ class DatabaseController(AbstractController):
         connection: str | None = None,
         semantic_mapping_hash: SemanticMappingHash | None = None,
         converter: curies.Converter,
+        target_references: Iterable[Reference] | None = None,
     ) -> None:
         """Initialize the database controller."""
         super().__init__(
-            repository=repository, semantic_mapping_hash=semantic_mapping_hash, converter=converter
+            repository=repository,
+            semantic_mapping_hash=semantic_mapping_hash,
+            converter=converter,
+            target_references=target_references,
         )
+        if self.target_references:
+            raise NotImplementedError
         self.db = SemanticMappingDatabase.from_connection(
             connection=connection or "sqlite:///:memory:", semantic_mapping_hash=self.mapping_hash
         )

@@ -69,12 +69,14 @@ class AbstractController(ABC):
         repository: Repository,
         semantic_mapping_hash: SemanticMappingHash | None = None,
         converter: curies.Converter,
+        target_references: Iterable[Reference] | None = None,
     ) -> None:
         """Initialize the controller."""
         self.repository = repository
         self.mapping_hash = semantic_mapping_hash or mapping_hash_v1
         self.converter = converter
         self.total_curated = 0
+        self.target_references = set(target_references) if target_references is not None else None
 
     @abstractmethod
     def get_prefix_counter(self, state: State) -> Counter[tuple[str, str]]:
@@ -145,7 +147,10 @@ class Controller(AbstractController):
             this set
         """
         super().__init__(
-            repository=repository, semantic_mapping_hash=mapping_hash, converter=converter
+            repository=repository,
+            semantic_mapping_hash=mapping_hash,
+            converter=converter,
+            target_references=target_references,
         )
         predicted_mappings, _, self._predictions_metadata = sssom_pydantic.read(
             self.repository.predictions_path
@@ -157,7 +162,6 @@ class Controller(AbstractController):
             reference = self.mapping_hash(mapping)
             self._predictions[reference] = mapping.model_copy(update={"record": reference})
 
-        self.target_references = set(target_references) if target_references is not None else None
         self.curations: defaultdict[Call, list[SemanticMapping]] = defaultdict(list)
 
     def get_prefix_counter(self, state: State) -> Counter[tuple[str, str]]:

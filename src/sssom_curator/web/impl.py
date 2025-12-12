@@ -47,22 +47,14 @@ def get_app(
     if controller is None:
         if repository is None:
             raise ValueError
+        impls = {"dict": Controller, "sqlite": DatabaseController}
+        impl_cls = impls[implementation] if implementation else Controller
         converter = ensure_converter(converter)
-        if implementation is None or implementation == "dict":
-            controller = Controller(
-                target_references=target_references,
-                repository=repository,
-                converter=converter,
-            )
-        elif implementation == "sqlite":
-            controller = DatabaseController.memory(
-                target_references=target_references,
-                repository=repository,
-                converter=converter,
-            )
-        else:
-            raise ValueError(f"invalid implementation: {implementation}")
-
+        controller = impl_cls(
+            target_references=target_references,
+            repository=repository,
+            converter=converter,
+        )
         if not controller.count_predictions(State()):
             raise ValueError("There are no predictions to curate")
 
