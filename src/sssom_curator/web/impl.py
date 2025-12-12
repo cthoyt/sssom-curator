@@ -32,12 +32,14 @@ def get_app(
     title: str | None = None,
     footer: str | None = None,
     converter: Converter | None = None,
+    eager_persist: bool = True,
 ) -> flask.Flask:
     """Get a curation flask app."""
     app = flask.Flask(__name__)
     app.config["WTF_CSRF_ENABLED"] = False
     app.config["SECRET_KEY"] = os.urandom(8)
     app.config["SHOW_RELATIONS"] = True
+    app.config["EAGER_PERSIST"] = eager_persist
     if controller is None:
         if repository is None:
             raise ValueError
