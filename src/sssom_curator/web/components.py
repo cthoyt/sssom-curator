@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Sequence
 from pathlib import Path
 from typing import Literal, NamedTuple, TypeAlias
 
@@ -115,9 +115,13 @@ class Controller:
             for mapping in self.iterate_predictions(state)
         )
 
-    def iterate_predictions(self, state: State) -> Iterator[SemanticMapping]:
+    def get_predictions(self, state: State) -> Sequence[SemanticMapping]:
+        """Get predicted semantic mappings."""
+        return list(self.iterate_predictions(state))
+
+    def iterate_predictions(self, state: State) -> Iterable[SemanticMapping]:
         """Iterate over pairs of positions and predicted semantic mappings."""
-        mappings = self._help_it_predictions(state)
+        mappings = iter(self._help_it_predictions(state))
         if state.sort is not None:
             mappings = self._sort(mappings, state.sort)
         if state.offset is not None:
@@ -148,12 +152,12 @@ class Controller:
             raise ValueError(f"unknown sort type: {sort}")
         return mappings
 
-    def count_predictions(self, state: State) -> int:
+    def count_predictions(self, state: Query) -> int:
         """Count the number of predictions to check for the given filters."""
         it = self._help_it_predictions(state)
         return sum(1 for _ in it)
 
-    def _help_it_predictions(self, state: State) -> Iterator[SemanticMapping]:
+    def _help_it_predictions(self, state: Query) -> Iterable[SemanticMapping]:
         mappings = iter(self._predictions.values())
         if self.target_references is not None:
             mappings = (
@@ -162,7 +166,7 @@ class Controller:
                 if mapping.subject in self.target_references
                 or mapping.object in self.target_references
             )
-        return iter(filter_mappings(mappings, state))
+        yield from filter_mappings(mappings, state)
 
     def mark(self, reference: Reference | SemanticMapping, mark: Mark) -> None:
         """Mark the given mapping as correct.
