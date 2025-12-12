@@ -233,9 +233,9 @@ class Repository(BaseModel):
     def call_to_path(self) -> dict[Call, Path]:
         """Get a dictionary from calls to paths."""
         return {
-            "unsure": self.repository.unsure_path,
-            "incorrect": self.repository.negatives_path,
-            "correct": self.repository.positives_path,
+            "unsure": self.unsure_path,
+            "incorrect": self.negatives_path,
+            "correct": self.positives_path,
         }
 
     def read_positive_mappings(self) -> list[SemanticMapping]:

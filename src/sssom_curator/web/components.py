@@ -186,6 +186,7 @@ class Controller:
 
     def persist(self) -> None:
         """Persist the curated mappings."""
+        total = sum(len(m) for m in self.curations.values())
         for call, mappings in self.curations.items():
             if mappings:
                 insert(
@@ -196,17 +197,18 @@ class Controller:
                 )
         self.curations.clear()
 
-        sssom_pydantic.write(
-            self._predictions.values(),
-            self.repository.predictions_path,
-            metadata=self._predictions_metadata,
-            converter=self.converter,
-            drop_duplicates=True,
-            sort=True,
-            exclude_columns=["record_id", "predicate_label"],
-            # TODO is there a way of pre-calculating some things to make this faster?
-            #  e.g., say "no condensation"
-        )
+        if total > 0:
+            sssom_pydantic.write(
+                self._predictions.values(),
+                self.repository.predictions_path,
+                metadata=self._predictions_metadata,
+                converter=self.converter,
+                drop_duplicates=True,
+                sort=True,
+                exclude_columns=["record_id", "predicate_label"],
+                # TODO is there a way of pre-calculating some things to make this faster?
+                #  e.g., say "no condensation"
+            )
 
 
 def _get_confidence(t: SemanticMapping) -> float:
