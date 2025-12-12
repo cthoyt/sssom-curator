@@ -20,11 +20,8 @@ from sssom_pydantic.database import (
 )
 from sssom_pydantic.process import UNSURE, Mark
 from sssom_pydantic.query import Query
-from tqdm import tqdm
-from typing_extensions import Self
 
 from sssom_curator import Repository
-from sssom_curator.constants import default_hash
 
 from .components import AbstractController, State
 
