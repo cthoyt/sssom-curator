@@ -127,6 +127,13 @@ class TestFull(cases.RepositoryTestCase):
             [m.model_dump(exclude_none=True, exclude_unset=True) for m in actual],
         )
 
+    def assert_prediction_count(self, expected: int) -> None:
+        """Assert there are a correct number of predictions loaded in the controller."""
+        self.assertEqual(
+            expected,
+            self.controller.count_predictions(),
+        )
+
     def test_query(self) -> None:
         """Test making a query."""
         self.controller.count_predictions(State(query="chebi"))
@@ -153,13 +160,13 @@ class TestFull(cases.RepositoryTestCase):
 
     def test_mark_out_of_bounds(self) -> None:
         """Test trying to mark a number that's too big."""
-        self.assertEqual(1, len(self.controller._predictions))
+        self.assert_prediction_count(1)
 
         # can't pop a number too big!
         with self.app.test_client() as client, self.assertRaises(KeyError):
             client.get("/mark/nope:nope/correct")
 
-        self.assertEqual(1, len(self.controller._predictions))
+        self.assert_prediction_count(1)
 
     def test_bad_mark(self) -> None:
         """Test an incorrect mark."""
@@ -169,7 +176,7 @@ class TestFull(cases.RepositoryTestCase):
 
     def test_mark_correct(self) -> None:
         """A self-contained scenario for marking an entry correct."""
-        self.assertEqual(1, len(self.controller._predictions))
+        self.assert_prediction_count(1)
 
         with self.app.test_client() as client:
             res = client.get(
@@ -178,7 +185,7 @@ class TestFull(cases.RepositoryTestCase):
             self.assertEqual(200, res.status_code, msg=res.text)
 
         # now, we have one less than before~
-        self.assertEqual(0, len(self.controller._predictions))
+        self.assert_prediction_count(0)
 
         mappings, _converter, mapping_set = sssom_pydantic.read(
             self.controller.repository.positives_path
@@ -195,7 +202,7 @@ class TestFull(cases.RepositoryTestCase):
 
     def test_mark_incorrect(self) -> None:
         """A self-contained scenario for marking an entry incorrect."""
-        self.assertEqual(1, len(self.controller._predictions))
+        self.assert_prediction_count(1)
 
         with self.app.test_client() as client:
             res = client.get(
@@ -204,7 +211,7 @@ class TestFull(cases.RepositoryTestCase):
             self.assertEqual(200, res.status_code, msg=res.text)
 
         # now, we have one less than before~
-        self.assertEqual(0, len(self.controller._predictions))
+        self.assert_prediction_count(0)
 
         mappings, _converter, mapping_set = sssom_pydantic.read(
             self.controller.repository.negatives_path
@@ -219,7 +226,7 @@ class TestFull(cases.RepositoryTestCase):
 
     def test_mark_unsure(self) -> None:
         """A self-contained scenario for marking an entry as unsure."""
-        self.assertEqual(1, len(self.controller._predictions))
+        self.assert_prediction_count(1)
 
         with self.app.test_client() as client:
             res = client.get(
@@ -228,7 +235,7 @@ class TestFull(cases.RepositoryTestCase):
             self.assertEqual(200, res.status_code, msg=res.text)
 
         # now, we have one less than before~
-        self.assertEqual(0, len(self.controller._predictions))
+        self.assert_prediction_count(0)
 
         mappings, _converter, mapping_set = sssom_pydantic.read(
             self.controller.repository.unsure_path
@@ -243,7 +250,7 @@ class TestFull(cases.RepositoryTestCase):
 
     def test_mark_broad(self) -> None:
         """A self-contained scenario for marking an entry as broad."""
-        self.assertEqual(1, len(self.controller._predictions))
+        self.assert_prediction_count(1)
 
         with self.app.test_client() as client:
             res = client.get(
@@ -252,7 +259,7 @@ class TestFull(cases.RepositoryTestCase):
             self.assertEqual(200, res.status_code, msg=res.text)
 
         # now, we have one less than before~
-        self.assertEqual(0, len(self.controller._predictions))
+        self.assert_prediction_count(0)
 
         mappings, _converter, mapping_set = sssom_pydantic.read(
             self.controller.repository.positives_path
@@ -269,7 +276,7 @@ class TestFull(cases.RepositoryTestCase):
 
     def test_mark_narrow(self) -> None:
         """A self-contained scenario for marking an entry as narrow."""
-        self.assertEqual(1, len(self.controller._predictions))
+        self.assert_prediction_count(1)
 
         with self.app.test_client() as client:
             res = client.get(
@@ -278,7 +285,7 @@ class TestFull(cases.RepositoryTestCase):
             self.assertEqual(200, res.status_code, msg=res.text)
 
         # now, we have one less than before~
-        self.assertEqual(0, len(self.controller._predictions))
+        self.assert_prediction_count(0)
 
         mappings, _converter, mapping_set = sssom_pydantic.read(
             self.controller.repository.positives_path

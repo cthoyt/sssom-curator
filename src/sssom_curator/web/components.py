@@ -109,8 +109,12 @@ class Controller:
         """Get predicted semantic mappings."""
         return list(self.iterate_predictions(state))
 
-    def iterate_predictions(self, state: State) -> Iterable[SemanticMapping]:
+    def iterate_predictions(self, state: State | None = None) -> Iterable[SemanticMapping]:
         """Iterate over pairs of positions and predicted semantic mappings."""
+        if state is None:
+            yield from self._help_it_predictions()
+            return
+
         mappings = iter(self._help_it_predictions(state))
         if state.sort is not None:
             mappings = self._sort(mappings, state.sort)
@@ -142,12 +146,12 @@ class Controller:
             raise ValueError(f"unknown sort type: {sort}")
         return mappings
 
-    def count_predictions(self, state: Query) -> int:
+    def count_predictions(self, query: Query | None = None) -> int:
         """Count the number of predictions to check for the given filters."""
-        it = self._help_it_predictions(state)
+        it = self._help_it_predictions(query)
         return sum(1 for _ in it)
 
-    def _help_it_predictions(self, state: Query) -> Iterable[SemanticMapping]:
+    def _help_it_predictions(self, query: Query | None = None) -> Iterable[SemanticMapping]:
         mappings = iter(self._predictions.values())
         if self.target_references is not None:
             mappings = (
@@ -156,7 +160,10 @@ class Controller:
                 if mapping.subject in self.target_references
                 or mapping.object in self.target_references
             )
-        yield from filter_mappings(mappings, state)
+        if query is not None:
+            yield from filter_mappings(mappings, query)
+        else:
+            yield from mappings
 
     def mark(
         self,

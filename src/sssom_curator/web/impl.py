@@ -48,10 +48,8 @@ def get_app(
             repository=repository,
             converter=ensure_converter(converter),
         )
-    if not controller._predictions:
-        raise RuntimeError(
-            f"There are no predictions to curate in {controller.repository.predictions_path}"
-        )
+    if not controller.count_predictions():
+        raise ValueError("There are no predictions to curate")
     app.config["controller"] = controller
     app.config["get_current_user_reference"] = lambda: user
     flask_bootstrap.Bootstrap5(app)
