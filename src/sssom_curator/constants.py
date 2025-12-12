@@ -8,12 +8,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TypeAlias
 
 from curies import Reference
+from sssom_pydantic.api import MAPPING_HASH_V1_PREFIX, mapping_hash_v1
 
 if TYPE_CHECKING:
     import curies
     from sssom_pydantic import SemanticMapping
 
 __all__ = [
+    "DEFAULT_HASH_PREFIX",
     "DEFAULT_RESOLVER_BASE",
     "NEGATIVES_NAME",
     "POSITIVES_NAME",
@@ -21,10 +23,10 @@ __all__ = [
     "UNSURE_NAME",
     "PredictionMethod",
     "RecognitionMethod",
+    "default_hash",
     "ensure_converter",
     "insert",
 ]
-
 
 RecognitionMethod: TypeAlias = Literal["ner", "grounding"]
 PredictionMethod: TypeAlias = Literal["ner", "grounding", "embedding"]
@@ -69,25 +71,12 @@ POSITIVES_NAME = "positive.sssom.tsv"
 NEGATIVES_NAME = "negative.sssom.tsv"
 UNSURE_NAME = "unsure.sssom.tsv"
 
-STUB_SSSOM_COLUMNS = [
-    "subject_id",
-    "subject_label",
-    "predicate_id",
-    "object_id",
-    "object_label",
-    "mapping_justification",
-    "author_id",
-    "mapping_tool",
-    "predicate_modifier",
-]
-
-DEFAULT_HASH_PREFIX = "sssom-curator-hash-v1"
+DEFAULT_HASH_PREFIX = MAPPING_HASH_V1_PREFIX
 
 
 def default_hash(m: SemanticMapping) -> Reference:
     """Hash a mapping into a reference."""
-    v = hash(m) & ((1 << 64) - 1)
-    return Reference(prefix=DEFAULT_HASH_PREFIX, identifier=str(v))
+    return mapping_hash_v1(m)
 
 
 def insert(
