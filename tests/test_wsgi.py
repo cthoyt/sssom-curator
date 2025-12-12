@@ -59,14 +59,21 @@ TEST_PREDICTED_MAPPING_MARKED_UNSURE = SemanticMapping(
     mapping_tool=MappingTool(name="test", version=None),
     curation_rule_text=[UNSURE],
 )
+TEST_PREDICTED_MAPPING_MARKED_UNSURE = SemanticMapping(
+    subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
+    predicate=exact_match,
+    object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
+    justification=lexical_matching_process.pair.to_pydantic(),
+    confidence=0.95,
+    mapping_tool=MappingTool(name="test", version=None),
+    curation_rule_text=[UNSURE],
+)
 TEST_PREDICTED_MAPPING_MARKED_BROAD = SemanticMapping(
     subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
-    # note this is flipped because
     predicate=broad_match,
     object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
     justification=manual_mapping_curation.pair.to_pydantic(),
     authors=[TEST_USER],
-    mapping_date=today,
 )
 TEST_PREDICTED_MAPPING_MARKED_NARROW = SemanticMapping(
     subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
@@ -170,9 +177,15 @@ class TestFull(cases.RepositoryTestCase):
 
         # can't pop a number too big!
         with self.app.test_client() as client, self.assertRaises(KeyError):
-            client.get("/mark/nope:nope/yup")
+            client.get("/mark/nope:nope/correct")
 
         self.assertEqual(1, len(self.controller._predictions))
+
+    def test_bad_mark(self) -> None:
+        """Test an incorrect mark."""
+        with self.app.test_client() as client:
+            res = client.get(f"/mark/{self.test_prediction_record_curie}/bad-call")
+            self.assertEqual(400, res.status_code)
 
     def test_mark_correct(self) -> None:
         """A self-contained scenario for marking an entry correct."""
@@ -180,7 +193,7 @@ class TestFull(cases.RepositoryTestCase):
 
         with self.app.test_client() as client:
             res = client.get(
-                f"/mark/{self.test_prediction_record_curie}/yup", follow_redirects=True
+                f"/mark/{self.test_prediction_record_curie}/correct", follow_redirects=True
             )
             self.assertEqual(200, res.status_code, msg=res.text)
 
@@ -206,7 +219,7 @@ class TestFull(cases.RepositoryTestCase):
 
         with self.app.test_client() as client:
             res = client.get(
-                f"/mark/{self.test_prediction_record_curie}/nope", follow_redirects=True
+                f"/mark/{self.test_prediction_record_curie}/incorrect", follow_redirects=True
             )
             self.assertEqual(200, res.status_code, msg=res.text)
 
@@ -230,7 +243,7 @@ class TestFull(cases.RepositoryTestCase):
 
         with self.app.test_client() as client:
             res = client.get(
-                f"/mark/{self.test_prediction_record_curie}/maybe", follow_redirects=True
+                f"/mark/{self.test_prediction_record_curie}/unsure", follow_redirects=True
             )
             self.assertEqual(200, res.status_code, msg=res.text)
 
@@ -254,7 +267,7 @@ class TestFull(cases.RepositoryTestCase):
 
         with self.app.test_client() as client:
             res = client.get(
-                f"/mark/{self.test_prediction_record_curie}/broad", follow_redirects=True
+                f"/mark/{self.test_prediction_record_curie}/BROAD", follow_redirects=True
             )
             self.assertEqual(200, res.status_code, msg=res.text)
 
@@ -280,7 +293,7 @@ class TestFull(cases.RepositoryTestCase):
 
         with self.app.test_client() as client:
             res = client.get(
-                f"/mark/{self.test_prediction_record_curie}/narrow", follow_redirects=True
+                f"/mark/{self.test_prediction_record_curie}/NARROW", follow_redirects=True
             )
             self.assertEqual(200, res.status_code, msg=res.text)
 

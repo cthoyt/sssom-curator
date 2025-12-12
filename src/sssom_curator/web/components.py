@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import Counter
-from collections.abc import Callable, Iterable, Iterator, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from pathlib import Path
 from typing import Literal, NamedTuple, TypeAlias
 
@@ -13,11 +13,12 @@ import sssom_pydantic
 from curies import Reference
 from pydantic import BaseModel, Field
 from sssom_pydantic import SemanticMapping
+from sssom_pydantic.api import SemanticMappingHash
 from sssom_pydantic.process import Mark, curate
 from sssom_pydantic.query import Query, filter_mappings
 
-from sssom_curator import Repository
-from sssom_curator.constants import default_hash, insert
+from ..constants import default_hash, insert
+from ..repository import Repository
 
 __all__ = [
     "Controller",
@@ -88,7 +89,7 @@ class Controller(AbstractController):
         repository: Repository,
         user: Reference,
         converter: curies.Converter,
-        mapping_hash: Callable[[SemanticMapping], Reference] = default_hash,
+        mapping_hash: SemanticMappingHash = default_hash,
     ) -> None:
         """Instantiate the web controller.
 
@@ -209,7 +210,10 @@ class Controller(AbstractController):
 
         mapping = self._predictions.pop(reference)
 
-        new_mapping = curate(mapping, [self._get_current_author()], mark)
+        # TODO start using dates!
+        new_mapping = curate(
+            mapping, authors=[self._get_current_author()], mark=mark, add_date=False
+        )
 
         insert(
             path=self.mark_to_file[mark],
