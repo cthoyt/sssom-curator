@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import getpass
-from typing import Any, Literal, NamedTuple, cast
+from typing import Any, cast
 
 import flask
 import werkzeug
@@ -11,8 +11,12 @@ from curies import Reference
 from flask import current_app
 from werkzeug.local import LocalProxy
 
-from .backend.base import DEFAULT_LIMIT, DEFAULT_OFFSET, AbstractController, State
-from .backend.filesystem import FileSystemController
+from .components import (
+    AbstractController,
+    Controller,
+    State,
+    get_pagination_elements,
+)
 from .utils import commit, get_branch, normalize_mark, not_main, push
 
 __all__ = [
@@ -94,7 +98,7 @@ def summary() -> str:
 @blueprint.route("/commit")
 def run_commit() -> werkzeug.Response:
     """Make a commit then redirect to the home page."""
-    if not isinstance(controller, FileSystemController):
+    if not isinstance(controller, Controller):
         raise flask.abort(404, "incorrect backend for making commits")
 
     label = "mappings" if controller.total_curated > 1 else "mapping"
@@ -123,37 +127,3 @@ def mark(curie: str, value: str) -> werkzeug.Response:
 def _go_home() -> werkzeug.Response:
     state = get_state_from_flask()
     return flask.redirect(url_for_state(".home", state))
-
-
-class PaginationElement(NamedTuple):
-    """Represents pagination element."""
-
-    offset: int | None
-    icon: str
-    text: str
-    position: Literal["before", "after"]
-
-
-def get_pagination_elements(state: State, remaining_rows: int) -> list[PaginationElement]:
-    """Get pagination elements."""
-    rv = []
-
-    def _append(
-        offset: int | None, icon: str, text: str, position: Literal["before", "after"]
-    ) -> None:
-        rv.append(PaginationElement(offset, icon, text, position))
-
-    offset = state.offset or DEFAULT_OFFSET
-    limit = state.limit or DEFAULT_LIMIT
-    if 0 <= offset - limit:
-        _append(None, "skip-start-circle", "First", "after")
-        _append(offset - limit, "skip-backward-circle", f"Previous {limit:,}", "after")
-    if offset < remaining_rows - limit:
-        _append(offset + limit, "skip-forward-circle", f"Next {limit:,}", "before")
-        _append(
-            remaining_rows - limit,
-            "skip-end-circle",
-            f"Last ({remaining_rows:,})",
-            "before",
-        )
-    return rv

@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from collections import Counter
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from pathlib import Path
-from typing import Literal, TypeAlias
+from typing import Literal, NamedTuple, TypeAlias
 
 import curies
 import sssom_pydantic
@@ -21,6 +21,9 @@ from sssom_curator.constants import default_hash, insert
 
 __all__ = [
     "Controller",
+    "PaginationElement",
+    "State",
+    "get_pagination_elements",
 ]
 
 #: The default limit
@@ -230,3 +233,37 @@ class Controller(AbstractController):
 
 def _get_confidence(t: SemanticMapping) -> float:
     return t.confidence or 0.0
+
+
+class PaginationElement(NamedTuple):
+    """Represents pagination element."""
+
+    offset: int | None
+    icon: str
+    text: str
+    position: Literal["before", "after"]
+
+
+def get_pagination_elements(state: State, remaining_rows: int) -> list[PaginationElement]:
+    """Get pagination elements."""
+    rv = []
+
+    def _append(
+        offset: int | None, icon: str, text: str, position: Literal["before", "after"]
+    ) -> None:
+        rv.append(PaginationElement(offset, icon, text, position))
+
+    offset = state.offset or DEFAULT_OFFSET
+    limit = state.limit or DEFAULT_LIMIT
+    if 0 <= offset - limit:
+        _append(None, "skip-start-circle", "First", "after")
+        _append(offset - limit, "skip-backward-circle", f"Previous {limit:,}", "after")
+    if offset < remaining_rows - limit:
+        _append(offset + limit, "skip-forward-circle", f"Next {limit:,}", "before")
+        _append(
+            remaining_rows - limit,
+            "skip-end-circle",
+            f"Last ({remaining_rows:,})",
+            "before",
+        )
+    return rv
