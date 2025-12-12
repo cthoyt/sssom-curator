@@ -1,4 +1,4 @@
-"""A backend based on the local filesystem."""
+"""Components."""
 
 from __future__ import annotations
 
