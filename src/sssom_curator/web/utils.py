@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TypeVar, cast, get_args
+from typing import TypeVar, get_args
 
-from curies.vocabulary import SemanticMappingScope, semantic_mapping_scopes
 from sssom_pydantic.process import Mark
 
 __all__ = [
     "Mark",
     "commit",
     "get_branch",
-    "normalize_mark",
     "not_main",
     "push",
 ]
@@ -64,24 +62,5 @@ def _git(*args: str) -> str | None:
             return ret.strip().decode("utf-8")
 
 
+#: The set of all possible curation marks
 MARKS: set[Mark] = set(get_args(Mark))
-CORRECT = {"yup", "true", "t", "correct", "right", "close enough", "disco"}
-INCORRECT = {"no", "nope", "false", "f", "nada", "nein", "incorrect", "negative", "negatory"}
-UNSURE = {"unsure", "maybe", "idk", "idgaf", "idgaff"}
-
-
-def normalize_mark(value: str) -> Mark:
-    """Get the mark."""
-    value = value.lower()
-    if value in CORRECT:
-        return "correct"
-    elif value in INCORRECT:
-        return "incorrect"
-    elif value in UNSURE:
-        return "unsure"
-    elif value in semantic_mapping_scopes:
-        return cast(SemanticMappingScope, value)
-    elif value.upper() in semantic_mapping_scopes:
-        return cast(SemanticMappingScope, value.upper())
-    else:
-        raise ValueError

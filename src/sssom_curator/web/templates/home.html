@@ -109,35 +109,35 @@
                             </td>
                             <td>
                                 <a data-bs-toggle="tooltip" title="The {{ p.predicate.curie }} relationship is correct."
-                                   href="{{ url_for_state('.mark', state, curie=p.record.curie, value='yup') }}">
+                                   href="{{ url_for_state('.mark', state, curie=p.record.curie, value='correct') }}">
                                     <i class="bi bi-hand-thumbs-up"></i>
                                 </a>
                             </td>
                             <td class="text-nowrap">
                                 <a data-bs-toggle="tooltip"
                                    title="{{ p.subject_name }} (source) is broader than {{ p.object_name }} (object)."
-                                   href="{{ url_for_state('.mark', state, curie=p.record.curie, value='broad') }}">
+                                   href="{{ url_for_state('.mark', state, curie=p.record.curie, value='BROAD') }}">
                                     <i class="bi bi-chevron-left"></i>
                                 </a>
                             </td>
                             <td class="text-nowrap">
                                 <a data-bs-toggle="tooltip"
                                    title="{{ p.subject_name }} (source) is narrower than {{ p.object_name }} (object)."
-                                   href="{{ url_for_state('.mark', state, curie=p.record.curie, value='narrow') }}">
+                                   href="{{ url_for_state('.mark', state, curie=p.record.curie, value='NARROW') }}">
                                    <i class="bi bi-chevron-right"></i>
                                 </a>
                             </td>
                             <td>
                                 <a data-bs-toggle="tooltip"
                                    title="These two entities do not have the {{ p.predicate.curie }} relationship. You should still click this even if you think there could be a different relationship."
-                                   href="{{ url_for_state('.mark', state, curie=p.record.curie, value='nope') }}">
+                                   href="{{ url_for_state('.mark', state, curie=p.record.curie, value='incorrect') }}">
                                     <i class="bi bi-hand-thumbs-down"></i>
                                 </a>
                             </td>
                             <td>
                                 <a style="color: darkgoldenrod;" data-bs-toggle="tooltip"
                                    title="I'm not sure if this is correct or not"
-                                   href="{{ url_for_state('.mark', state, curie=p.record.curie, value='idk') }}">
+                                   href="{{ url_for_state('.mark', state, curie=p.record.curie, value='unsure') }}">
                                     <i class="bi bi-question-circle"></i>
                                 </a>
                             </td>

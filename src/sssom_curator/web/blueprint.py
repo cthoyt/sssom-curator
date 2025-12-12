@@ -9,10 +9,11 @@ import flask
 import werkzeug
 from curies import Reference
 from flask import current_app
+from sssom_pydantic.process import Mark
 from werkzeug.local import LocalProxy
 
 from .components import Controller, State, get_pagination_elements
-from .utils import commit, get_branch, normalize_mark, not_main, push
+from .utils import MARKS, commit, get_branch, not_main, push
 
 __all__ = [
     "blueprint",
@@ -110,7 +111,9 @@ def run_commit() -> werkzeug.Response:
 def mark(curie: str, value: str) -> werkzeug.Response:
     """Mark the given line as correct or not."""
     reference = Reference.from_curie(curie)
-    controller.mark(reference, normalize_mark(value))
+    if value not in MARKS:
+        raise flask.abort(402)
+    controller.mark(reference, cast(Mark, value))
     return _go_home()
 
 
