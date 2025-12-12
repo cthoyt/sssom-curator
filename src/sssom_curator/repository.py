@@ -12,6 +12,7 @@ import click
 import curies
 import sssom_pydantic
 from pydantic import BaseModel, Field
+from sssom_pydantic.process import Call
 from typing_extensions import Self
 
 from .constants import (
@@ -227,6 +228,15 @@ class Repository(BaseModel):
     def paths(self) -> list[Path]:
         """Get all paths."""
         return [self.positives_path, self.negatives_path, self.unsure_path, self.predictions_path]
+
+    @property
+    def call_to_path(self) -> dict[Call, Path]:
+        """Get a dictionary from calls to paths."""
+        return {
+            "unsure": self.unsure_path,
+            "incorrect": self.negatives_path,
+            "correct": self.positives_path,
+        }
 
     def read_positive_mappings(self) -> list[SemanticMapping]:
         """Load the positive mappings."""
@@ -554,6 +564,12 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
         )
         @click.option("--orcid", help="Your ORCID, if not automatically loadable")
         @click.option("--port", type=int, default=5003, show_default=True)
+        @click.option(
+            "--eager-persist",
+            is_flag=True,
+            help="If set, will persist after each curation instead of waiting for the commit "
+            "button to be pushed",
+        )
         @click.option("--implementation", type=click.Choice(["dict", "sqlite"]))
         @click.pass_obj
         def web(
@@ -561,6 +577,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             resolver_base: str | None,
             orcid: str,
             port: int,
+            eager_persist: bool,
             implementation: Literal["dict", "sqlite"],
         ) -> None:
             """Run the semantic mappings curation app."""
@@ -587,6 +604,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
                 user=user,
                 title=obj.web_title or "Semantic Mapping Curator",
                 footer=obj.web_footer,
+                eager_persist=eager_persist,
                 implementation=implementation,
             )
 
