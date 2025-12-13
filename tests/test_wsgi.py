@@ -174,8 +174,9 @@ class TestFull(cases.RepositoryTestCase):
         self.assert_prediction_count(1)
 
         # can't pop a number too big!
-        with self.app.test_client() as client, self.assertRaises(KeyError):
-            client.get("/mark/nope:nope/correct")
+        with self.app.test_client() as client:
+            res = client.get("/mark/nope:nope/correct")
+            self.assertEqual(404, res.status_code)
 
         self.assert_prediction_count(1)
 

@@ -118,7 +118,10 @@ def mark(curie: str, value: Mark) -> werkzeug.Response:
     reference = Reference.from_curie(curie)
     if value not in MARKS:
         raise flask.abort(400)
-    controller.mark(reference, value, authors=current_user_reference)
+    try:
+        controller.mark(reference, value, authors=current_user_reference)
+    except KeyError:
+        raise flask.abort(404) from None
     if current_app.config["EAGER_PERSIST"]:
         controller.persist()
     return _go_home()
