@@ -41,6 +41,7 @@ class DatabaseController(AbstractController):
         semantic_mapping_hash: SemanticMappingHash | None = None,
         converter: curies.Converter,
         target_references: Iterable[Reference] | None = None,
+        add_date: bool = False,
     ) -> None:
         """Initialize the database controller."""
         super().__init__(
@@ -54,6 +55,7 @@ class DatabaseController(AbstractController):
         self.db = SemanticMappingDatabase.from_connection(
             connection=connection or "sqlite:///:memory:", semantic_mapping_hash=self.mapping_hash
         )
+        self.add_date = add_date
 
     def count_predictions(self, query: Query | None = None) -> int:
         """Count predictions (i.e., anything that's not manually curated)."""
@@ -75,7 +77,7 @@ class DatabaseController(AbstractController):
     def mark(self, reference: Reference, mark: Mark, authors: Reference | list[Reference]) -> None:
         """Mark the given mapping as correct."""
         self.total_curated += 1
-        self.db.curate(reference, mark=mark, authors=authors)
+        self.db.curate(reference, mark=mark, authors=authors, add_date=self.add_date)
 
     def persist(self) -> None:
         """Save mappings to disk."""

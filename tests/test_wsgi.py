@@ -334,7 +334,7 @@ class TestDatabaseController(TestFull):
         self.td = tempfile.TemporaryDirectory()
         self.connection_path = Path(self.td.name).joinpath("test.db")
         self.connection = f"sqlite:///{self.connection_path}"
-        self.controller_kwargs = {"connection": self.connection}
+        self.controller_kwargs = {"connection": self.connection, "add_date": False}
         super().setUp()
 
     def _populate(self) -> None:
