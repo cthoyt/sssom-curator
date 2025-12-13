@@ -107,6 +107,7 @@ class TestFull(cases.RepositoryTestCase):
         self.controller = self.controller_cls(
             repository=self.repository, converter=TEST_CONVERTER, **(self.controller_kwargs or {})
         )
+        self._populate()
         self.app = get_app(controller=self.controller, user=TEST_USER)
         self.app.testing = True
 
@@ -118,6 +119,9 @@ class TestFull(cases.RepositoryTestCase):
         self.test_prediction_record_curie = self.controller.mapping_hash(
             TEST_PREDICTED_MAPPING
         ).curie
+
+    def _populate(self) -> None:
+        """Populate the database."""
 
     def assert_file_mapping_count(self, path: Path, n: int) -> None:
         """Check that a SSSOM file has the right number of mappings."""
@@ -322,7 +326,8 @@ class TestFilepathController(TestFull):
 class TestDatabaseController(TestFull):
     """Test the database controller."""
 
-    controller_cls: ClassVar[type[AbstractController]] = DatabaseController
+    controller_cls: ClassVar[type[DatabaseController]] = DatabaseController
+    controller: DatabaseController
 
     def setUp(self) -> None:
         """Set up the test case."""
@@ -331,6 +336,11 @@ class TestDatabaseController(TestFull):
         self.connection = f"sqlite:///{self.connection_path}"
         self.controller_kwargs = {"connection": self.connection}
         super().setUp()
+
+    def _populate(self) -> None:
+        """Populate the database."""
+        for path in self.repository.paths:
+            self.controller.db.read(path)
 
     def tearDown(self) -> None:
         """Tear down the test case."""
