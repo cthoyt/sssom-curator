@@ -1,8 +1,9 @@
 """Test the web app."""
 
+import tempfile
 from collections.abc import Sequence
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import curies
 import sssom_pydantic
@@ -19,7 +20,8 @@ from sssom_pydantic import MappingTool, SemanticMapping
 from sssom_pydantic.process import UNSURE
 
 from sssom_curator.constants import NEGATIVES_NAME, POSITIVES_NAME, UNSURE_NAME
-from sssom_curator.web.components import Controller, State
+from sssom_curator.web.components import AbstractController, Controller, State
+from sssom_curator.web.database import DatabaseController
 from sssom_curator.web.impl import get_app
 from tests import cases
 
@@ -96,10 +98,16 @@ class TestFull(cases.RepositoryTestCase):
     unsure_seed: ClassVar[list[SemanticMapping]] = []
     converter_seed: ClassVar[curies.Converter] = TEST_CONVERTER
 
+    controller_cls: ClassVar[type[AbstractController]]
+    controller_kwargs: dict[str, Any] | None
+
     def setUp(self) -> None:
         """Set up the test case."""
         super().setUp()
-        self.controller = Controller(repository=self.repository, converter=TEST_CONVERTER)
+        self.controller = self.controller_cls(
+            repository=self.repository, converter=TEST_CONVERTER, **(self.controller_kwargs or {})
+        )
+        self._populate()
         self.app = get_app(controller=self.controller, user=TEST_USER)
         self.app.testing = True
 
@@ -111,6 +119,9 @@ class TestFull(cases.RepositoryTestCase):
         self.test_prediction_record_curie = self.controller.mapping_hash(
             TEST_PREDICTED_MAPPING
         ).curie
+
+    def _populate(self) -> None:
+        """Populate the database."""
 
     def assert_file_mapping_count(self, path: Path, n: int) -> None:
         """Check that a SSSOM file has the right number of mappings."""
@@ -163,8 +174,9 @@ class TestFull(cases.RepositoryTestCase):
         self.assert_prediction_count(1)
 
         # can't pop a number too big!
-        with self.app.test_client() as client, self.assertRaises(KeyError):
-            client.get("/mark/nope:nope/correct")
+        with self.app.test_client() as client:
+            res = client.get("/mark/nope:nope/correct")
+            self.assertEqual(404, res.status_code)
 
         self.assert_prediction_count(1)
 
@@ -299,3 +311,38 @@ class TestFull(cases.RepositoryTestCase):
         self.assert_file_mapping_count(self.controller.repository.negatives_path, 0)
         self.assert_file_mapping_count(self.controller.repository.predictions_path, 0)
         self.assert_file_mapping_count(self.controller.repository.unsure_path, 0)
+
+
+class TestFilepathController(TestFull):
+    """Test the filepath controller."""
+
+    controller_cls: ClassVar[type[AbstractController]] = Controller
+
+    def setUp(self) -> None:
+        """Set up the test case."""
+        self.controller_kwargs = {}
+        super().setUp()
+
+
+class TestDatabaseController(TestFull):
+    """Test the database controller."""
+
+    controller_cls: ClassVar[type[DatabaseController]] = DatabaseController
+    controller: DatabaseController
+
+    def setUp(self) -> None:
+        """Set up the test case."""
+        self.td = tempfile.TemporaryDirectory()
+        self.connection_path = Path(self.td.name).joinpath("test.db")
+        self.connection = f"sqlite:///{self.connection_path}"
+        self.controller_kwargs = {"connection": self.connection, "add_date": False}
+        super().setUp()
+
+    def _populate(self) -> None:
+        """Populate the database."""
+        for path in self.repository.paths:
+            self.controller.db.read(path)
+
+    def tearDown(self) -> None:
+        """Tear down the test case."""
+        self.td.cleanup()
