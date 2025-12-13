@@ -55,20 +55,20 @@ class DatabaseController(AbstractController):
             connection=connection or "sqlite:///:memory:", semantic_mapping_hash=self.mapping_hash
         )
 
-    def count_predictions(self, state: Query) -> int:
+    def count_predictions(self, query: Query | None = None) -> int:
         """Count predictions (i.e., anything that's not manually curated)."""
-        return self.db.count_mappings(where_clauses=[UNCURATED_CLAUSE, *clauses_from_query(state)])
+        return self.db.count_mappings(where_clauses=[UNCURATED_CLAUSE, *clauses_from_query(query)])
 
-    def get_predictions(self, state: State) -> Sequence[SemanticMapping]:
+    def get_predictions(self, state: State | None = None) -> Sequence[SemanticMapping]:
         """Iterate over pairs of positions and predicted semantic mappings."""
         models = self.db.get_mappings(
             where_clauses=[UNCURATED_CLAUSE, *clauses_from_query(state)],
-            limit=state.limit,
-            offset=state.offset,
+            limit=state.limit if state is not None else None,
+            offset=state.offset if state is not None else None,
         )
         return [model.to_semantic_mapping() for model in models]
 
-    def get_prefix_counter(self, state: State) -> Counter[tuple[str, str]]:
+    def get_prefix_counter(self, state: State | None = None) -> Counter[tuple[str, str]]:
         """Count the number of predictions to check for the given filters."""
         return Counter((m.subject.prefix, m.object.prefix) for m in self.get_predictions(state))
 

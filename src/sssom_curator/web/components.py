@@ -79,15 +79,15 @@ class AbstractController(ABC):
         self.target_references = set(target_references) if target_references is not None else None
 
     @abstractmethod
-    def get_prefix_counter(self, state: State) -> Counter[tuple[str, str]]:
+    def get_prefix_counter(self, state: State | None = None) -> Counter[tuple[str, str]]:
         """Get a subject/object prefix counter."""
 
     @abstractmethod
-    def get_predictions(self, state: State) -> Sequence[SemanticMapping]:
+    def get_predictions(self, state: State | None = None) -> Sequence[SemanticMapping]:
         """Get predicted semantic mappings."""
 
     @abstractmethod
-    def count_predictions(self, state: Query) -> int:
+    def count_predictions(self, query: Query | None = None) -> int:
         """Count the number of predictions to check for the given filters."""
 
     @abstractmethod
@@ -164,14 +164,14 @@ class Controller(AbstractController):
 
         self.curations: defaultdict[Call, list[SemanticMapping]] = defaultdict(list)
 
-    def get_prefix_counter(self, state: State) -> Counter[tuple[str, str]]:
+    def get_prefix_counter(self, state: State | None = None) -> Counter[tuple[str, str]]:
         """Get a subject/object prefix counter."""
         return Counter(
             (mapping.subject.prefix, mapping.object.prefix)
             for mapping in self.iterate_predictions(state)
         )
 
-    def get_predictions(self, state: State) -> Sequence[SemanticMapping]:
+    def get_predictions(self, state: State | None = None) -> Sequence[SemanticMapping]:
         """Get predicted semantic mappings."""
         return list(self.iterate_predictions(state))
 
