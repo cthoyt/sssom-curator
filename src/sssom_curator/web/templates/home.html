@@ -15,11 +15,13 @@
 {%- endmacro %}
 
 {% macro render_pagination_element(state, b) %}
-<a class="btn btn-sm btn-outline-dark" href="{{ url_for_state('.home', state, offset=b.offset) }}">
+<li class="page-item">
+<a class="page-link" href="{{ url_for_state('.home', state, offset=b.offset) }}">
     {% if b.position == "after" %}<i class="bi bi-{{ b.icon }}"></i>{% endif %}
     {{ b.text }}
     {% if b.position == "before" %}<i class="bi bi-{{ b.icon }}"></i>{% endif %}
 </a>
+</li>
 {% endmacro %}
 
 {% block content %}
@@ -147,10 +149,13 @@
                 </table>
 
                 <div class="card-footer text-center">
+                    <nav>
+                    <ul class="pagination justify-content-center" style="margin-bottom: 0">
                     {% for pagination_element in pagination_elements %}
                     {{ render_pagination_element(state, pagination_element) }}
-                    {% if not loop.last %}&nbsp;|&nbsp;{% endif %}
                     {% endfor %}
+                    </ul>
+                    </nav>
                 </div>
             </div>
     </div>
