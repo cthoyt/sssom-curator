@@ -15,10 +15,11 @@ from sssom_pydantic.database import (
     NEGATIVE_MAPPING_CLAUSE,
     POSITIVE_MAPPING_CLAUSE,
     UNCURATED_CLAUSE,
+    UNSURE_CLAUSE,
     SemanticMappingDatabase,
     clauses_from_query,
 )
-from sssom_pydantic.process import UNSURE, Mark
+from sssom_pydantic.process import Mark
 from sssom_pydantic.query import Query
 
 from sssom_curator import Repository
@@ -99,17 +100,8 @@ def save(db: SemanticMappingDatabase, repository: Repository) -> None:
     for clause, path in [
         (POSITIVE_MAPPING_CLAUSE, repository.positives_path),
         (NEGATIVE_MAPPING_CLAUSE, repository.negatives_path),
+        (UNSURE_CLAUSE, repository.unsure_path),
+        (UNCURATED_CLAUSE, repository.predictions_path),
     ]:
         mappings = [m.to_semantic_mapping() for m in db.get_mappings(where_clauses=[clause])]
         _write_stub(mappings, path)
-
-    unsure: list[SemanticMapping] = []
-    predicted: list[SemanticMapping] = []
-    for mapping in db.get_mappings([UNCURATED_CLAUSE]):
-        if mapping.curation_rule_text and UNSURE in mapping.curation_rule_text:
-            unsure.append(mapping.to_semantic_mapping())
-        else:
-            predicted.append(mapping.to_semantic_mapping())
-
-    _write_stub(unsure, repository.unsure_path)
-    _write_stub(predicted, repository.predictions_path)
