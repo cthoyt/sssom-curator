@@ -55,8 +55,7 @@ def get_app(
             converter=ensure_converter(converter),
         )
     if not controller.count_predictions():
-        m = "\n".join(f"{m.record} {m.curation_rule_text}" for m in controller.db.get_mappings())
-        raise ValueError(f"There are no predictions to curate. Mappings:\n{m}")
+        raise ValueError("There are no predictions to curate.")
     app.config["controller"] = controller
     app.config["get_current_user_reference"] = lambda: user
     flask_bootstrap.Bootstrap5(app)
