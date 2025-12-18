@@ -14,8 +14,8 @@ from sssom_pydantic.api import SemanticMappingHash
 from sssom_pydantic.database import (
     NEGATIVE_MAPPING_CLAUSE,
     POSITIVE_MAPPING_CLAUSE,
-    UNCURATED_CLAUSE,
-    UNSURE_CLAUSE,
+    UNCURATED_NOT_UNSURE_CLAUSE,
+    UNCURATED_UNSURE_CLAUSE,
     SemanticMappingDatabase,
     clauses_from_query,
 )
@@ -60,12 +60,14 @@ class DatabaseController(AbstractController):
 
     def count_predictions(self, query: Query | None = None) -> int:
         """Count predictions (i.e., anything that's not manually curated)."""
-        return self.db.count_mappings(where_clauses=[UNCURATED_CLAUSE, *clauses_from_query(query)])
+        return self.db.count_mappings(
+            where_clauses=[UNCURATED_NOT_UNSURE_CLAUSE, *clauses_from_query(query)]
+        )
 
     def get_predictions(self, state: State | None = None) -> Sequence[SemanticMapping]:
         """Iterate over pairs of positions and predicted semantic mappings."""
         models = self.db.get_mappings(
-            where_clauses=[UNCURATED_CLAUSE, *clauses_from_query(state)],
+            where_clauses=[UNCURATED_NOT_UNSURE_CLAUSE, *clauses_from_query(state)],
             limit=state.limit if state is not None else None,
             offset=state.offset if state is not None else None,
         )
@@ -100,8 +102,8 @@ def save(db: SemanticMappingDatabase, repository: Repository) -> None:
     for clause, path in [
         (POSITIVE_MAPPING_CLAUSE, repository.positives_path),
         (NEGATIVE_MAPPING_CLAUSE, repository.negatives_path),
-        (UNSURE_CLAUSE, repository.unsure_path),
-        (UNCURATED_CLAUSE, repository.predictions_path),
+        (UNCURATED_UNSURE_CLAUSE, repository.unsure_path),
+        (UNCURATED_NOT_UNSURE_CLAUSE, repository.predictions_path),
     ]:
         mappings = [m.to_semantic_mapping() for m in db.get_mappings(where_clauses=[clause])]
         _write_stub(mappings, path)
