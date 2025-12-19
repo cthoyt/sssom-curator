@@ -1,6 +1,5 @@
 """Test the web app."""
 
-import tempfile
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, ClassVar
@@ -20,10 +19,11 @@ from sssom_pydantic import MappingTool, SemanticMapping
 from sssom_pydantic.process import UNSURE
 
 from sssom_curator.constants import NEGATIVES_NAME, POSITIVES_NAME, UNSURE_NAME
-from sssom_curator.web.components import AbstractController, Controller, State
-from sssom_curator.web.database import DatabaseController
+from sssom_curator.web.components import AbstractController, State
 from sssom_curator.web.impl import get_app
 from tests import cases
+
+__all__ = ["TestWSGI"]
 
 TEST_USER = Reference(prefix="orcid", identifier="0000-0000-0000-0000")
 TEST_POSITIVE_MAPPING = SemanticMapping(
@@ -89,7 +89,7 @@ TEST_CONVERTER = curies.Converter.from_prefix_map(
 )
 
 
-class TestFull(cases.RepositoryTestCase):
+class TestWSGI(cases.RepositoryTestCase):
     """Test a curation app."""
 
     positive_seed: ClassVar[list[SemanticMapping]] = [TEST_POSITIVE_MAPPING]
@@ -311,38 +311,3 @@ class TestFull(cases.RepositoryTestCase):
         self.assert_file_mapping_count(self.controller.repository.negatives_path, 0)
         self.assert_file_mapping_count(self.controller.repository.predictions_path, 0)
         self.assert_file_mapping_count(self.controller.repository.unsure_path, 0)
-
-
-class TestFilepathController(TestFull):
-    """Test the filepath controller."""
-
-    controller_cls: ClassVar[type[AbstractController]] = Controller
-
-    def setUp(self) -> None:
-        """Set up the test case."""
-        self.controller_kwargs = {}
-        super().setUp()
-
-
-class TestDatabaseController(TestFull):
-    """Test the database controller."""
-
-    controller_cls: ClassVar[type[DatabaseController]] = DatabaseController
-    controller: DatabaseController
-
-    def setUp(self) -> None:
-        """Set up the test case."""
-        self.td = tempfile.TemporaryDirectory()
-        self.connection_path = Path(self.td.name).joinpath("test.db")
-        self.connection = f"sqlite:///{self.connection_path}"
-        self.controller_kwargs = {"connection": self.connection, "add_date": False}
-        super().setUp()
-
-    def _populate(self) -> None:
-        """Populate the database."""
-        for path in self.repository.paths:
-            self.controller.db.read(path)
-
-    def tearDown(self) -> None:
-        """Tear down the test case."""
-        self.td.cleanup()
