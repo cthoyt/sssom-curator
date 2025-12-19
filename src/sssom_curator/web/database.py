@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Iterable, Sequence
-from pathlib import Path
 
 import curies
 import sssom_pydantic
@@ -66,6 +65,8 @@ class DatabaseController(AbstractController):
 
     def get_predictions(self, state: State | None = None) -> Sequence[SemanticMapping]:
         """Iterate over pairs of positions and predicted semantic mappings."""
+        if state is not None and state.sort is not None:
+            raise NotImplementedError
         models = self.db.get_mappings(
             where_clauses=[UNCURATED_NOT_UNSURE_CLAUSE, *clauses_from_query(state)],
             limit=state.limit if state is not None else None,
@@ -85,18 +86,8 @@ class DatabaseController(AbstractController):
     def persist(self) -> None:
         """Save mappings to disk."""
         repository = self.repository
-
-        def _write_stub(mappings: list[SemanticMapping], path: Path) -> None:
-            if repository.purl_base is None:
-                raise NotImplementedError
-            mapping_set = MappingSet(id=repository.purl_base.rstrip("/") + "/" + path.name)
-            sssom_pydantic.write(
-                mappings,
-                path,
-                converter=self.converter,
-                metadata=mapping_set,
-                exclude_columns=["record_id"],
-            )
+        if repository.purl_base is None:
+            raise NotImplementedError
 
         for clause, path in [
             (POSITIVE_MAPPING_CLAUSE, repository.positives_path),
@@ -108,4 +99,11 @@ class DatabaseController(AbstractController):
                 mapping.to_semantic_mapping()
                 for mapping in self.db.get_mappings(where_clauses=[clause])
             ]
-            _write_stub(filtered_mappings, path)
+            mapping_set = MappingSet(id=repository.purl_base.rstrip("/") + "/" + path.name)
+            sssom_pydantic.write(
+                filtered_mappings,
+                path,
+                converter=self.converter,
+                metadata=mapping_set,
+                exclude_columns=["record_id"],
+            )
