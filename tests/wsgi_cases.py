@@ -1,5 +1,6 @@
 """Test the web app."""
 
+from collections import Counter
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, ClassVar
@@ -115,6 +116,7 @@ class TestWSGI(cases.RepositoryTestCase):
         self.assert_file_mapping_count(self.repository.positives_path, 1)
         self.assert_file_mapping_count(self.repository.negatives_path, 0)
         self.assert_file_mapping_count(self.repository.unsure_path, 0)
+        self.assertEqual(Counter({("chebi", "mesh"): 1}), self.controller.get_prefix_counter())
 
         self.test_prediction_record_curie = self.controller.mapping_hash(
             TEST_PREDICTED_MAPPING
