@@ -570,7 +570,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             help="If set, will persist after each curation instead of waiting for the commit "
             "button to be pushed",
         )
-        @click.option("--implementation", type=click.Choice(["dict", "sqlite"]))
+        @click.option("--implementation", type=click.Choice(["dict", "sqlite"]), default="dict")
         @click.pass_obj
         def web(
             obj: Repository,
@@ -578,7 +578,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             orcid: str,
             port: int,
             eager_persist: bool,
-            implementation: Literal["dict", "sqlite"] | None,
+            implementation: Literal["dict", "sqlite"],
         ) -> None:
             """Run the semantic mappings curation app."""
             import webbrowser
