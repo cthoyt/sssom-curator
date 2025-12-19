@@ -120,7 +120,7 @@ def mark(curie: str, value: Mark) -> werkzeug.Response:
         raise flask.abort(400)
     try:
         controller.mark(reference, value, authors=current_user_reference)
-    except ValueError:
+    except KeyError:
         raise flask.abort(404) from None
     if current_app.config["EAGER_PERSIST"]:
         controller.persist()

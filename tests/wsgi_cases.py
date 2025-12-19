@@ -173,7 +173,6 @@ class TestWSGI(cases.RepositoryTestCase):
         """Test trying to mark a number that's too big."""
         self.assert_prediction_count(1)
 
-        # can't pop a number too big!
         with self.app.test_client() as client:
             res = client.get("/mark/nope:nope/correct")
             self.assertEqual(404, res.status_code)
