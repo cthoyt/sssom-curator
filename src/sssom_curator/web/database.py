@@ -84,26 +84,28 @@ class DatabaseController(AbstractController):
 
     def persist(self) -> None:
         """Save mappings to disk."""
-        save(self.db, self.repository)
+        repository = self.repository
 
+        def _write_stub(mappings: list[SemanticMapping], path: Path) -> None:
+            if repository.purl_base is None:
+                raise NotImplementedError
+            mapping_set = MappingSet(id=repository.purl_base.rstrip("/") + "/" + path.name)
+            sssom_pydantic.write(
+                mappings,
+                path,
+                converter=self.converter,
+                metadata=mapping_set,
+                exclude_columns=["record_id"],
+            )
 
-def save(db: SemanticMappingDatabase, repository: Repository) -> None:
-    """Save mappings to disk."""
-    converter = repository.get_converter()
-
-    def _write_stub(m: list[SemanticMapping], p: Path) -> None:
-        if repository.purl_base is None:
-            raise NotImplementedError
-        mapping_set = MappingSet(id=repository.purl_base.rstrip("/") + "/" + p.name)
-        sssom_pydantic.write(
-            m, p, converter=converter, metadata=mapping_set, exclude_columns=["record_id"]
-        )
-
-    for clause, path in [
-        (POSITIVE_MAPPING_CLAUSE, repository.positives_path),
-        (NEGATIVE_MAPPING_CLAUSE, repository.negatives_path),
-        (UNCURATED_UNSURE_CLAUSE, repository.unsure_path),
-        (UNCURATED_NOT_UNSURE_CLAUSE, repository.predictions_path),
-    ]:
-        mappings = [m.to_semantic_mapping() for m in db.get_mappings(where_clauses=[clause])]
-        _write_stub(mappings, path)
+        for clause, path in [
+            (POSITIVE_MAPPING_CLAUSE, repository.positives_path),
+            (NEGATIVE_MAPPING_CLAUSE, repository.negatives_path),
+            (UNCURATED_UNSURE_CLAUSE, repository.unsure_path),
+            (UNCURATED_NOT_UNSURE_CLAUSE, repository.predictions_path),
+        ]:
+            filtered_mappings = [
+                mapping.to_semantic_mapping()
+                for mapping in self.db.get_mappings(where_clauses=[clause])
+            ]
+            _write_stub(filtered_mappings, path)

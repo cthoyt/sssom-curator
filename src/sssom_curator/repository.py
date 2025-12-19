@@ -578,7 +578,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             orcid: str,
             port: int,
             eager_persist: bool,
-            implementation: Literal["dict", "sqlite"],
+            implementation: Literal["dict", "sqlite"] | None,
         ) -> None:
             """Run the semantic mappings curation app."""
             import webbrowser
