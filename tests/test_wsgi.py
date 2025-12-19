@@ -52,7 +52,7 @@ TEST_PREDICTED_MAPPING_MARKED_UNSURE = SemanticMapping(
     justification=lexical_matching_process.pair.to_pydantic(),
     confidence=0.95,
     mapping_tool=MappingTool(name="test", version=None),
-    curation_rule_text=[UNSURE],
+    comment=UNSURE,
 )
 TEST_PREDICTED_MAPPING_MARKED_BROAD = SemanticMapping(
     subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
