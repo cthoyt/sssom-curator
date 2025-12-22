@@ -1,27 +1,23 @@
-"""Web curation interface for :mod:`biomappings`."""
+"""SSSOM Curator web application factory."""
 
 from __future__ import annotations
 
-import os
-from collections.abc import Iterable
 from typing import TYPE_CHECKING, Literal, TypeAlias
 
-import flask
-import flask_bootstrap
-
-from .blueprint import blueprint, url_for_state
-from .components import AbstractController, Controller
-from .database import DatabaseController
-from ..constants import DEFAULT_RESOLVER_BASE, ensure_converter
-from ..repository import Repository
-
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    import flask
     from curies import Converter, Reference
+
+    from .backends import Controller
+    from ..repository import Repository
 
 __all__ = [
     "get_app",
 ]
 
+#: Keys for different implementation types
 Implementation: TypeAlias = Literal["dict", "sqlite"]
 
 
@@ -29,7 +25,7 @@ def get_app(
     *,
     target_references: Iterable[Reference] | None = None,
     repository: Repository | None = None,
-    controller: AbstractController | None = None,
+    controller: Controller | None = None,
     user: Reference | None = None,
     resolver_base: str | None = None,
     title: str | None = None,
@@ -39,6 +35,14 @@ def get_app(
     implementation: Implementation | None = None,
 ) -> flask.Flask:
     """Get a curation flask app."""
+    import os
+
+    import flask
+    import flask_bootstrap
+
+    from .blueprint import blueprint, url_for_state
+    from ..constants import DEFAULT_RESOLVER_BASE, ensure_converter
+
     app = flask.Flask(__name__)
     app.config["WTF_CSRF_ENABLED"] = False
     app.config["SECRET_KEY"] = os.urandom(8)
@@ -47,14 +51,19 @@ def get_app(
     if controller is None:
         if repository is None:
             raise ValueError
+
         match implementation:
             case "dict" | None:
-                controller = Controller(
+                from .backends.memory import DictController
+
+                controller = DictController(
                     target_references=target_references,
                     repository=repository,
                     converter=ensure_converter(converter),
                 )
             case "sqlite":
+                from .backends.database import DatabaseController
+
                 controller = DatabaseController(
                     target_references=target_references,
                     repository=repository,

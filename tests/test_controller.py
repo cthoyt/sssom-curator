@@ -4,15 +4,16 @@ import tempfile
 from pathlib import Path
 from typing import ClassVar
 
-from sssom_curator.web.components import AbstractController, Controller
-from sssom_curator.web.database import DatabaseController
+from sssom_curator.web.backends.base import Controller
+from sssom_curator.web.backends.database import DatabaseController
+from sssom_curator.web.backends.memory import DictController
 from tests import wsgi_cases
 
 
 class TestFilepathController(wsgi_cases.TestWSGI):
     """Test the filepath controller."""
 
-    controller_cls: ClassVar[type[AbstractController]] = Controller
+    controller_cls: ClassVar[type[Controller]] = DictController
 
     def setUp(self) -> None:
         """Set up the test case."""

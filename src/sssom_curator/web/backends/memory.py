@@ -1,142 +1,33 @@
-"""Components."""
+"""A dictionary-based backend for the SSSOM Curator web application."""
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Iterator, Sequence
-from typing import Literal, NamedTuple, TypeAlias
+from typing import TYPE_CHECKING
 
 import curies
 import sssom_pydantic
 from curies import Reference
-from pydantic import BaseModel, Field
 from sssom_pydantic import SemanticMapping
-from sssom_pydantic.api import SemanticMappingHash, mapping_hash_v1
+from sssom_pydantic.api import SemanticMappingHash
 from sssom_pydantic.process import MARK_TO_CALL, Call, Mark, curate
 from sssom_pydantic.query import Query, filter_mappings
 
-from .utils import (
-    GitCommandFailure,
-    check_current_branch,
-    commit,
-    push,
-)
-from ..constants import insert
-from ..repository import Repository
+from .base import Controller
+from ..utils import Sort, State
+from ...constants import insert
+
+if TYPE_CHECKING:
+    from ...repository import Repository
 
 __all__ = [
-    "Controller",
-    "PaginationElement",
-    "State",
-    "get_pagination_elements",
+    "DictController",
 ]
 
-#: The default limit
-DEFAULT_LIMIT: int = 10
 
-#: The default offset
-DEFAULT_OFFSET: int = 0
-
-Sort: TypeAlias = Literal["asc", "desc", "subject", "object"]
-
-
-class Config(BaseModel):
-    """Configuration for a query over SSSOM."""
-
-    limit: int | None = Field(
-        DEFAULT_LIMIT, description="If given, only iterate this number of predictions."
-    )
-    offset: int = Field(DEFAULT_OFFSET, description="If given, offset the iteration by this number")
-    sort: Sort | None = Field(
-        None,
-        description="If `desc`, sorts in descending confidence order. If `asc`, sorts in "
-        "increasing confidence order. Otherwise, do not sort.",
-    )
-    show_relations: bool = True
-
-
-class State(Query, Config):
-    """Contains the state for queries to the curation app."""
-
-
-class AbstractController(ABC):
-    """A module for interacting with mappings."""
-
-    def __init__(
-        self,
-        *,
-        repository: Repository,
-        semantic_mapping_hash: SemanticMappingHash | None = None,
-        converter: curies.Converter,
-        target_references: Iterable[Reference] | None = None,
-    ) -> None:
-        """Initialize the controller."""
-        self.repository = repository
-        self.mapping_hash = semantic_mapping_hash or mapping_hash_v1
-        self.converter = converter
-        self.total_curated = 0
-        self.target_references = set(target_references) if target_references is not None else None
-
-    @abstractmethod
-    def get_prefix_counter(self, state: State | None = None) -> Counter[tuple[str, str]]:
-        """Get a subject/object prefix counter."""
-
-    @abstractmethod
-    def get_predictions(self, state: State | None = None) -> Sequence[SemanticMapping]:
-        """Get predicted semantic mappings."""
-
-    @abstractmethod
-    def count_predictions(self, query: Query | None = None) -> int:
-        """Count the number of predictions to check for the given filters."""
-
-    @abstractmethod
-    def mark(self, reference: Reference, mark: Mark, authors: Reference | list[Reference]) -> None:
-        """Mark the given mapping as correct."""
-
-    @abstractmethod
-    def count_unpersisted(self) -> int:
-        """Count the number of unpersisted curations."""
-
-    @abstractmethod
-    def persist(self) -> None:
-        """Mark the given mapping as correct."""
-
-    def count_remote_unpersisted(self) -> int:
-        """Count the number of curations that haven't been persisted to a remote repository."""
-        return self.total_curated
-
-    def persist_remote(self, author: Reference) -> PersistRemoteSuccess | PersistRemoteFailure:
-        """Persist remotely."""
-        branch_res = check_current_branch(self.repository)
-        if isinstance(branch_res, GitCommandFailure):
-            return PersistRemoteFailure("branch check", branch_res.message)
-        if not branch_res.usable:
-            return PersistRemoteFailure(
-                "branch name", f"refusing to push to {branch_res.name} - make a branch first."
-            )
-
-        label = "mappings" if self.total_curated > 1 else "mapping"
-        message = f"Curated {self.total_curated} {label} ({author.curie})"
-        commit_res = commit(self.repository, message)
-        if isinstance(commit_res, GitCommandFailure):
-            return PersistRemoteFailure("commit", commit_res.message)
-
-        # TODO what happens if there's no corresponding on remote?
-        push_res = push(self.repository, branch=branch_res.name)
-        if isinstance(push_res, GitCommandFailure):
-            return PersistRemoteFailure("push", push_res.message)
-
-        self.total_curated = 0
-        return PersistRemoteSuccess(commit_res.output + "\n" + push_res.output)
-
-
-class Controller(AbstractController):
+class DictController(Controller):
     """A controller that interacts with the file system."""
-
-    converter: curies.Converter
-    repository: Repository
-    target_references: set[Reference] | None
 
     def __init__(
         self,
@@ -148,10 +39,9 @@ class Controller(AbstractController):
     ) -> None:
         """Instantiate the web controller.
 
-        :param target_references: References that are the
-            target of curation. If this is given, pre-filters will be made before on
-            predictions to only show ones where either the source or target appears in
-            this set
+        :param target_references: References that are the target of curation. If this is
+            given, pre-filters will be made before on predictions to only show ones
+            where either the source or target appears in this set
         """
         super().__init__(
             repository=repository,
@@ -246,12 +136,13 @@ class Controller(AbstractController):
     ) -> None:
         """Mark the given mapping as correct.
 
-        :param reference: The reference for the mapping, corresponding to the ``record`` field
+        :param reference: The reference for the mapping, corresponding to the ``record``
+            field
         :param mark: Value to mark the prediction with
         :param authors: Author or author of the mark
 
-        :raises KeyError:
-            if there's no predicted mapping whose record corresponds to the given reference
+        :raises KeyError: if there's no predicted mapping whose record corresponds to
+            the given reference
         """
         if isinstance(reference, SemanticMapping):
             if not reference.record:
@@ -300,52 +191,5 @@ class Controller(AbstractController):
             )
 
 
-class PersistRemoteSuccess(NamedTuple):
-    """Represents success message."""
-
-    message: str
-
-
-class PersistRemoteFailure(NamedTuple):
-    """Represents failure message."""
-
-    step: str
-    message: str
-
-
 def _get_confidence(t: SemanticMapping) -> float:
     return t.confidence or 0.0
-
-
-class PaginationElement(NamedTuple):
-    """Represents pagination element."""
-
-    offset: int | None
-    icon: str
-    text: str
-    position: Literal["before", "after"]
-
-
-def get_pagination_elements(state: State, remaining_rows: int) -> list[PaginationElement]:
-    """Get pagination elements."""
-    rv = []
-
-    def _append(
-        offset: int | None, icon: str, text: str, position: Literal["before", "after"]
-    ) -> None:
-        rv.append(PaginationElement(offset, icon, text, position))
-
-    offset = state.offset or DEFAULT_OFFSET
-    limit = state.limit or DEFAULT_LIMIT
-    if 0 <= offset - limit:
-        _append(None, "skip-start-circle", "First", "after")
-        _append(offset - limit, "skip-backward-circle", f"Previous {limit:,}", "after")
-    if offset < remaining_rows - limit:
-        _append(offset + limit, "skip-forward-circle", f"Next {limit:,}", "before")
-        _append(
-            remaining_rows - limit,
-            "skip-end-circle",
-            f"Last ({remaining_rows:,})",
-            "before",
-        )
-    return rv

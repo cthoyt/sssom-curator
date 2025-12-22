@@ -1,9 +1,10 @@
-"""A database backend."""
+"""A SQL database backend for the SSSOM Curator web application."""
 
 from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Iterable, Sequence
+from typing import TYPE_CHECKING
 
 import curies
 import sssom_pydantic
@@ -22,16 +23,19 @@ from sssom_pydantic.database import (
 from sssom_pydantic.process import Mark
 from sssom_pydantic.query import Query
 
-from sssom_curator import Repository
+from .base import Controller
+from ..utils import State
 
-from .components import AbstractController, State
+if TYPE_CHECKING:
+    from ...repository import Repository
+
 
 __all__ = [
     "DatabaseController",
 ]
 
 
-class DatabaseController(AbstractController):
+class DatabaseController(Controller):
     """A controller that interacts with a database."""
 
     def __init__(
