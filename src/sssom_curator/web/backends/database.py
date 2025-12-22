@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Iterable, Sequence
+from typing import TYPE_CHECKING
 
 import curies
 import sssom_pydantic
@@ -22,10 +23,12 @@ from sssom_pydantic.database import (
 from sssom_pydantic.process import Mark
 from sssom_pydantic.query import Query
 
-from sssom_curator import Repository
-from sssom_curator.web.backends.base import Controller
+from .base import Controller
+from ..utils import State
 
-from ..components import State
+if TYPE_CHECKING:
+    from ...repository import Repository
+
 
 __all__ = [
     "DatabaseController",

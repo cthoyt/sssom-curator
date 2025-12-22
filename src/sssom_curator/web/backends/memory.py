@@ -14,8 +14,8 @@ from sssom_pydantic.api import SemanticMappingHash
 from sssom_pydantic.process import MARK_TO_CALL, Call, Mark, curate
 from sssom_pydantic.query import Query, filter_mappings
 
-from ..backends.base import Controller
-from ..components import Sort, State
+from .base import Controller
+from ..utils import Sort, State
 from ...constants import insert
 
 if TYPE_CHECKING:
