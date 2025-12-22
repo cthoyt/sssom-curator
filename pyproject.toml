@@ -62,7 +62,7 @@ dependencies = [
     "curies>=0.12.5",
     "pystow>=0.7.11",
     "bioregistry>=0.12.43",
-    "sssom-pydantic>=0.1.15",
+    "sssom-pydantic>=0.1.17",
     "typing-extensions",
     "jinja2",
 ]
@@ -91,6 +91,7 @@ typing = [
     "types-PyYAML",
     "types-tabulate",
     "types-flask",
+    "sqlmodel",
 ]
 docs-lint = [
     { include-group = "docs" },
@@ -146,6 +147,9 @@ predict-embeddings = [
 ]
 import-ontoportal = [
     "ontoportal-client>=0.0.7",
+]
+database = [
+    "sssom-pydantic[database]",
 ]
 
 # See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#urls

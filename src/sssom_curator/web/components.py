@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Iterator, Sequence
 from typing import Literal, NamedTuple, TypeAlias
@@ -11,7 +12,7 @@ import sssom_pydantic
 from curies import Reference
 from pydantic import BaseModel, Field
 from sssom_pydantic import SemanticMapping
-from sssom_pydantic.api import SemanticMappingHash
+from sssom_pydantic.api import SemanticMappingHash, mapping_hash_v1
 from sssom_pydantic.process import MARK_TO_CALL, Call, Mark, curate
 from sssom_pydantic.query import Query, filter_mappings
 
@@ -21,7 +22,7 @@ from .utils import (
     commit,
     push,
 )
-from ..constants import default_hash, insert
+from ..constants import insert
 from ..repository import Repository
 
 __all__ = [
@@ -59,8 +60,79 @@ class State(Query, Config):
     """Contains the state for queries to the curation app."""
 
 
-class Controller:
-    """A module for interacting with the predictions and mappings."""
+class AbstractController(ABC):
+    """A module for interacting with mappings."""
+
+    def __init__(
+        self,
+        *,
+        repository: Repository,
+        semantic_mapping_hash: SemanticMappingHash | None = None,
+        converter: curies.Converter,
+        target_references: Iterable[Reference] | None = None,
+    ) -> None:
+        """Initialize the controller."""
+        self.repository = repository
+        self.mapping_hash = semantic_mapping_hash or mapping_hash_v1
+        self.converter = converter
+        self.total_curated = 0
+        self.target_references = set(target_references) if target_references is not None else None
+
+    @abstractmethod
+    def get_prefix_counter(self, state: State | None = None) -> Counter[tuple[str, str]]:
+        """Get a subject/object prefix counter."""
+
+    @abstractmethod
+    def get_predictions(self, state: State | None = None) -> Sequence[SemanticMapping]:
+        """Get predicted semantic mappings."""
+
+    @abstractmethod
+    def count_predictions(self, query: Query | None = None) -> int:
+        """Count the number of predictions to check for the given filters."""
+
+    @abstractmethod
+    def mark(self, reference: Reference, mark: Mark, authors: Reference | list[Reference]) -> None:
+        """Mark the given mapping as correct."""
+
+    @abstractmethod
+    def count_unpersisted(self) -> int:
+        """Count the number of unpersisted curations."""
+
+    @abstractmethod
+    def persist(self) -> None:
+        """Mark the given mapping as correct."""
+
+    def count_remote_unpersisted(self) -> int:
+        """Count the number of curations that haven't been persisted to a remote repository."""
+        return self.total_curated
+
+    def persist_remote(self, author: Reference) -> PersistRemoteSuccess | PersistRemoteFailure:
+        """Persist remotely."""
+        branch_res = check_current_branch(self.repository)
+        if isinstance(branch_res, GitCommandFailure):
+            return PersistRemoteFailure("branch check", branch_res.message)
+        if not branch_res.usable:
+            return PersistRemoteFailure(
+                "branch name", f"refusing to push to {branch_res.name} - make a branch first."
+            )
+
+        label = "mappings" if self.total_curated > 1 else "mapping"
+        message = f"Curated {self.total_curated} {label} ({author.curie})"
+        commit_res = commit(self.repository, message)
+        if isinstance(commit_res, GitCommandFailure):
+            return PersistRemoteFailure("commit", commit_res.message)
+
+        # TODO what happens if there's no corresponding on remote?
+        push_res = push(self.repository, branch=branch_res.name)
+        if isinstance(push_res, GitCommandFailure):
+            return PersistRemoteFailure("push", push_res.message)
+
+        self.total_curated = 0
+        return PersistRemoteSuccess(commit_res.output + "\n" + push_res.output)
+
+
+class Controller(AbstractController):
+    """A controller that interacts with the file system."""
 
     converter: curies.Converter
     repository: Repository
@@ -81,8 +153,12 @@ class Controller:
             predictions to only show ones where either the source or target appears in
             this set
         """
-        self.repository = repository
-        self.mapping_hash = mapping_hash if mapping_hash is not None else default_hash
+        super().__init__(
+            repository=repository,
+            semantic_mapping_hash=mapping_hash,
+            converter=converter,
+            target_references=target_references,
+        )
         predicted_mappings, _, self._predictions_metadata = sssom_pydantic.read(
             self.repository.predictions_path
         )
@@ -93,19 +169,16 @@ class Controller:
             reference = self.mapping_hash(mapping)
             self._predictions[reference] = mapping.model_copy(update={"record": reference})
 
-        self.total_curated = 0
-        self.target_references = set(target_references) if target_references is not None else None
-        self.converter = converter
         self.curations: defaultdict[Call, list[SemanticMapping]] = defaultdict(list)
 
-    def get_prefix_counter(self, state: State) -> Counter[tuple[str, str]]:
+    def get_prefix_counter(self, state: State | None = None) -> Counter[tuple[str, str]]:
         """Get a subject/object prefix counter."""
         return Counter(
             (mapping.subject.prefix, mapping.object.prefix)
             for mapping in self.iterate_predictions(state)
         )
 
-    def get_predictions(self, state: State) -> Sequence[SemanticMapping]:
+    def get_predictions(self, state: State | None = None) -> Sequence[SemanticMapping]:
         """Get predicted semantic mappings."""
         return list(self.iterate_predictions(state))
 
@@ -225,34 +298,6 @@ class Controller:
                 # TODO is there a way of pre-calculating some things to make this faster?
                 #  e.g., say "no condensation"
             )
-
-    def count_remote_unpersisted(self) -> int:
-        """Count the number of curations that haven't been persisted to a remote repository."""
-        return self.total_curated
-
-    def persist_remote(self, author: Reference) -> PersistRemoteSuccess | PersistRemoteFailure:
-        """Persist remotely."""
-        branch_res = check_current_branch(self.repository)
-        if isinstance(branch_res, GitCommandFailure):
-            return PersistRemoteFailure("branch check", branch_res.message)
-        if not branch_res.usable:
-            return PersistRemoteFailure(
-                "branch name", f"refusing to push to {branch_res.name} - make a branch first."
-            )
-
-        label = "mappings" if self.total_curated > 1 else "mapping"
-        message = f"Curated {self.total_curated} {label} ({author.curie})"
-        commit_res = commit(self.repository, message)
-        if isinstance(commit_res, GitCommandFailure):
-            return PersistRemoteFailure("commit", commit_res.message)
-
-        # TODO what happens if there's no corresponding on remote?
-        push_res = push(self.repository, branch=branch_res.name)
-        if isinstance(push_res, GitCommandFailure):
-            return PersistRemoteFailure("push", push_res.message)
-
-        self.total_curated = 0
-        return PersistRemoteSuccess(commit_res.output + "\n" + push_res.output)
 
 
 class PersistRemoteSuccess(NamedTuple):

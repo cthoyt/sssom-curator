@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, TypeAlias
 
 import flask
 import flask_bootstrap
 
 from .blueprint import blueprint, url_for_state
-from .components import Controller
+from .components import AbstractController, Controller
+from .database import DatabaseController
 from ..constants import DEFAULT_RESOLVER_BASE, ensure_converter
 from ..repository import Repository
 
@@ -21,18 +22,21 @@ __all__ = [
     "get_app",
 ]
 
+Implementation: TypeAlias = Literal["dict", "sqlite"]
+
 
 def get_app(
     *,
     target_references: Iterable[Reference] | None = None,
     repository: Repository | None = None,
-    controller: Controller | None = None,
+    controller: AbstractController | None = None,
     user: Reference | None = None,
     resolver_base: str | None = None,
     title: str | None = None,
     footer: str | None = None,
     converter: Converter | None = None,
     eager_persist: bool = True,
+    implementation: Implementation | None = None,
 ) -> flask.Flask:
     """Get a curation flask app."""
     app = flask.Flask(__name__)
@@ -43,11 +47,21 @@ def get_app(
     if controller is None:
         if repository is None:
             raise ValueError
-        controller = Controller(
-            target_references=target_references,
-            repository=repository,
-            converter=ensure_converter(converter),
-        )
+        match implementation:
+            case "dict" | None:
+                controller = Controller(
+                    target_references=target_references,
+                    repository=repository,
+                    converter=ensure_converter(converter),
+                )
+            case "sqlite":
+                controller = DatabaseController(
+                    target_references=target_references,
+                    repository=repository,
+                    converter=ensure_converter(converter),
+                    populate=True,
+                )
+
     if not controller.count_predictions():
         raise ValueError("There are no predictions to curate")
     app.config["controller"] = controller

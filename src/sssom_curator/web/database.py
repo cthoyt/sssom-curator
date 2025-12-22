@@ -1,0 +1,132 @@
+"""A database backend."""
+
+from __future__ import annotations
+
+from collections import Counter
+from collections.abc import Iterable, Sequence
+
+import curies
+import sssom_pydantic
+from curies import Reference
+from sssom_pydantic import MappingSet, SemanticMapping
+from sssom_pydantic.api import SemanticMappingHash
+from sssom_pydantic.database import (
+    DEFAULT_SORT,
+    NEGATIVE_MAPPING_CLAUSE,
+    POSITIVE_MAPPING_CLAUSE,
+    UNCURATED_NOT_UNSURE_CLAUSE,
+    UNCURATED_UNSURE_CLAUSE,
+    SemanticMappingDatabase,
+    clauses_from_query,
+)
+from sssom_pydantic.process import Mark
+from sssom_pydantic.query import Query
+
+from sssom_curator import Repository
+
+from .components import AbstractController, State
+
+__all__ = [
+    "DatabaseController",
+]
+
+
+class DatabaseController(AbstractController):
+    """A controller that interacts with a database."""
+
+    def __init__(
+        self,
+        *,
+        repository: Repository,
+        connection: str | None = None,
+        semantic_mapping_hash: SemanticMappingHash | None = None,
+        converter: curies.Converter,
+        target_references: Iterable[Reference] | None = None,
+        add_date: bool = False,
+        populate: bool = False,
+    ) -> None:
+        """Initialize the database controller."""
+        super().__init__(
+            repository=repository,
+            semantic_mapping_hash=semantic_mapping_hash,
+            converter=converter,
+            target_references=target_references,
+        )
+        if self.target_references:
+            raise NotImplementedError
+
+        if connection is None:
+            # note, :memory: doesn't work here because of the way that
+            # threading in the web app works. pick a local file path
+            path = self.repository.positives_path.parent.joinpath(".sssom-curator.db")
+            if path.is_file():
+                path.unlink()
+            connection = f"sqlite:///{path}"
+            populate = True
+
+        self.db = SemanticMappingDatabase.from_connection(
+            connection=connection, semantic_mapping_hash=self.mapping_hash
+        )
+        self.add_date = add_date
+        self._unpersisted = 0
+
+        if populate:
+            for path in self.repository.paths:
+                self.db.read(path)
+
+    def count_predictions(self, query: Query | None = None) -> int:
+        """Count predictions (i.e., anything that's not manually curated)."""
+        return self.db.count_mappings(
+            where_clauses=[UNCURATED_NOT_UNSURE_CLAUSE, *clauses_from_query(query)]
+        )
+
+    def get_predictions(self, state: State | None = None) -> Sequence[SemanticMapping]:
+        """Iterate over pairs of positions and predicted semantic mappings."""
+        if state is not None and state.sort is not None:
+            raise NotImplementedError
+        models = self.db.get_mappings(
+            where_clauses=[UNCURATED_NOT_UNSURE_CLAUSE, *clauses_from_query(state)],
+            limit=state.limit if state is not None else None,
+            offset=state.offset if state is not None else None,
+        )
+        return [model.to_semantic_mapping() for model in models]
+
+    def get_prefix_counter(self, state: State | None = None) -> Counter[tuple[str, str]]:
+        """Count the number of predictions to check for the given filters."""
+        return Counter((m.subject.prefix, m.object.prefix) for m in self.get_predictions(state))
+
+    def mark(self, reference: Reference, mark: Mark, authors: Reference | list[Reference]) -> None:
+        """Mark the given mapping as correct."""
+        self.total_curated += 1
+        self._unpersisted += 1
+        self.db.curate(reference, mark=mark, authors=authors, add_date=self.add_date)
+
+    def count_unpersisted(self) -> int:
+        """Count the number of unpersisted mappings."""
+        return self._unpersisted
+
+    def persist(self) -> None:
+        """Save mappings to disk."""
+        repository = self.repository
+        if repository.purl_base is None:
+            raise NotImplementedError
+
+        for clause, path in [
+            (POSITIVE_MAPPING_CLAUSE, repository.positives_path),
+            (NEGATIVE_MAPPING_CLAUSE, repository.negatives_path),
+            (UNCURATED_UNSURE_CLAUSE, repository.unsure_path),
+            (UNCURATED_NOT_UNSURE_CLAUSE, repository.predictions_path),
+        ]:
+            filtered_mappings = [
+                mapping.to_semantic_mapping()
+                for mapping in self.db.get_mappings(where_clauses=[clause], order_by=DEFAULT_SORT)
+            ]
+            mapping_set = MappingSet(id=repository.purl_base.rstrip("/") + "/" + path.name)
+            sssom_pydantic.write(
+                filtered_mappings,
+                path,
+                converter=self.converter,
+                metadata=mapping_set,
+                exclude_columns=["record_id"],
+            )
+        self._unpersisted = 0

@@ -12,7 +12,7 @@ from sssom_pydantic.process import MARKS, Mark
 from werkzeug.local import LocalProxy
 
 from .components import (
-    Controller,
+    AbstractController,
     PersistRemoteFailure,
     PersistRemoteSuccess,
     State,
@@ -51,7 +51,9 @@ def url_for_state(endpoint: str, state: State, **kwargs: Any) -> str:
     return flask.url_for(endpoint, **vv)
 
 
-controller: Controller = cast(Controller, LocalProxy(lambda: current_app.config["controller"]))
+controller: AbstractController = cast(
+    AbstractController, LocalProxy(lambda: current_app.config["controller"])
+)
 current_user_reference = cast(
     Reference, LocalProxy(lambda: current_app.config["get_current_user_reference"]())
 )
@@ -63,7 +65,7 @@ blueprint = flask.Blueprint("ui", __name__)
 def home() -> str:
     """Serve the home page."""
     state = get_state_from_flask()
-    predictions = controller.iterate_predictions(state)
+    predictions = controller.get_predictions(state)
     n_predictions = controller.count_predictions(state)
     return flask.render_template(
         "home.html",

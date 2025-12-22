@@ -1,8 +1,9 @@
 """Test the web app."""
 
+from collections import Counter
 from collections.abc import Sequence
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import curies
 import sssom_pydantic
@@ -19,9 +20,11 @@ from sssom_pydantic import MappingTool, SemanticMapping
 from sssom_pydantic.process import UNSURE
 
 from sssom_curator.constants import NEGATIVES_NAME, POSITIVES_NAME, UNSURE_NAME
-from sssom_curator.web.components import Controller, State
+from sssom_curator.web.components import AbstractController, State
 from sssom_curator.web.impl import get_app
 from tests import cases
+
+__all__ = ["TestWSGI"]
 
 TEST_USER = Reference(prefix="orcid", identifier="0000-0000-0000-0000")
 TEST_POSITIVE_MAPPING = SemanticMapping(
@@ -87,7 +90,7 @@ TEST_CONVERTER = curies.Converter.from_prefix_map(
 )
 
 
-class TestFull(cases.RepositoryTestCase):
+class TestWSGI(cases.RepositoryTestCase):
     """Test a curation app."""
 
     positive_seed: ClassVar[list[SemanticMapping]] = [TEST_POSITIVE_MAPPING]
@@ -96,10 +99,15 @@ class TestFull(cases.RepositoryTestCase):
     unsure_seed: ClassVar[list[SemanticMapping]] = []
     converter_seed: ClassVar[curies.Converter] = TEST_CONVERTER
 
+    controller_cls: ClassVar[type[AbstractController]]
+    controller_kwargs: dict[str, Any] | None
+
     def setUp(self) -> None:
         """Set up the test case."""
         super().setUp()
-        self.controller = Controller(repository=self.repository, converter=TEST_CONVERTER)
+        self.controller = self.controller_cls(
+            repository=self.repository, converter=TEST_CONVERTER, **(self.controller_kwargs or {})
+        )
         self.app = get_app(controller=self.controller, user=TEST_USER)
         self.app.testing = True
 
@@ -107,6 +115,7 @@ class TestFull(cases.RepositoryTestCase):
         self.assert_file_mapping_count(self.repository.positives_path, 1)
         self.assert_file_mapping_count(self.repository.negatives_path, 0)
         self.assert_file_mapping_count(self.repository.unsure_path, 0)
+        self.assertEqual(Counter({("chebi", "mesh"): 1}), self.controller.get_prefix_counter())
 
         self.test_prediction_record_curie = self.controller.mapping_hash(
             TEST_PREDICTED_MAPPING

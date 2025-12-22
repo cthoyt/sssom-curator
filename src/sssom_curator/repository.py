@@ -570,9 +570,21 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             help="If set, will persist after each curation instead of waiting for the commit "
             "button to be pushed",
         )
+        @click.option(
+            "--implementation",
+            type=click.Choice(["dict", "sqlite"]),
+            default="dict",
+            help="The type of backend for running the curation app. Dict means that data is stored "
+            "in an in-memory dictionary data structure and SQLite means it uses a database w/ ORM",
+        )
         @click.pass_obj
         def web(
-            obj: Repository, resolver_base: str | None, orcid: str, port: int, eager_persist: bool
+            obj: Repository,
+            resolver_base: str | None,
+            orcid: str,
+            port: int,
+            eager_persist: bool,
+            implementation: Literal["dict", "sqlite"],
         ) -> None:
             """Run the semantic mappings curation app."""
             import webbrowser
@@ -599,6 +611,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
                 title=obj.web_title or "Semantic Mapping Curator",
                 footer=obj.web_footer,
                 eager_persist=eager_persist,
+                implementation=implementation,
             )
 
             webbrowser.open_new_tab(f"http://localhost:{port}")
