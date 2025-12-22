@@ -39,10 +39,9 @@ class DictController(Controller):
     ) -> None:
         """Instantiate the web controller.
 
-        :param target_references: References that are the
-            target of curation. If this is given, pre-filters will be made before on
-            predictions to only show ones where either the source or target appears in
-            this set
+        :param target_references: References that are the target of curation. If this is
+            given, pre-filters will be made before on predictions to only show ones
+            where either the source or target appears in this set
         """
         super().__init__(
             repository=repository,
@@ -137,12 +136,13 @@ class DictController(Controller):
     ) -> None:
         """Mark the given mapping as correct.
 
-        :param reference: The reference for the mapping, corresponding to the ``record`` field
+        :param reference: The reference for the mapping, corresponding to the ``record``
+            field
         :param mark: Value to mark the prediction with
         :param authors: Author or author of the mark
 
-        :raises KeyError:
-            if there's no predicted mapping whose record corresponds to the given reference
+        :raises KeyError: if there's no predicted mapping whose record corresponds to
+            the given reference
         """
         if isinstance(reference, SemanticMapping):
             if not reference.record:
