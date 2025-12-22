@@ -111,7 +111,6 @@ def run_commit() -> werkzeug.Response:
     match controller.persist_remote(current_user_reference):
         case PersistRemoteSuccess(message):
             current_app.logger.info(message)
-            controller.total_curated = 0
         case PersistRemoteFailure(_step, failure_text):
             flask.flash(failure_text)
             current_app.logger.warning(failure_text)
