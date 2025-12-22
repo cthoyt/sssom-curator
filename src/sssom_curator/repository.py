@@ -570,7 +570,13 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             help="If set, will persist after each curation instead of waiting for the commit "
             "button to be pushed",
         )
-        @click.option("--implementation", type=click.Choice(["dict", "sqlite"]), default="dict")
+        @click.option(
+            "--implementation",
+            type=click.Choice(["dict", "sqlite"]),
+            default="dict",
+            help="The type of backend for running the curation app. Dict means that data is stored "
+            "in an in-memory dictionary data structure and SQLite means it uses a database w/ ORM",
+        )
         @click.pass_obj
         def web(
             obj: Repository,

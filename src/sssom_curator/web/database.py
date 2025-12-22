@@ -56,6 +56,7 @@ class DatabaseController(AbstractController):
             connection=connection or "sqlite:///:memory:", semantic_mapping_hash=self.mapping_hash
         )
         self.add_date = add_date
+        self._unpersisted = 0
 
     def count_predictions(self, query: Query | None = None) -> int:
         """Count predictions (i.e., anything that's not manually curated)."""
@@ -81,7 +82,12 @@ class DatabaseController(AbstractController):
     def mark(self, reference: Reference, mark: Mark, authors: Reference | list[Reference]) -> None:
         """Mark the given mapping as correct."""
         self.total_curated += 1
+        self._unpersisted += 1
         self.db.curate(reference, mark=mark, authors=authors, add_date=self.add_date)
+
+    def count_unpersisted(self) -> int:
+        """Count the number of unpersisted mappings."""
+        return self._unpersisted
 
     def persist(self) -> None:
         """Save mappings to disk."""
@@ -107,3 +113,4 @@ class DatabaseController(AbstractController):
                 metadata=mapping_set,
                 exclude_columns=["record_id"],
             )
+        self._unpersisted = 0
