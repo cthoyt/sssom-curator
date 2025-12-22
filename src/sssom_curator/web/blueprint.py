@@ -97,6 +97,13 @@ def summary() -> str:
     return flask.render_template("summary.html", state=state, rows=rows)
 
 
+@blueprint.route("/persist")
+def run_persist() -> werkzeug.Response:
+    """Persist the controller."""
+    controller.persist()
+    return _go_home()
+
+
 @blueprint.route("/commit")
 def run_commit() -> werkzeug.Response:
     """Make a commit then redirect to the home page."""
@@ -104,7 +111,6 @@ def run_commit() -> werkzeug.Response:
     match controller.persist_remote(current_user_reference):
         case PersistRemoteSuccess(message):
             current_app.logger.info(message)
-            controller.total_curated = 0
         case PersistRemoteFailure(_step, failure_text):
             flask.flash(failure_text)
             current_app.logger.warning(failure_text)
