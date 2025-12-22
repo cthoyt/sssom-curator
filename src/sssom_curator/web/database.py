@@ -11,6 +11,7 @@ from curies import Reference
 from sssom_pydantic import MappingSet, SemanticMapping
 from sssom_pydantic.api import SemanticMappingHash
 from sssom_pydantic.database import (
+    DEFAULT_SORT,
     NEGATIVE_MAPPING_CLAUSE,
     POSITIVE_MAPPING_CLAUSE,
     UNCURATED_NOT_UNSURE_CLAUSE,
@@ -42,6 +43,7 @@ class DatabaseController(AbstractController):
         converter: curies.Converter,
         target_references: Iterable[Reference] | None = None,
         add_date: bool = False,
+        populate: bool = False,
     ) -> None:
         """Initialize the database controller."""
         super().__init__(
@@ -52,11 +54,25 @@ class DatabaseController(AbstractController):
         )
         if self.target_references:
             raise NotImplementedError
+
+        if connection is None:
+            # note, :memory: doesn't work here because of the way that
+            # threading in the web app works. pick a local file path
+            path = self.repository.positives_path.parent.joinpath(".sssom-curator.db")
+            if path.is_file():
+                path.unlink()
+            connection = f"sqlite:///{path}"
+            populate = True
+
         self.db = SemanticMappingDatabase.from_connection(
-            connection=connection or "sqlite:///:memory:", semantic_mapping_hash=self.mapping_hash
+            connection=connection, semantic_mapping_hash=self.mapping_hash
         )
         self.add_date = add_date
         self._unpersisted = 0
+
+        if populate:
+            for path in self.repository.paths:
+                self.db.read(path)
 
     def count_predictions(self, query: Query | None = None) -> int:
         """Count predictions (i.e., anything that's not manually curated)."""
@@ -103,7 +119,7 @@ class DatabaseController(AbstractController):
         ]:
             filtered_mappings = [
                 mapping.to_semantic_mapping()
-                for mapping in self.db.get_mappings(where_clauses=[clause])
+                for mapping in self.db.get_mappings(where_clauses=[clause], order_by=DEFAULT_SORT)
             ]
             mapping_set = MappingSet(id=repository.purl_base.rstrip("/") + "/" + path.name)
             sssom_pydantic.write(

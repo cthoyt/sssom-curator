@@ -47,13 +47,21 @@ def get_app(
     if controller is None:
         if repository is None:
             raise ValueError
-        impls = {"dict": Controller, "sqlite": DatabaseController}
-        impl_cls = impls[implementation] if implementation else Controller
-        controller = impl_cls(
-            target_references=target_references,
-            repository=repository,
-            converter=ensure_converter(converter),
-        )
+        match implementation:
+            case "dict" | None:
+                controller = Controller(
+                    target_references=target_references,
+                    repository=repository,
+                    converter=ensure_converter(converter),
+                )
+            case "sqlite":
+                controller = DatabaseController(
+                    target_references=target_references,
+                    repository=repository,
+                    converter=ensure_converter(converter),
+                    populate=True,
+                )
+
     if not controller.count_predictions():
         raise ValueError("There are no predictions to curate")
     app.config["controller"] = controller
