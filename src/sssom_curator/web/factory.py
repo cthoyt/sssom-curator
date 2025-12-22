@@ -2,17 +2,12 @@
 
 from __future__ import annotations
 
-import os
-from collections.abc import Iterable
 from typing import TYPE_CHECKING, Literal, TypeAlias
 
-import flask
-import flask_bootstrap
-
-from .blueprint import blueprint, url_for_state
-from ..constants import DEFAULT_RESOLVER_BASE, ensure_converter
-
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    import flask
     from curies import Converter, Reference
 
     from .backends import Controller
@@ -22,6 +17,7 @@ __all__ = [
     "get_app",
 ]
 
+#: Keys for different implementation types
 Implementation: TypeAlias = Literal["dict", "sqlite"]
 
 
@@ -39,6 +35,14 @@ def get_app(
     implementation: Implementation | None = None,
 ) -> flask.Flask:
     """Get a curation flask app."""
+    import os
+
+    import flask
+    import flask_bootstrap
+
+    from .blueprint import blueprint, url_for_state
+    from ..constants import DEFAULT_RESOLVER_BASE, ensure_converter
+
     app = flask.Flask(__name__)
     app.config["WTF_CSRF_ENABLED"] = False
     app.config["SECRET_KEY"] = os.urandom(8)
