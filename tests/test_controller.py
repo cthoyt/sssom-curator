@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import ClassVar
 
 from sssom_curator.web.backends.base import Controller
-from sssom_curator.web.backends.dc import DictController
-from sssom_curator.web.database import DatabaseController
+from sssom_curator.web.backends.database import DatabaseController
+from sssom_curator.web.backends.memory import DictController
 from tests import wsgi_cases
 
 
