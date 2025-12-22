@@ -33,16 +33,23 @@
                        href="{{ url_for_state(".summary", state=state) }}">
                         Summarize
                     </a>
+
+                    {% set remote_unpersisted = controller.count_remote_unpersisted() %}
+                    {%- if remote_unpersisted %}
+                    <a class="btn btn-primary btn-sm" style="float: right; margin-right: 0.5em" href="{{ url_for_state('.run_commit', state) }}">
+                       Commit/Push ({{ remote_unpersisted }})
+                       <span class="glyphicon glyphicon-arrow-up" aria-hidden="true"></span>
+                    </a>
+                    {% endif %}
+                    {%- set unpersisted = controller.count_unpersisted() %}
+                    {%- if unpersisted %}
+                    <a class="btn btn-primary btn-sm" style="float: right; margin-right: 0.5em" href="{{ url_for_state('.run_persist', state) }}">
+                        Save ({{ unpersisted }}) <span class="glyphicon glyphicon-arrow-up" aria-hidden="true"></span>
+                    </a>
+                    {% endif %}
                     {{ title }}
                 </h5>
                 <div class="card-body">
-                    {% if controller.total_curated %}
-                        <a href="{{ url_for_state('.run_commit', state) }}">
-                            <button class="btn btn-sm btn-outline-dark">Commit ({{ controller.total_curated }}) and Push
-                                <span class="glyphicon glyphicon-arrow-up" aria-hidden="true"></span>
-                            </button>
-                        </a>
-                    {% endif %}
                     {% if query %}
                         <span class="btn btn-sm btn-outline-dark">
                             Query: <code>{{ query }}</code> ({{ "{:,d}".format(n_predictions) }} Results)

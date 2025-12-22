@@ -95,8 +95,16 @@ class AbstractController(ABC):
         """Mark the given mapping as correct."""
 
     @abstractmethod
+    def count_unpersisted(self) -> int:
+        """Count the number of unpersisted curations."""
+
+    @abstractmethod
     def persist(self) -> None:
         """Mark the given mapping as correct."""
+
+    def count_remote_unpersisted(self) -> int:
+        """Count the number of curations that haven't been persisted to a remote repository."""
+        return self.total_curated
 
     def persist_remote(self, author: Reference) -> PersistRemoteSuccess | PersistRemoteFailure:
         """Persist remotely."""
@@ -120,7 +128,6 @@ class AbstractController(ABC):
             return PersistRemoteFailure("push", push_res.message)
 
         self.total_curated = 0
-
         return PersistRemoteSuccess(commit_res.output + "\n" + push_res.output)
 
 
@@ -262,9 +269,13 @@ class Controller(AbstractController):
         new_mapping = curate(mapping, authors=authors, mark=mark, add_date=False)
         self.curations[MARK_TO_CALL[mark]].append(new_mapping)
 
+    def count_unpersisted(self) -> int:
+        """Count the number of unpersisted curations."""
+        return sum(len(m) for m in self.curations.values())
+
     def persist(self) -> None:
         """Persist the curated mappings."""
-        total = sum(len(m) for m in self.curations.values())
+        total = self.count_unpersisted()
         for call, mappings in self.curations.items():
             if mappings:
                 insert(
