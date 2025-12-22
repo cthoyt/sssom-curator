@@ -1,4 +1,4 @@
-"""A database backend."""
+"""A SQL database backend for the SSSOM Curator web application."""
 
 from __future__ import annotations
 
@@ -23,15 +23,16 @@ from sssom_pydantic.process import Mark
 from sssom_pydantic.query import Query
 
 from sssom_curator import Repository
+from sssom_curator.web.backends.base import Controller
 
-from .components import AbstractController, State
+from ..components import State
 
 __all__ = [
     "DatabaseController",
 ]
 
 
-class DatabaseController(AbstractController):
+class DatabaseController(Controller):
     """A controller that interacts with a database."""
 
     def __init__(

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import flask
 import werkzeug
@@ -11,16 +11,16 @@ from flask import current_app
 from sssom_pydantic.process import MARKS, Mark
 from werkzeug.local import LocalProxy
 
-from .components import (
-    AbstractController,
-    PersistRemoteFailure,
-    PersistRemoteSuccess,
-    State,
-    get_pagination_elements,
-)
+from .components import PersistRemoteFailure, PersistRemoteSuccess, State, get_pagination_elements
+
+if TYPE_CHECKING:
+    from .backends import Controller
 
 __all__ = [
     "blueprint",
+    "controller",
+    "current_user_reference",
+    "get_state_from_flask",
     "url_for_state",
 ]
 
@@ -51,9 +51,7 @@ def url_for_state(endpoint: str, state: State, **kwargs: Any) -> str:
     return flask.url_for(endpoint, **vv)
 
 
-controller: AbstractController = cast(
-    AbstractController, LocalProxy(lambda: current_app.config["controller"])
-)
+controller: Controller = cast("Controller", LocalProxy(lambda: current_app.config["controller"]))
 current_user_reference = cast(
     Reference, LocalProxy(lambda: current_app.config["get_current_user_reference"]())
 )

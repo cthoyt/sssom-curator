@@ -20,7 +20,8 @@ from sssom_pydantic import MappingTool, SemanticMapping
 from sssom_pydantic.process import UNSURE
 
 from sssom_curator.constants import NEGATIVES_NAME, POSITIVES_NAME, UNSURE_NAME
-from sssom_curator.web.components import AbstractController, State
+from sssom_curator.web.backends.base import Controller
+from sssom_curator.web.components import State
 from sssom_curator.web.impl import get_app
 from tests import cases
 
@@ -99,7 +100,7 @@ class TestWSGI(cases.RepositoryTestCase):
     unsure_seed: ClassVar[list[SemanticMapping]] = []
     converter_seed: ClassVar[curies.Converter] = TEST_CONVERTER
 
-    controller_cls: ClassVar[type[AbstractController]]
+    controller_cls: ClassVar[type[Controller]]
     controller_kwargs: dict[str, Any] | None
 
     def setUp(self) -> None:

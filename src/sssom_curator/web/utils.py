@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, NamedTuple
 
-from ..repository import Repository
-
 if TYPE_CHECKING:
-    pass
+    from ..repository import Repository
 
 __all__ = [
+    "GitCommandFailure",
+    "GitCommandSuccess",
     "check_current_branch",
     "commit",
     "push",
