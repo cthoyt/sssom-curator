@@ -11,7 +11,7 @@ from flask import current_app
 from sssom_pydantic.process import MARKS, Mark
 from werkzeug.local import LocalProxy
 
-from .components import PersistRemoteFailure, PersistRemoteSuccess, State, get_pagination_elements
+from .utils import PersistRemoteFailure, PersistRemoteSuccess, State, get_pagination_elements
 
 if TYPE_CHECKING:
     from .backends import Controller
