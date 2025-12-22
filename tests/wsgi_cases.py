@@ -108,7 +108,6 @@ class TestWSGI(cases.RepositoryTestCase):
         self.controller = self.controller_cls(
             repository=self.repository, converter=TEST_CONVERTER, **(self.controller_kwargs or {})
         )
-        self._populate()
         self.app = get_app(controller=self.controller, user=TEST_USER)
         self.app.testing = True
 
@@ -121,9 +120,6 @@ class TestWSGI(cases.RepositoryTestCase):
         self.test_prediction_record_curie = self.controller.mapping_hash(
             TEST_PREDICTED_MAPPING
         ).curie
-
-    def _populate(self) -> None:
-        """Populate the database."""
 
     def assert_file_mapping_count(self, path: Path, n: int) -> None:
         """Check that a SSSOM file has the right number of mappings."""

@@ -31,13 +31,12 @@ class TestDatabaseController(wsgi_cases.TestWSGI):
         self.td = tempfile.TemporaryDirectory()
         self.connection_path = Path(self.td.name).joinpath("test.db")
         self.connection = f"sqlite:///{self.connection_path}"
-        self.controller_kwargs = {"connection": self.connection, "add_date": False}
+        self.controller_kwargs = {
+            "connection": self.connection,
+            "add_date": False,
+            "populate": True,
+        }
         super().setUp()
-
-    def _populate(self) -> None:
-        """Populate the database."""
-        for path in self.repository.paths:
-            self.controller.db.read(path)
 
     def tearDown(self) -> None:
         """Tear down the test case."""
