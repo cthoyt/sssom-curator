@@ -563,6 +563,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             show_default=True,
         )
         @click.option("--orcid", help="Your ORCID, if not automatically loadable")
+        @click.option("--host", type=str, default="127.0.0.1", show_default=True)
         @click.option("--port", type=int, default=5003, show_default=True)
         @click.option(
             "--eager-persist",
@@ -577,20 +578,37 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             help="The type of backend for running the curation app. Dict means that data is stored "
             "in an in-memory dictionary data structure and SQLite means it uses a database w/ ORM",
         )
+        @click.option(
+            "--ssl-keyfile",
+            type=Path,
+            help="Path to SSL key file (with the -key.pem extension), which is used to enable the "
+            "web application to serve HTTPS requests",
+        )
+        @click.option(
+            "--ssl-certfile",
+            type=Path,
+            help="Path to a SSL certificate file (with the .pem extension) to "
+            "go along with the key file.",
+        )
         @click.pass_obj
         def web(
             obj: Repository,
             resolver_base: str | None,
             orcid: str,
+            host: str,
             port: int,
             eager_persist: bool,
             implementation: Literal["dict", "sqlite"],
+            ssl_keyfile: Path | None,
+            ssl_certfile: Path | None,
         ) -> None:
             """Run the semantic mappings curation app."""
             import webbrowser
 
+            import fastapi
+            import uvicorn
+            from a2wsgi import WSGIMiddleware
             from curies import NamableReference
-            from more_click import run_app
 
             from .web import get_app
 
@@ -613,10 +631,18 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
                 eager_persist=eager_persist,
                 implementation=implementation,
             )
-
-            webbrowser.open_new_tab(f"http://localhost:{port}")
-
-            run_app(app, with_gunicorn=False, port=str(port))
+            fastapi_app = fastapi.FastAPI()
+            fastapi_app.mount("/", WSGIMiddleware(app))  # type:ignore[arg-type]
+            protocol = "https" if ssl_keyfile and ssl_certfile else "http"
+            url = f"{protocol}://{host}:{port}"
+            webbrowser.open_new_tab(url)
+            uvicorn.run(
+                fastapi_app,
+                host=host,
+                port=port,
+                ssl_keyfile=ssl_keyfile,
+                ssl_certfile=ssl_certfile,
+            )
 
     else:
 

@@ -264,6 +264,22 @@ and pushes during curation.
 
     $ uv run main.py web
 
+If you need to run your app over HTTPS, you'll need an SSL key and certificate file. For
+local testing, you can run the following to generate them:
+
+.. code-block:: console
+
+    $ brew install mkcert
+    $ brew install nss
+    $ mkcert localhost 127.0.0.1 ::1
+    $ mkcert -install
+
+Then, pass to the app with `--ssl-keyfile` and `--ssl-certfile` like in:
+
+.. code-block:: console
+
+    $ uv run main.py web --ssl-keyfile localhost+2-key.pem --ssl-certfile localhost+2.pem
+
 *********************
  Project Maintenance
 *********************
