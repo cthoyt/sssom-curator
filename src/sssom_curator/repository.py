@@ -599,6 +599,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
         @click.option("--live-login", is_flag=True, help="If set, uses ORCiD for login")
         @click.option("--orcid-client-id")
         @click.option("--orcid-client-secret")
+        @click.option("--proxy-fix", is_flag=True, help="If set, sets passthroughs for proxies")
         @click.pass_obj
         def web(
             obj: Repository,
@@ -613,6 +614,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             live_login: bool,
             orcid_client_id: str | None,
             orcid_client_secret: str | None,
+            proxy_fix: bool,
         ) -> None:
             """Run the semantic mappings curation app."""
             import webbrowser
@@ -629,10 +631,15 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
 
                 orcid_client_id = pystow.get_config(
                     "sssom_curator",
-                    "orcid_client_id", raise_on_missing=True, passthrough=orcid_client_id
+                    "orcid_client_id",
+                    raise_on_missing=True,
+                    passthrough=orcid_client_id,
                 )
                 orcid_client_secret = pystow.get_config(
-                    "sssom_curator", "orcid_client_secret", raise_on_missing=True, passthrough=orcid_client_secret
+                    "sssom_curator",
+                    "orcid_client_secret",
+                    raise_on_missing=True,
+                    passthrough=orcid_client_secret,
                 )
 
                 user = None
@@ -659,7 +666,20 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
                 orcid_client_id=orcid_client_id,
             )
             fastapi_app = fastapi.FastAPI()
-            fastapi_app.mount("/", WSGIMiddleware(app))  # type:ignore[arg-type]
+            if proxy_fix:
+                from werkzeug.middleware.proxy_fix import ProxyFix
+
+                # only worry about applying the ProxyFix on Fly.io,
+                # or any probably any load balancer
+                middleware = ProxyFix(
+                    app,
+                    x_for=1,  # get the real IP address of who makes the request
+                    x_proto=1,  # gets whether its http or https from the X-Forwarded header
+                    # the other ones are left as default
+                )
+            else:
+                middleware = app  # type:ignore
+            fastapi_app.mount("/", WSGIMiddleware(middleware))  # type:ignore[arg-type]
             protocol = "https" if ssl_keyfile and ssl_certfile else "http"
             url = f"{protocol}://{host}:{port}"
             webbrowser.open_new_tab(url)
