@@ -590,12 +590,6 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             help="Path to a SSL certificate file (with the .pem extension) to "
             "go along with the key file.",
         )
-        @click.option(
-            "--ssl-certfile",
-            type=Path,
-            help="Path to a SSL certificate file (with the .pem extension) to "
-            "go along with the key file.",
-        )
         @click.option("--live-login", is_flag=True, help="If set, uses ORCiD for login")
         @click.option("--orcid-client-id")
         @click.option("--orcid-client-secret")

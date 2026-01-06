@@ -1,6 +1,6 @@
-##################
- Login with ORCiD
-##################
+###########################
+ Enabling Login with ORCiD
+###########################
 
 The SSSOM Curator web application can integrate ORCiD as an authentication system via
 :mod:`flask_dance`. When running the CLI, you can pass ``--live-login`` to enable this.
