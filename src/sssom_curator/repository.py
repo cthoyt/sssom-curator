@@ -563,7 +563,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             show_default=True,
         )
         @click.option("--orcid", help="Your ORCID, if not automatically loadable")
-        @click.option("--host", type=int, default="127.0.0.1", show_default=True)
+        @click.option("--host", type=str, default="127.0.0.1", show_default=True)
         @click.option("--port", type=int, default=5003, show_default=True)
         @click.option(
             "--eager-persist",
@@ -631,7 +631,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
                 url = f"https://{host}:{port}"
                 webbrowser.open_new_tab(url)
                 uvicorn.run(
-                    app,
+                    fastapi_app,
                     host=host,
                     port=port,
                     ssl_keyfile=ssl_keyfile,
