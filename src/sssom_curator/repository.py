@@ -605,8 +605,10 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             """Run the semantic mappings curation app."""
             import webbrowser
 
+            import fastapi
+            import uvicorn
+            from a2wsgi import WSGIMiddleware
             from curies import NamableReference
-            from more_click import run_app
 
             from .web import get_app
 
@@ -629,29 +631,18 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
                 eager_persist=eager_persist,
                 implementation=implementation,
             )
-
-            if ssl_keyfile and ssl_certfile:
-                import fastapi
-                import uvicorn
-                from a2wsgi import WSGIMiddleware
-
-                fastapi_app = fastapi.FastAPI()
-                fastapi_app.mount("/", WSGIMiddleware(app))
-
-                url = f"https://{host}:{port}"
-                webbrowser.open_new_tab(url)
-                uvicorn.run(
-                    fastapi_app,
-                    host=host,
-                    port=port,
-                    ssl_keyfile=ssl_keyfile,
-                    ssl_certfile=ssl_certfile,
-                )
-
-            else:
-                url = f"http://{host}:{port}"
-                webbrowser.open_new_tab(url)
-                run_app(app, with_gunicorn=False, host=host, port=str(port))
+            fastapi_app = fastapi.FastAPI()
+            fastapi_app.mount("/", WSGIMiddleware(app))
+            protocol = "https" if ssl_keyfile and ssl_certfile else "http"
+            url = f"{protocol}://{host}:{port}"
+            webbrowser.open_new_tab(url)
+            uvicorn.run(
+                fastapi_app,
+                host=host,
+                port=port,
+                ssl_keyfile=ssl_keyfile,
+                ssl_certfile=ssl_certfile,
+            )
 
     else:
 
