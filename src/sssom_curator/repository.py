@@ -590,7 +590,15 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             help="Path to a SSL certificate file (with the .pem extension) to "
             "go along with the key file.",
         )
+        @click.option(
+            "--ssl-certfile",
+            type=Path,
+            help="Path to a SSL certificate file (with the .pem extension) to "
+            "go along with the key file.",
+        )
         @click.option("--live-login", is_flag=True, help="If set, uses ORCiD for login")
+        @click.option("--orcid-client-id")
+        @click.option("--orcid-client-secret")
         @click.pass_obj
         def web(
             obj: Repository,
@@ -603,6 +611,8 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             ssl_keyfile: Path | None,
             ssl_certfile: Path | None,
             live_login: bool,
+            orcid_client_id: str | None,
+            orcid_client_secret: str | None,
         ) -> None:
             """Run the semantic mappings curation app."""
             import webbrowser
@@ -615,6 +625,15 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             from .web import get_app
 
             if live_login:
+                import pystow
+
+                orcid_client_id = pystow.get_config(
+                    "orcid_client_id", raise_on_missing=True, passthrough=orcid_client_id
+                )
+                orcid_client_secret = pystow.get_config(
+                    "orcid_client_secret", raise_on_missing=True, passthrough=orcid_client_secret
+                )
+
                 user = None
             elif orcid is not None:
                 user = NamableReference(prefix="orcid", identifier=orcid)
@@ -635,6 +654,8 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
                 eager_persist=eager_persist,
                 implementation=implementation,
                 live_login=live_login,
+                orcid_client_secret=orcid_client_secret,
+                orcid_client_id=orcid_client_id,
             )
             fastapi_app = fastapi.FastAPI()
             fastapi_app.mount("/", WSGIMiddleware(app))  # type:ignore[arg-type]

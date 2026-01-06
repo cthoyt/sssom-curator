@@ -34,7 +34,10 @@ def get_app(  # noqa:C901
     converter: Converter | None = None,
     eager_persist: bool = True,
     implementation: Implementation | None = None,
+    # Used for live login with ORCiD
     live_login: bool = False,
+    orcid_client_id: str | None = None,
+    orcid_client_secret: str | None = None,
 ) -> flask.Flask:
     """Get a curation flask app."""
     import os
@@ -82,26 +85,25 @@ def get_app(  # noqa:C901
     if live_login and user:
         raise NotImplementedError("can't specify a user and have login")
     elif live_login:
-        import pystow
         from flask_dance.contrib.orcid import make_orcid_blueprint
         from flask_dance.contrib.orcid import orcid as orcid_session
 
-        client_id = pystow.get_config("conferret", "orcid_client_id", raise_on_missing=True)
-        client_secret = pystow.get_config("conferret", "orcid_client_secret", raise_on_missing=True)
+        if not orcid_client_id or not orcid_client_secret:
+            raise ValueError("orcid_client_id and orcid_client_secret are required for live login")
 
         # see https://info.orcid.org/documentation/integration-guide/getting-started-with-your-orcid-integration/
-        auth_blueprint = make_orcid_blueprint(
-            client_id=client_id,
-            client_secret=client_secret,
+        orcid_blueprint = make_orcid_blueprint(
+            client_id=orcid_client_id,
+            client_secret=orcid_client_secret,
             scope="/authenticate",
         )
-        app.register_blueprint(auth_blueprint, url_prefix="/login")
+        app.register_blueprint(orcid_blueprint, url_prefix="/login")
 
         @app.before_request
         def require_login() -> None | werkzeug.Response:
             """Intercept requests to require login."""
             # Allow the login routes themselves
-            if request.endpoint and request.endpoint.startswith(f"{auth_blueprint.name}."):
+            if request.endpoint and request.endpoint.startswith(f"{orcid_blueprint.name}."):
                 return None
 
             # Allow static files
@@ -109,7 +111,7 @@ def get_app(  # noqa:C901
                 return None
 
             if not orcid_session.authorized:
-                return redirect(url_for(f"{auth_blueprint.name}.login"))
+                return redirect(url_for(f"{orcid_blueprint.name}.login"))
 
             return None
 
