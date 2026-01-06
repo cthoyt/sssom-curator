@@ -632,7 +632,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
                 implementation=implementation,
             )
             fastapi_app = fastapi.FastAPI()
-            fastapi_app.mount("/", WSGIMiddleware(app))
+            fastapi_app.mount("/", WSGIMiddleware(app))  # type:ignore[arg-type]
             protocol = "https" if ssl_keyfile and ssl_certfile else "http"
             url = f"{protocol}://{host}:{port}"
             webbrowser.open_new_tab(url)
