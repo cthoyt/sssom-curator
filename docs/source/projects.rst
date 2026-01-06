@@ -296,7 +296,7 @@ Test the integrity of mappings with:
 
     $ uv run main.py test
 
-This can easily be incorporated in a GitHub Actions workflow like in the followingL:
+This can easily be incorporated in a GitHub Actions workflow like in the following:
 
 .. code-block:: yaml
 

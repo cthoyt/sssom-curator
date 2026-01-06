@@ -628,10 +628,11 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
                 import pystow
 
                 orcid_client_id = pystow.get_config(
+                    "sssom_curator",
                     "orcid_client_id", raise_on_missing=True, passthrough=orcid_client_id
                 )
                 orcid_client_secret = pystow.get_config(
-                    "orcid_client_secret", raise_on_missing=True, passthrough=orcid_client_secret
+                    "sssom_curator", "orcid_client_secret", raise_on_missing=True, passthrough=orcid_client_secret
                 )
 
                 user = None

@@ -44,6 +44,7 @@ https://github.com/cthoyt/sssom-curator.
     projects
     cli
     reference
+    managed-web
 
 ********************
  Indices and Tables
