@@ -155,6 +155,7 @@
                     </tbody>
                 </table>
 
+                {%- if pagination_elements %}
                 <div class="card-footer text-center">
                     <nav>
                     <ul class="pagination justify-content-center" style="margin-bottom: 0">
@@ -164,6 +165,7 @@
                     </ul>
                     </nav>
                 </div>
+                {%- endif %}
             </div>
     </div>
 {% endblock %}
