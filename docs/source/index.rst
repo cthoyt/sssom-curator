@@ -44,7 +44,7 @@ https://github.com/cthoyt/sssom-curator.
     projects
     cli
     reference
-    managed-web
+    login-orcid
 
 ********************
  Indices and Tables

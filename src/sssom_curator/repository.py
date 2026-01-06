@@ -594,6 +594,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
         @click.option("--orcid-client-id")
         @click.option("--orcid-client-secret")
         @click.option("--proxy-fix", is_flag=True, help="If set, sets passthroughs for proxies")
+        @click.option("--no-open", is_flag=True)
         @click.pass_obj
         def web(
             obj: Repository,
@@ -609,10 +610,9 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             orcid_client_id: str | None,
             orcid_client_secret: str | None,
             proxy_fix: bool,
+            no_open: bool,
         ) -> None:
             """Run the semantic mappings curation app."""
-            import webbrowser
-
             import fastapi
             import uvicorn
             from a2wsgi import WSGIMiddleware
@@ -676,7 +676,10 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             fastapi_app.mount("/", WSGIMiddleware(middleware))  # type:ignore[arg-type]
             protocol = "https" if ssl_keyfile and ssl_certfile else "http"
             url = f"{protocol}://{host}:{port}"
-            webbrowser.open_new_tab(url)
+            if not no_open:
+                import webbrowser
+
+                webbrowser.open_new_tab(url)
             uvicorn.run(
                 fastapi_app,
                 host=host,
