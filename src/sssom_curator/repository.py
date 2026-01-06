@@ -564,7 +564,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
         )
         @click.option("--orcid", help="Your ORCID, if not automatically loadable")
         @click.option("--host", type=str, default="127.0.0.1", show_default=True)
-        @click.option("--port", type=int, default=5003, show_default=True)
+        @click.option("--port", type=int, default=8775, show_default=True)
         @click.option(
             "--eager-persist",
             is_flag=True,
@@ -590,6 +590,11 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             help="Path to a SSL certificate file (with the .pem extension) to "
             "go along with the key file.",
         )
+        @click.option("--live-login", is_flag=True, help="If set, uses ORCiD for login")
+        @click.option("--orcid-client-id")
+        @click.option("--orcid-client-secret")
+        @click.option("--proxy-fix", is_flag=True, help="If set, sets passthroughs for proxies")
+        @click.option("--no-open", is_flag=True)
         @click.pass_obj
         def web(
             obj: Repository,
@@ -601,10 +606,13 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             implementation: Literal["dict", "sqlite"],
             ssl_keyfile: Path | None,
             ssl_certfile: Path | None,
+            live_login: bool,
+            orcid_client_id: str | None,
+            orcid_client_secret: str | None,
+            proxy_fix: bool,
+            no_open: bool,
         ) -> None:
             """Run the semantic mappings curation app."""
-            import webbrowser
-
             import fastapi
             import uvicorn
             from a2wsgi import WSGIMiddleware
@@ -612,7 +620,24 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
 
             from .web import get_app
 
-            if orcid is not None:
+            if live_login:
+                import pystow
+
+                orcid_client_id = pystow.get_config(
+                    "sssom_curator",
+                    "orcid_client_id",
+                    raise_on_missing=True,
+                    passthrough=orcid_client_id,
+                )
+                orcid_client_secret = pystow.get_config(
+                    "sssom_curator",
+                    "orcid_client_secret",
+                    raise_on_missing=True,
+                    passthrough=orcid_client_secret,
+                )
+
+                user = None
+            elif orcid is not None:
                 user = NamableReference(prefix="orcid", identifier=orcid)
             elif get_user is not None:
                 user = get_user()
@@ -630,12 +655,31 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
                 footer=obj.web_footer,
                 eager_persist=eager_persist,
                 implementation=implementation,
+                live_login=live_login,
+                orcid_client_secret=orcid_client_secret,
+                orcid_client_id=orcid_client_id,
             )
             fastapi_app = fastapi.FastAPI()
-            fastapi_app.mount("/", WSGIMiddleware(app))  # type:ignore[arg-type]
+            if proxy_fix:
+                from werkzeug.middleware.proxy_fix import ProxyFix
+
+                # only worry about applying the ProxyFix on Fly.io,
+                # or any probably any load balancer
+                middleware = ProxyFix(
+                    app,
+                    x_for=1,  # get the real IP address of who makes the request
+                    x_proto=1,  # gets whether its http or https from the X-Forwarded header
+                    # the other ones are left as default
+                )
+            else:
+                middleware = app  # type:ignore
+            fastapi_app.mount("/", WSGIMiddleware(middleware))  # type:ignore[arg-type]
             protocol = "https" if ssl_keyfile and ssl_certfile else "http"
             url = f"{protocol}://{host}:{port}"
-            webbrowser.open_new_tab(url)
+            if not no_open:
+                import webbrowser
+
+                webbrowser.open_new_tab(url)
             uvicorn.run(
                 fastapi_app,
                 host=host,

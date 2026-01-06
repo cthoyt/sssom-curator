@@ -44,6 +44,7 @@ https://github.com/cthoyt/sssom-curator.
     projects
     cli
     reference
+    login-orcid
 
 ********************
  Indices and Tables
