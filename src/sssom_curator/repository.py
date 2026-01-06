@@ -563,6 +563,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             show_default=True,
         )
         @click.option("--orcid", help="Your ORCID, if not automatically loadable")
+        @click.option("--host", type=int, default="127.0.0.1", show_default=True)
         @click.option("--port", type=int, default=5003, show_default=True)
         @click.option(
             "--eager-persist",
@@ -577,14 +578,19 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             help="The type of backend for running the curation app. Dict means that data is stored "
             "in an in-memory dictionary data structure and SQLite means it uses a database w/ ORM",
         )
+        @click.option("--ssl-keyfile", type=Path)
+        @click.option("--ssl-certfile", type=Path)
         @click.pass_obj
         def web(
             obj: Repository,
             resolver_base: str | None,
             orcid: str,
+            host: str,
             port: int,
             eager_persist: bool,
             implementation: Literal["dict", "sqlite"],
+            ssl_keyfile: Path | None,
+            ssl_certfile: Path | None,
         ) -> None:
             """Run the semantic mappings curation app."""
             import webbrowser
@@ -614,9 +620,28 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
                 implementation=implementation,
             )
 
-            webbrowser.open_new_tab(f"http://localhost:{port}")
+            if ssl_keyfile and ssl_certfile:
+                import fastapi
+                import uvicorn
+                from a2wsgi import WSGIMiddleware
 
-            run_app(app, with_gunicorn=False, port=str(port))
+                fastapi_app = fastapi.FastAPI()
+                fastapi_app.mount("/", WSGIMiddleware(app))
+
+                url = f"https://{host}:{port}"
+                webbrowser.open_new_tab(url)
+                uvicorn.run(
+                    app,
+                    host=host,
+                    port=port,
+                    ssl_keyfile=ssl_keyfile,
+                    ssl_certfile=ssl_certfile,
+                )
+
+            else:
+                url = f"http://{host}:{port}"
+                webbrowser.open_new_tab(url)
+                run_app(app, with_gunicorn=False, host=host, port=str(port))
 
     else:
 
