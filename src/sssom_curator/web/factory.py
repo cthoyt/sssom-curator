@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
     import flask
+    import werkzeug
     from curies import Converter, Reference
 
     from .backends import Controller
@@ -21,7 +22,7 @@ __all__ = [
 Implementation: TypeAlias = Literal["dict", "sqlite"]
 
 
-def get_app(
+def get_app(  # noqa:C901
     *,
     target_references: Iterable[Reference] | None = None,
     repository: Repository | None = None,
@@ -33,12 +34,15 @@ def get_app(
     converter: Converter | None = None,
     eager_persist: bool = True,
     implementation: Implementation | None = None,
+    live_login: bool = False,
 ) -> flask.Flask:
     """Get a curation flask app."""
     import os
 
     import flask
     import flask_bootstrap
+    from curies import NamableReference
+    from flask import redirect, request, url_for
 
     from .blueprint import blueprint, url_for_state
     from ..constants import DEFAULT_RESOLVER_BASE, ensure_converter
@@ -74,7 +78,52 @@ def get_app(
     if not controller.count_predictions():
         raise ValueError("There are no predictions to curate")
     app.config["controller"] = controller
-    app.config["get_current_user_reference"] = lambda: user
+
+    if live_login and user:
+        raise NotImplementedError("can't specify a user and have login")
+    elif live_login:
+        import pystow
+        from flask_dance.contrib.orcid import make_orcid_blueprint
+        from flask_dance.contrib.orcid import orcid as orcid_session
+
+        client_id = pystow.get_config("conferret", "orcid_client_id", raise_on_missing=True)
+        client_secret = pystow.get_config("conferret", "orcid_client_secret", raise_on_missing=True)
+
+        # see https://info.orcid.org/documentation/integration-guide/getting-started-with-your-orcid-integration/
+        auth_blueprint = make_orcid_blueprint(
+            client_id=client_id,
+            client_secret=client_secret,
+            scope="/authenticate",
+        )
+        app.register_blueprint(auth_blueprint, url_prefix="/login")
+
+        @app.before_request
+        def require_login() -> None | werkzeug.Response:
+            """Intercept requests to require login."""
+            # Allow the login routes themselves
+            if request.endpoint and request.endpoint.startswith(f"{auth_blueprint.name}."):
+                return None
+
+            # Allow static files
+            if request.endpoint == "static":
+                return None
+
+            if not orcid_session.authorized:
+                return redirect(url_for(f"{auth_blueprint.name}.login"))
+
+            return None
+
+        app.config["get_current_user_reference"] = lambda: NamableReference(
+            prefix="orcid",
+            identifier=orcid_session.token["orcid"],
+            name=orcid_session.token.get("name"),
+        )
+
+    elif user:
+        app.config["get_current_user_reference"] = lambda: user
+    else:
+        raise NotImplementedError("you must either pass a user or turn on live login")
+
     flask_bootstrap.Bootstrap5(app)
     app.register_blueprint(blueprint)
 

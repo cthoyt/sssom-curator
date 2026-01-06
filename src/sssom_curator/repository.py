@@ -564,7 +564,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
         )
         @click.option("--orcid", help="Your ORCID, if not automatically loadable")
         @click.option("--host", type=str, default="127.0.0.1", show_default=True)
-        @click.option("--port", type=int, default=5003, show_default=True)
+        @click.option("--port", type=int, default=8775, show_default=True)
         @click.option(
             "--eager-persist",
             is_flag=True,
@@ -590,6 +590,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             help="Path to a SSL certificate file (with the .pem extension) to "
             "go along with the key file.",
         )
+        @click.option("--live-login", is_flag=True, help="If set, uses ORCiD for login")
         @click.pass_obj
         def web(
             obj: Repository,
@@ -601,6 +602,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             implementation: Literal["dict", "sqlite"],
             ssl_keyfile: Path | None,
             ssl_certfile: Path | None,
+            live_login: bool,
         ) -> None:
             """Run the semantic mappings curation app."""
             import webbrowser
@@ -612,7 +614,9 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
 
             from .web import get_app
 
-            if orcid is not None:
+            if live_login:
+                user = None
+            elif orcid is not None:
                 user = NamableReference(prefix="orcid", identifier=orcid)
             elif get_user is not None:
                 user = get_user()
@@ -630,6 +634,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
                 footer=obj.web_footer,
                 eager_persist=eager_persist,
                 implementation=implementation,
+                live_login=live_login,
             )
             fastapi_app = fastapi.FastAPI()
             fastapi_app.mount("/", WSGIMiddleware(app))  # type:ignore[arg-type]
