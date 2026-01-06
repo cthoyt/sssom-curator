@@ -578,8 +578,18 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             help="The type of backend for running the curation app. Dict means that data is stored "
             "in an in-memory dictionary data structure and SQLite means it uses a database w/ ORM",
         )
-        @click.option("--ssl-keyfile", type=Path)
-        @click.option("--ssl-certfile", type=Path)
+        @click.option(
+            "--ssl-keyfile",
+            type=Path,
+            help="Path to SSL key file (with the *-key.pem extension), which is used to enable the "
+            "web application to serve HTTPS requests",
+        )
+        @click.option(
+            "--ssl-certfile",
+            type=Path,
+            help="Path to a SSL certificate file (with the *.pem extension) to "
+            "go along with the key file.",
+        )
         @click.pass_obj
         def web(
             obj: Repository,
