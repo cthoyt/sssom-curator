@@ -13,15 +13,7 @@ from sssom_pydantic.api import SemanticMappingHash, mapping_hash_v1
 from sssom_pydantic.process import Mark
 from sssom_pydantic.query import Query
 
-from ..utils import (
-    GitCommandFailure,
-    PersistRemoteFailure,
-    PersistRemoteSuccess,
-    State,
-    check_current_branch,
-    commit,
-    push,
-)
+from ..utils import PersistRemoteFailure, PersistRemoteSuccess, State, persist_remote
 from ...repository import Repository
 
 __all__ = [
@@ -77,24 +69,11 @@ class Controller(ABC):
 
     def persist_remote(self, author: Reference) -> PersistRemoteSuccess | PersistRemoteFailure:
         """Persist remotely."""
-        branch_res = check_current_branch(self.repository)
-        if isinstance(branch_res, GitCommandFailure):
-            return PersistRemoteFailure("branch check", branch_res.message)
-        if not branch_res.usable:
-            return PersistRemoteFailure(
-                "branch name", f"refusing to push to {branch_res.name} - make a branch first."
-            )
-
         label = "mappings" if self.total_curated > 1 else "mapping"
-        message = f"Curated {self.total_curated} {label} ({author.curie})"
-        commit_res = commit(self.repository, message)
-        if isinstance(commit_res, GitCommandFailure):
-            return PersistRemoteFailure("commit", commit_res.message)
-
-        # TODO what happens if there's no corresponding on remote?
-        push_res = push(self.repository, branch=branch_res.name)
-        if isinstance(push_res, GitCommandFailure):
-            return PersistRemoteFailure("push", push_res.message)
-
-        self.total_curated = 0
-        return PersistRemoteSuccess(commit_res.output + "\n" + push_res.output)
+        message = f"Curated {self.total_curated:,} {label} ({author.curie})"
+        match persist_remote(self.repository.predictions_path.parent, message):
+            case PersistRemoteSuccess() as rv:
+                self.total_curated = 0
+                return rv
+            case PersistRemoteFailure() as rv:
+                return rv
