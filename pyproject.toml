@@ -60,7 +60,7 @@ dependencies = [
     "pyyaml",
     "tqdm",
     "curies>=0.12.5",
-    "pystow>=0.7.11",
+    "pystow>=0.7.15",
     "bioregistry>=0.12.43",
     "sssom-pydantic>=0.1.17",
     "typing-extensions",
