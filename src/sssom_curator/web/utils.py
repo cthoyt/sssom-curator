@@ -49,6 +49,7 @@ def persist_remote(directory: Path, message: str) -> PersistRemoteSuccess | Pers
         return PersistRemoteFailure("commit", e)
 
     # TODO what happens if there's no corresponding on remote?
+    # TODO clean up/delete commit if failure?
     try:
         push_res = push(directory, branch=branch_name)
     except subprocess.CalledProcessError as e:
