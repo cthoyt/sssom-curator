@@ -32,6 +32,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: 3 :: Only",
     "Typing :: Typed",
     "Topic :: Scientific/Engineering :: Chemistry",
@@ -74,7 +75,7 @@ tests = [
     "coverage[toml]",
 ]
 docs = [
-    "sphinx>=8",
+    "sphinx>=8,<9",
     "sphinx-rtd-theme>=3.0",
     "sphinx-click",
     "sphinx_automodapi",
