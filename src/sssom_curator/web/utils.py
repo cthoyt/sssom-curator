@@ -2,28 +2,23 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Literal, NamedTuple, TypeAlias
 
 from pydantic import BaseModel, Field
 from sssom_pydantic.query import Query
 
 if TYPE_CHECKING:
-    from ..repository import Repository
+    from subprocess import CalledProcessError
 
 __all__ = [
-    "GitCommandFailure",
-    "GitCommandSuccess",
     "PaginationElement",
     "PersistRemoteFailure",
     "PersistRemoteSuccess",
     "Sort",
     "State",
-    "check_current_branch",
-    "commit",
     "get_pagination_elements",
-    "push",
 ]
-
 
 #: The default limit
 DEFAULT_LIMIT: int = 10
@@ -35,68 +30,34 @@ DEFAULT_OFFSET: int = 0
 Sort: TypeAlias = Literal["asc", "desc", "subject", "object"]
 
 
-def commit(repository: Repository, message: str) -> GitCommandSuccess | GitCommandFailure:
-    """Make a commit with the following message."""
-    return _git(repository, "commit", "-m", message, "-a")
+def persist_remote(
+    directory: Path, commit_message: str
+) -> PersistRemoteSuccess | PersistRemoteFailure:
+    """Persist remotely."""
+    import subprocess
 
+    from pystow.git import commit, get_current_branch, is_likely_default_branch, push
 
-def push(
-    repository: Repository, branch: str | None = None
-) -> GitCommandSuccess | GitCommandFailure:
-    """Push the git repo."""
-    if branch is not None:
-        return _git(repository, "push", "origin", branch)
-    else:
-        return _git(repository, "push")
+    branch_name = get_current_branch(directory)
 
+    if is_likely_default_branch(directory):
+        return PersistRemoteFailure(
+            "branch name", ValueError(f"refusing to push to {branch_name} - make a branch first.")
+        )
 
-class BranchCheck(NamedTuple):
-    """Text for a successfully run branch check."""
+    try:
+        commit_res = commit(directory, commit_message)
+    except subprocess.CalledProcessError as e:
+        return PersistRemoteFailure("commit", e)
 
-    name: str
-    usable: bool
+    # TODO what happens if there's no corresponding on remote?
+    # TODO clean up/delete commit if failure?
+    try:
+        push_res = push(directory, branch=branch_name)
+    except subprocess.CalledProcessError as e:
+        return PersistRemoteFailure("push", e)
 
-
-BRANCH_BLOCKLIST = {"master", "main"}
-
-
-def check_current_branch(repository: Repository) -> BranchCheck | GitCommandFailure:
-    """Return if on the master/main branch."""
-    match _git(repository, "rev-parse", "--abbrev-ref", "HEAD"):
-        case GitCommandSuccess(name):
-            return BranchCheck(name=name, usable=name not in BRANCH_BLOCKLIST)
-        case GitCommandFailure() as failure:
-            return failure
-
-
-class GitCommandSuccess(NamedTuple):
-    """Text for git command that ran successfully."""
-
-    output: str
-
-
-class GitCommandFailure(NamedTuple):
-    """Text for git command that resulted in a CalledProcessError."""
-
-    message: str
-
-
-def _git(repository: Repository, *args: str) -> GitCommandSuccess | GitCommandFailure:
-    import os
-    from subprocess import CalledProcessError, check_output
-
-    directory = repository.predictions_path.parent
-    with open(os.devnull, "w") as devnull:
-        try:
-            ret = check_output(  # noqa: S603
-                ["git", *args],  # noqa:S607
-                cwd=directory,
-                stderr=devnull,
-            )
-        except CalledProcessError as e:
-            return GitCommandFailure(str(e))
-        else:
-            return GitCommandSuccess(ret.strip().decode("utf-8"))
+    return PersistRemoteSuccess(commit_res.stdout + "\n" + push_res.stderr)
 
 
 class Config(BaseModel):
@@ -128,7 +89,7 @@ class PersistRemoteFailure(NamedTuple):
     """Represents failure message."""
 
     step: str
-    message: str
+    exception: CalledProcessError | ValueError
 
 
 class PaginationElement(NamedTuple):
