@@ -6,7 +6,7 @@ import sys
 import typing
 from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeAlias
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeAlias, cast
 
 import click
 import curies
@@ -617,6 +617,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             import uvicorn
             from a2wsgi import WSGIMiddleware
             from curies import NamableReference
+            from starlette.types import ASGIApp
 
             from .web import get_app
 
@@ -665,15 +666,19 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
 
                 # only worry about applying the ProxyFix on Fly.io,
                 # or any probably any load balancer
-                middleware = ProxyFix(
+                proxy_fix_inst = ProxyFix(
                     app,
                     x_for=1,  # get the real IP address of who makes the request
                     x_proto=1,  # gets whether its http or https from the X-Forwarded header
                     # the other ones are left as default
                 )
+                if TYPE_CHECKING and sys.version_info < (3, 11):
+                    middleware = WSGIMiddleware(proxy_fix_inst)  # type:ignore[arg-type]
+                else:
+                    middleware = WSGIMiddleware(proxy_fix_inst)
             else:
-                middleware = app  # type:ignore
-            fastapi_app.mount("/", WSGIMiddleware(middleware))
+                middleware = WSGIMiddleware(app)
+            fastapi_app.mount("/", cast(ASGIApp, middleware))
             protocol = "https" if ssl_keyfile and ssl_certfile else "http"
             url = f"{protocol}://{host}:{port}"
             if not no_open:
