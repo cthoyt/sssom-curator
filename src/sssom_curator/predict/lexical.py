@@ -26,6 +26,7 @@ from ..constants import PredictionMethod, RecognitionMethod
 
 if TYPE_CHECKING:
     import gilda
+    import gilda.scorer
     import networkx as nx
 
 __all__ = [
@@ -165,7 +166,7 @@ def get_predictions(
 
 def _get_get_matches(method: RecognitionMethod | None, grounder: ssslm.Grounder) -> MatchCallable:
     if method is None or method == "grounding":
-        return grounder.get_matches
+        return cast(MatchCallable, grounder.get_matches)
     elif method == "ner":
 
         def _get_matches(s: str) -> list[ssslm.Match]:
@@ -197,23 +198,27 @@ def _predict_lexical_mappings_all_by_all(
 def _all_by_all_gilda(
     grounder: gilda.Grounder, predicate: curies.Reference, mapping_tool: MappingTool | None = None
 ) -> Iterable[SemanticMapping]:
-    from gilda.scorer import generate_match
-    from gilda.scorer import score as get_score
-
     for values in grounder.entries.values():
         for s, o in itt.combinations(values, 2):
             if s.db == o.db:
                 continue
-            match = generate_match(s.text, o.text)
-            score = get_score(match, o)  # FIXME not symmetric
             yield SemanticMapping(
                 subject=NormalizedNamedReference(prefix=s.db, identifier=s.id, name=s.entry_name),
                 predicate=predicate,
                 object=NormalizedNamedReference(prefix=o.db, identifier=o.id, name=o.entry_name),
                 justification=lexical_matching_process,
-                confidence=round(score, 3),
+                confidence=_gilda_get_score(s, o),
                 mapping_tool=mapping_tool,
             )
+
+
+def _gilda_get_score(left: gilda.Term, right: gilda.Term) -> float:
+    import gilda.scorer
+
+    # FIXME not symmetric
+    gilda_match: gilda.scorer.Match = gilda.scorer.generate_match(left.text, right.text)  # type:ignore[no-untyped-call]
+    rv: float = gilda.scorer.score(gilda_match, right)  # type:ignore[no-untyped-call]
+    return round(rv, 3)
 
 
 def predict_lexical_mappings(

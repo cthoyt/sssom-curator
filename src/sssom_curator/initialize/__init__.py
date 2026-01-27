@@ -112,7 +112,7 @@ def initialize_folder(  # noqa:C901
         mapping_set = mapping_set.model_copy(update={"license": CC0_CURIE})
 
     if not purl_base:
-        purl_base, _, _ = mapping_set.id.rpartition("/")
+        purl_base, _, _ = str(mapping_set.id).rpartition("/")  # TODO there might be a better way
         click.secho(
             f"`purl_base` was not given. Inferring from mapping set ID to be: {purl_base}",
             fg="yellow",
