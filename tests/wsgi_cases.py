@@ -201,7 +201,7 @@ class TestWSGI(cases.RepositoryTestCase):
             self.controller.repository.positives_path
         )
         self.assertIsNone(mapping_set.title)
-        self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", mapping_set.id)
+        self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", str(mapping_set.id))
         self.assert_models_equal(
             [TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_TRUE], mappings
         )
@@ -227,7 +227,7 @@ class TestWSGI(cases.RepositoryTestCase):
             self.controller.repository.negatives_path
         )
         self.assertIsNone(mapping_set.title)
-        self.assertEqual(f"{self.purl_base}{NEGATIVES_NAME}", mapping_set.id)
+        self.assertEqual(f"{self.purl_base}{NEGATIVES_NAME}", str(mapping_set.id))
         self.assert_models_equal([TEST_PREDICTED_MAPPING_MARKED_FALSE], mappings)
 
         self.assert_file_mapping_count(self.controller.repository.positives_path, 1)
@@ -251,7 +251,7 @@ class TestWSGI(cases.RepositoryTestCase):
             self.controller.repository.unsure_path
         )
         self.assertIsNone(mapping_set.title)
-        self.assertEqual(f"{self.purl_base}{UNSURE_NAME}", mapping_set.id)
+        self.assertEqual(f"{self.purl_base}{UNSURE_NAME}", str(mapping_set.id))
         self.assert_models_equal([TEST_PREDICTED_MAPPING_MARKED_UNSURE], mappings)
 
         self.assert_file_mapping_count(self.controller.repository.positives_path, 1)
@@ -275,7 +275,7 @@ class TestWSGI(cases.RepositoryTestCase):
             self.controller.repository.positives_path
         )
         self.assertIsNone(mapping_set.title)
-        self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", mapping_set.id)
+        self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", str(mapping_set.id))
         self.assert_models_equal(
             [TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_BROAD], mappings
         )
@@ -301,7 +301,7 @@ class TestWSGI(cases.RepositoryTestCase):
             self.controller.repository.positives_path
         )
         self.assertIsNone(mapping_set.title)
-        self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", mapping_set.id)
+        self.assertEqual(f"{self.purl_base}{POSITIVES_NAME}", str(mapping_set.id))
         self.assert_models_equal(
             [TEST_POSITIVE_MAPPING, TEST_PREDICTED_MAPPING_MARKED_NARROW], mappings
         )

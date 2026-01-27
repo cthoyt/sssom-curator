@@ -25,7 +25,7 @@ class TestMerge(cases.RepositoryTestCase):
         """Get the mapping set ID."""
         if self.mapping_set is None:
             raise ValueError
-        return self.mapping_set.id
+        return str(self.mapping_set.id)
 
     def test_merge_empty(self) -> None:
         """Test merge works directly after initialization."""

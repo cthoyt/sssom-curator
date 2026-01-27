@@ -18,7 +18,7 @@ __all__ = [
 
 
 def _sssom_dump(mapping_set: MappingSet) -> Metadata:
-    return mapping_set.to_record().model_dump(exclude_none=True, exclude_unset=True)
+    return mapping_set.to_record().model_dump(exclude_none=True, exclude_unset=True, mode="json")
 
 
 def merge(  # noqa:C901
