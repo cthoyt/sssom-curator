@@ -672,7 +672,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
                     x_proto=1,  # gets whether its http or https from the X-Forwarded header
                     # the other ones are left as default
                 )
-                if TYPE_CHECKING and sys.version_info < (3, 11):
+                if TYPE_CHECKING and sys.version_info < (3, 14):
                     middleware = WSGIMiddleware(proxy_fix_inst)  # type:ignore[arg-type]
                 else:
                     middleware = WSGIMiddleware(proxy_fix_inst)
