@@ -87,7 +87,7 @@ typing = [
     { include-group = "tests" },
     "mypy",
     "pydantic",
-    "click-types",
+    "types-click",
     "types-PyYAML",
     "types-tabulate",
     "types-flask",

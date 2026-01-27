@@ -673,7 +673,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
                 )
             else:
                 middleware = app  # type:ignore
-            fastapi_app.mount("/", WSGIMiddleware(middleware))  # type:ignore[arg-type]
+            fastapi_app.mount("/", WSGIMiddleware(middleware))
             protocol = "https" if ssl_keyfile and ssl_certfile else "http"
             url = f"{protocol}://{host}:{port}"
             if not no_open:

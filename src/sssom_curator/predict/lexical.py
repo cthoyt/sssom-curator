@@ -165,7 +165,7 @@ def get_predictions(
 
 def _get_get_matches(method: RecognitionMethod | None, grounder: ssslm.Grounder) -> MatchCallable:
     if method is None or method == "grounding":
-        return grounder.get_matches
+        return cast(MatchCallable, grounder.get_matches)
     elif method == "ner":
 
         def _get_matches(s: str) -> list[ssslm.Match]:
