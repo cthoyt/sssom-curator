@@ -92,6 +92,7 @@ typing = [
     "types-tabulate",
     "types-flask",
     "sqlmodel",
+    "ssslm[gilda-slim]",
 ]
 docs-lint = [
     { include-group = "docs" },
