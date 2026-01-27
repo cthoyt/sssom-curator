@@ -40,7 +40,7 @@ def persist_remote(directory: Path, message: str) -> PersistRemoteSuccess | Pers
 
     if is_likely_default_branch(directory):
         return PersistRemoteFailure(
-            "branch name", f"refusing to push to {branch_name} - make a branch first."
+            "branch name", ValueError(f"refusing to push to {branch_name} - make a branch first.")
         )
 
     try:
@@ -86,7 +86,7 @@ class PersistRemoteFailure(NamedTuple):
     """Represents failure message."""
 
     step: str
-    exception: CalledProcessError
+    exception: CalledProcessError | ValueError
 
 
 class PaginationElement(NamedTuple):
