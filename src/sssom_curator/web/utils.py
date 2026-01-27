@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal, NamedTuple, TypeAlias
+from typing import TYPE_CHECKING, Literal, NamedTuple, TypeAlias
 
 from pydantic import BaseModel, Field
 from sssom_pydantic.query import Query
+
+if TYPE_CHECKING:
+    from subprocess import CalledProcessError
 
 __all__ = [
     "PaginationElement",
@@ -43,13 +46,13 @@ def persist_remote(directory: Path, message: str) -> PersistRemoteSuccess | Pers
     try:
         commit_res = commit(directory, message)
     except subprocess.CalledProcessError as e:
-        return PersistRemoteFailure("commit", str(e))
+        return PersistRemoteFailure("commit", e)
 
     # TODO what happens if there's no corresponding on remote?
     try:
         push_res = push(directory, branch=branch_name)
     except subprocess.CalledProcessError as e:
-        return PersistRemoteFailure("push", str(e))
+        return PersistRemoteFailure("push", e)
 
     return PersistRemoteSuccess(commit_res.stdout + "\n" + push_res.stderr)
 
@@ -83,7 +86,7 @@ class PersistRemoteFailure(NamedTuple):
     """Represents failure message."""
 
     step: str
-    message: str
+    exception: CalledProcessError
 
 
 class PaginationElement(NamedTuple):
