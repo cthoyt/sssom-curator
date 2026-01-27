@@ -30,7 +30,9 @@ DEFAULT_OFFSET: int = 0
 Sort: TypeAlias = Literal["asc", "desc", "subject", "object"]
 
 
-def persist_remote(directory: Path, message: str) -> PersistRemoteSuccess | PersistRemoteFailure:
+def persist_remote(
+    directory: Path, commit_message: str
+) -> PersistRemoteSuccess | PersistRemoteFailure:
     """Persist remotely."""
     import subprocess
 
@@ -44,7 +46,7 @@ def persist_remote(directory: Path, message: str) -> PersistRemoteSuccess | Pers
         )
 
     try:
-        commit_res = commit(directory, message)
+        commit_res = commit(directory, commit_message)
     except subprocess.CalledProcessError as e:
         return PersistRemoteFailure("commit", e)
 

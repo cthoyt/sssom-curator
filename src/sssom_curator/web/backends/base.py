@@ -70,8 +70,8 @@ class Controller(ABC):
     def persist_remote(self, author: Reference) -> PersistRemoteSuccess | PersistRemoteFailure:
         """Persist remotely."""
         label = "mappings" if self.total_curated > 1 else "mapping"
-        message = f"Curated {self.total_curated:,} {label} ({author.curie})"
-        match persist_remote(self.repository.predictions_path.parent, message):
+        commit_message = f"Curated {self.total_curated:,} {label} ({author.curie})"
+        match persist_remote(self.repository.predictions_path.parent, commit_message):
             case PersistRemoteSuccess() as rv:
                 self.total_curated = 0
                 return rv
