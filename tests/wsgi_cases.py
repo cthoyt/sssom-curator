@@ -1,5 +1,6 @@
 """Test the web app."""
 
+import datetime
 from collections import Counter
 from collections.abc import Sequence
 from pathlib import Path
@@ -17,7 +18,6 @@ from curies.vocabulary import (
 )
 from pydantic import BaseModel
 from sssom_pydantic import MappingTool, SemanticMapping
-from sssom_pydantic.process import UNSURE
 
 from sssom_curator.constants import NEGATIVES_NAME, POSITIVES_NAME, UNSURE_NAME
 from sssom_curator.web.backends.base import Controller
@@ -56,7 +56,9 @@ TEST_PREDICTED_MAPPING_MARKED_UNSURE = SemanticMapping(
     justification=lexical_matching_process.pair.to_pydantic(),
     confidence=0.95,
     mapping_tool=MappingTool(name="test", version=None),
-    comment=UNSURE,
+    reviewers=[TEST_USER],
+    review_date=datetime.date.today(),
+    reviewer_agreement=0.0,
 )
 TEST_PREDICTED_MAPPING_MARKED_BROAD = SemanticMapping(
     subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
