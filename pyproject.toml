@@ -139,6 +139,8 @@ predict-lexical = [
 ]
 exports = [
     "sssom",
+    "linkml>=1.10.0",
+    "linkml-runtime>=1.10.0",
     "pandas",
     "ndex2",
     "matplotlib",
