@@ -159,14 +159,6 @@ database = [
     "sssom-pydantic[database]",
 ]
 
-[tool.uv.sources]
-curies = { path = "../curies", editable = true }
-pystow = { path = "../pystow", editable = true }
-sssom-pydantic = { path = "../sssom-pydantic", editable = true }
-bioregistry = { path = "../bioregistry", editable = true }
-pyobo = { path = "../pyobo", editable = true }
-gilda = { path = "../gilda", editable = true }
-
 # See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#urls
 # and also https://packaging.python.org/en/latest/specifications/well-known-project-urls/
 [project.urls]
