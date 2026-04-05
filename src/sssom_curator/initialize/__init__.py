@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 import os
 import stat
 from pathlib import Path
@@ -9,6 +10,7 @@ from typing import TYPE_CHECKING
 
 import click
 import curies
+from pydantic import AnyUrl
 
 if TYPE_CHECKING:
     import jinja2
@@ -23,7 +25,7 @@ __all__ = [
 HERE = Path(__file__).parent.resolve()
 SCRIPT_NAME = "main.py"
 README_NAME = "README.md"
-CC0_CURIE = "spdx:CC0-1.0"
+CC0_URL = "https://spdx.org/licenses/CC0-1.0"
 DATA_DIR_NAME = "data"
 SKIPS = {
     "mapping_set": {
@@ -109,7 +111,7 @@ def initialize_folder(  # noqa:C901
         mapping_set = mapping_set.model_copy(update={"title": directory.name})
 
     if mapping_set.license is None and add_license:
-        mapping_set = mapping_set.model_copy(update={"license": CC0_CURIE})
+        mapping_set = mapping_set.model_copy(update={"license": AnyUrl(CC0_URL)})
 
     if not purl_base:
         purl_base, _, _ = str(mapping_set.id).rpartition("/")  # TODO there might be a better way
@@ -137,6 +139,8 @@ def initialize_folder(  # noqa:C901
                 object=curies.NamedReference(prefix="ex", identifier="2", name="2"),
                 justification=manual_mapping_curation,
                 authors=[charlie],
+                mapping_date=datetime.date.today(),
+                confidence=1.0,
             )
         ]
         if positive_seed is None
@@ -149,6 +153,8 @@ def initialize_folder(  # noqa:C901
                 justification=manual_mapping_curation,
                 predicate_modifier="Not",
                 authors=[charlie],
+                mapping_date=datetime.date.today(),
+                confidence=1.0,
             )
         ]
         if negative_seed is None
@@ -159,7 +165,9 @@ def initialize_folder(  # noqa:C901
                 predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
                 object=curies.NamedReference(prefix="ex", identifier="6", name="6"),
                 justification=manual_mapping_curation,
-                authors=[charlie],
+                reviewers=[charlie],
+                review_date=datetime.date.today(),
+                reviewer_agreement=0.0,
             )
         ]
         if unsure_seed is None
@@ -222,11 +230,11 @@ def initialize_folder(  # noqa:C901
     os.chmod(script_path, mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
     readme_template = environment.get_template("README.md.jinja2")
-    readme_text = readme_template.render(mapping_set=mapping_set, cco_curie=CC0_CURIE)
+    readme_text = readme_template.render(mapping_set=mapping_set, cco_curie=CC0_URL)
     readme_path = directory.joinpath(readme_filename)
     readme_path.write_text(readme_text + "\n")
 
-    if mapping_set.license == CC0_CURIE:
+    if str(mapping_set.license) == CC0_URL:
         license_path = directory.joinpath("LICENSE")
         license_path.write_text(HERE.joinpath("cc0.txt").read_text())
 

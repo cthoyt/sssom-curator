@@ -6,14 +6,13 @@ import sys
 import typing
 from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeAlias, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, Self, TypeAlias, cast
 
 import click
 import curies
 import sssom_pydantic
 from pydantic import BaseModel, Field
 from sssom_pydantic.process import Call
-from typing_extensions import Self
 
 from .constants import (
     DEFAULT_RESOLVER_BASE,
@@ -51,6 +50,12 @@ ConverterStrategy: TypeAlias = Literal["bioregistry", "bioregistry-preferred", "
 
 #: Configuration file
 CONFIGURATION_FILENAME = "sssom-curator.json"
+
+#: URL to Biomappings predictions SSSOM TSV
+BIOMAPPINGS_PREDICTIONS_URL = (
+    "https://github.com/biopragmatics/biomappings/raw/refs/heads/"
+    "main/src/biomappings/resources/predictions.sssom.tsv"
+)
 
 strategy_option = click.option(
     "--strategy",
@@ -643,9 +648,16 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             elif get_user is not None:
                 user = get_user()
             else:
-                orcid = (
-                    click.prompt("What's your ORCID?").removeprefix("https://orcid.org").rstrip("/")
-                )
+                import pystow
+
+                orcid = pystow.get_config("sssom_curator", "orcid")
+                if orcid is None:
+                    orcid = (
+                        click.prompt("What's your ORCID?")
+                        .removeprefix("https://orcid.org")
+                        .rstrip("/")
+                    )
+                    pystow.write_config("sssom_curator", "orcid", orcid)
                 user = NamableReference(prefix="orcid", identifier=orcid)
 
             app = get_app(
@@ -672,7 +684,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
                     x_proto=1,  # gets whether its http or https from the X-Forwarded header
                     # the other ones are left as default
                 )
-                middleware = WSGIMiddleware(proxy_fix_inst)
+                middleware = WSGIMiddleware(proxy_fix_inst)  # type:ignore[arg-type]
             else:
                 middleware = WSGIMiddleware(app)
             fastapi_app.mount("/", cast(ASGIApp, middleware))
@@ -975,6 +987,21 @@ def get_import_command() -> click.Group:
         )
 
         obj.append_predicted_mappings(mappings_filtered, converter=converter)
+
+    @import_group.command(name="url")
+    @click.argument("url")
+    @click.pass_obj
+    def import_url(obj: Repository, url: str) -> None:
+        """Import mappings from a URL."""
+        mappings, converter, _metadata = sssom_pydantic.read(url)
+        obj.append_predicted_mappings(mappings, converter=converter)
+
+    @import_group.command(name="biomappings")
+    @click.pass_obj
+    def import_biomappings(obj: Repository) -> None:
+        """Import predicted mappings from Biomappings."""
+        mappings, converter, _metadata = sssom_pydantic.read(BIOMAPPINGS_PREDICTIONS_URL)
+        obj.append_predicted_mappings(mappings, converter=converter)
 
     return import_group
 
