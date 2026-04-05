@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import datetime
 from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
 import curies
+import pystow
 from curies.vocabulary import lexical_matching_process
 from sssom_pydantic import MappingTool, SemanticMapping
 from tqdm.asyncio import tqdm
@@ -45,7 +47,7 @@ def predict_embedding_mappings(
     if batch_size is None:
         batch_size = 10_000
 
-    model = pyobo.api.embedding.get_text_embedding_model()
+    model = pystow.get_sentence_transformer()
     source_df = pyobo.get_text_embeddings_df(
         prefix, model=model, force=force, force_process=force_process
     )
@@ -53,6 +55,7 @@ def predict_embedding_mappings(
     mapping_tool = resolve_mapping_tool(mapping_tool)
 
     predictions = []
+    today = datetime.date.today()
     for target in tqdm(targets, disable=len(targets) == 1):
         target_df = pyobo.get_text_embeddings_df(
             target, model=model, force=force, force_process=force_process
@@ -68,6 +71,7 @@ def predict_embedding_mappings(
                     justification=lexical_matching_process,
                     confidence=confidence,
                     mapping_tool=mapping_tool,
+                    mapping_date=today,
                 )
             )
     return predictions

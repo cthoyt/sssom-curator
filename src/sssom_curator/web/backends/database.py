@@ -46,7 +46,7 @@ class DatabaseController(Controller):
         semantic_mapping_hash: SemanticMappingHash | None = None,
         converter: curies.Converter,
         target_references: Iterable[Reference] | None = None,
-        add_date: bool = False,
+        add_date: bool = True,
         populate: bool = False,
     ) -> None:
         """Initialize the database controller."""
@@ -55,6 +55,7 @@ class DatabaseController(Controller):
             semantic_mapping_hash=semantic_mapping_hash,
             converter=converter,
             target_references=target_references,
+            add_date=add_date,
         )
         if self.target_references:
             raise NotImplementedError
@@ -69,9 +70,10 @@ class DatabaseController(Controller):
             populate = True
 
         self.db = SemanticMappingDatabase.from_connection(
-            connection=connection, semantic_mapping_hash=self.mapping_hash
+            connection=connection,
+            semantic_mapping_hash=self.mapping_hash,
+            converter=converter,
         )
-        self.add_date = add_date
         self._unpersisted = 0
 
         if populate:
@@ -93,7 +95,7 @@ class DatabaseController(Controller):
             limit=state.limit if state is not None else None,
             offset=state.offset if state is not None else None,
         )
-        return [model.to_semantic_mapping() for model in models]
+        return models
 
     def get_prefix_counter(self, state: State | None = None) -> Counter[tuple[str, str]]:
         """Count the number of predictions to check for the given filters."""
@@ -121,10 +123,7 @@ class DatabaseController(Controller):
             (UNCURATED_UNSURE_CLAUSE, repository.unsure_path),
             (UNCURATED_NOT_UNSURE_CLAUSE, repository.predictions_path),
         ]:
-            filtered_mappings = [
-                mapping.to_semantic_mapping()
-                for mapping in self.db.get_mappings(where_clauses=[clause], order_by=DEFAULT_SORT)
-            ]
+            filtered_mappings = self.db.get_mappings([clause], order_by=DEFAULT_SORT)
             mapping_set = MappingSet(id=repository.purl_base.rstrip("/") + "/" + path.name)
             sssom_pydantic.write(
                 filtered_mappings,

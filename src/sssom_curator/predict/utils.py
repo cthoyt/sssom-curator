@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import curies
 from bioregistry import NormalizedReference
+from curies import NamedReference
 from curies.vocabulary import exact_match
 from sssom_pydantic import MappingTool
+
+from ..version import get_version
 
 __all__ = [
     "TOOL_NAME",
@@ -15,12 +18,13 @@ __all__ = [
 
 #: The name of the lexical mapping tool
 TOOL_NAME = "sssom-curator"
+TOOL_REFERENCE = NamedReference(prefix="wikidata", identifier="Q138902949", name="SSSOM Curator")
 
 
 def resolve_mapping_tool(mapping_tool: str | MappingTool | None) -> MappingTool:
     """Resolve the mapping tool."""
     if mapping_tool is None:
-        return MappingTool(name=TOOL_NAME, version=None)
+        return MappingTool(name=TOOL_NAME, reference=TOOL_REFERENCE, version=get_version())
     if isinstance(mapping_tool, str):
         return MappingTool(name=mapping_tool, version=None)
     return mapping_tool

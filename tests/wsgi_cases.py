@@ -1,5 +1,6 @@
 """Test the web app."""
 
+import datetime
 from collections import Counter
 from collections.abc import Sequence
 from pathlib import Path
@@ -17,7 +18,6 @@ from curies.vocabulary import (
 )
 from pydantic import BaseModel
 from sssom_pydantic import MappingTool, SemanticMapping
-from sssom_pydantic.process import UNSURE
 
 from sssom_curator.constants import NEGATIVES_NAME, POSITIVES_NAME, UNSURE_NAME
 from sssom_curator.web.backends.base import Controller
@@ -27,7 +27,10 @@ from tests import cases
 
 __all__ = ["TestWSGI"]
 
+TODAY = datetime.date.today()
 TEST_USER = Reference(prefix="orcid", identifier="0000-0000-0000-0000")
+
+# The first two mappings are the ones seeded
 TEST_POSITIVE_MAPPING = SemanticMapping(
     subject=NamedReference.from_curie("chebi:131408", name="glyoxime"),
     predicate=exact_match,
@@ -42,12 +45,15 @@ TEST_PREDICTED_MAPPING = SemanticMapping(
     confidence=0.95,
     mapping_tool=MappingTool(name="test", version=None),
 )
+
+# The following mappings are ones that are curated
 TEST_PREDICTED_MAPPING_MARKED_TRUE = SemanticMapping(
     subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
     predicate=exact_match,
     object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
     justification=manual_mapping_curation.pair.to_pydantic(),
     authors=[TEST_USER],
+    mapping_date=TODAY,
 )
 TEST_PREDICTED_MAPPING_MARKED_UNSURE = SemanticMapping(
     subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
@@ -56,7 +62,9 @@ TEST_PREDICTED_MAPPING_MARKED_UNSURE = SemanticMapping(
     justification=lexical_matching_process.pair.to_pydantic(),
     confidence=0.95,
     mapping_tool=MappingTool(name="test", version=None),
-    comment=UNSURE,
+    reviewers=[TEST_USER],
+    review_date=TODAY,
+    reviewer_agreement=0.0,
 )
 TEST_PREDICTED_MAPPING_MARKED_BROAD = SemanticMapping(
     subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
@@ -64,6 +72,7 @@ TEST_PREDICTED_MAPPING_MARKED_BROAD = SemanticMapping(
     object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
     justification=manual_mapping_curation.pair.to_pydantic(),
     authors=[TEST_USER],
+    mapping_date=TODAY,
 )
 TEST_PREDICTED_MAPPING_MARKED_NARROW = SemanticMapping(
     subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
@@ -71,6 +80,7 @@ TEST_PREDICTED_MAPPING_MARKED_NARROW = SemanticMapping(
     object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
     justification=manual_mapping_curation.pair.to_pydantic(),
     authors=[TEST_USER],
+    mapping_date=TODAY,
 )
 TEST_PREDICTED_MAPPING_MARKED_FALSE = SemanticMapping(
     subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
@@ -79,6 +89,7 @@ TEST_PREDICTED_MAPPING_MARKED_FALSE = SemanticMapping(
     justification=manual_mapping_curation.pair.to_pydantic(),
     authors=[TEST_USER],
     predicate_modifier="Not",
+    mapping_date=TODAY,
 )
 
 TEST_CONVERTER = curies.Converter.from_prefix_map(

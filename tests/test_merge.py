@@ -1,5 +1,6 @@
 """Tests for merging."""
 
+import datetime
 from textwrap import dedent
 
 import curies
@@ -8,6 +9,9 @@ from sssom_pydantic import SemanticMapping
 
 from sssom_curator.export.merge import merge
 from tests import cases
+
+TODAY = datetime.date.today()
+TODAY_STR = TODAY.strftime("%Y-%m-%d")
 
 
 class TestMerge(cases.RepositoryTestCase):
@@ -39,13 +43,13 @@ class TestMerge(cases.RepositoryTestCase):
                 #  orcid: https://orcid.org/
                 #  semapv: https://w3id.org/semapv/vocab/
                 #  skos: http://www.w3.org/2004/02/skos/core#
-                #license: spdx:CC0-1.0
+                #license: https://spdx.org/licenses/CC0-1.0
                 #mapping_set_id: {self.mapping_set_id}
                 #mapping_set_title: {self.directory.name}
-                subject_id\tsubject_label\tpredicate_id\tpredicate_modifier\tobject_id\tobject_label\tmapping_justification\tauthor_id\tconfidence
-                ex:1\t1\tskos:exactMatch\t\tex:2\t2\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t
-                ex:3\t3\tskos:exactMatch\tNot\tex:4\t4\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t
-                ex:7\t7\tskos:exactMatch\t\tex:8\t8\tsemapv:LexicalMatching\t\t0.77
+                subject_id\tsubject_label\tpredicate_id\tpredicate_modifier\tobject_id\tobject_label\tmapping_justification\tauthor_id\tmapping_date\tconfidence
+                ex:1\t1\tskos:exactMatch\t\tex:2\t2\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t{TODAY_STR}\t1.0
+                ex:3\t3\tskos:exactMatch\tNot\tex:4\t4\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t{TODAY_STR}\t1.0
+                ex:7\t7\tskos:exactMatch\t\tex:8\t8\tsemapv:LexicalMatching\t\t\t0.77
             """).rstrip(),
             self.output_tsv_path.read_text().rstrip(),
         )
@@ -74,14 +78,14 @@ class TestMerge(cases.RepositoryTestCase):
                 #  orcid: https://orcid.org/
                 #  semapv: https://w3id.org/semapv/vocab/
                 #  skos: http://www.w3.org/2004/02/skos/core#
-                #license: spdx:CC0-1.0
+                #license: https://spdx.org/licenses/CC0-1.0
                 #mapping_set_id: {self.mapping_set_id}
                 #mapping_set_title: {self.directory.name}
-                subject_id\tsubject_label\tpredicate_id\tpredicate_modifier\tobject_id\tobject_label\tmapping_justification\tauthor_id\tconfidence
-                CHEBI:10001\tVisnadin\tskos:exactMatch\t\tmesh:C067604\tvisnadin\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t
-                ex:1\t1\tskos:exactMatch\t\tex:2\t2\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t
-                ex:3\t3\tskos:exactMatch\tNot\tex:4\t4\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t
-                ex:7\t7\tskos:exactMatch\t\tex:8\t8\tsemapv:LexicalMatching\t\t0.77
+                subject_id\tsubject_label\tpredicate_id\tpredicate_modifier\tobject_id\tobject_label\tmapping_justification\tauthor_id\tmapping_date\tconfidence
+                CHEBI:10001\tVisnadin\tskos:exactMatch\t\tmesh:C067604\tvisnadin\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t\t
+                ex:1\t1\tskos:exactMatch\t\tex:2\t2\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t{TODAY_STR}\t1.0
+                ex:3\t3\tskos:exactMatch\tNot\tex:4\t4\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t{TODAY_STR}\t1.0
+                ex:7\t7\tskos:exactMatch\t\tex:8\t8\tsemapv:LexicalMatching\t\t\t0.77
             """).rstrip(),
             self.output_tsv_path.read_text().rstrip(),
         )
@@ -89,7 +93,6 @@ class TestMerge(cases.RepositoryTestCase):
     def test_merge_with_curations_no_standardization(self) -> None:
         """Test adding some extra mappings that also have preferred prefixes."""
         self.repository.merge_standardize_bioregistry = False
-        self.maxDiff = None
         mapping = SemanticMapping(
             subject=curies.NamedReference(prefix="chebi", identifier="10001", name="Visnadin"),
             predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
@@ -113,14 +116,14 @@ class TestMerge(cases.RepositoryTestCase):
                 #  orcid: https://orcid.org/
                 #  semapv: https://w3id.org/semapv/vocab/
                 #  skos: http://www.w3.org/2004/02/skos/core#
-                #license: spdx:CC0-1.0
+                #license: https://spdx.org/licenses/CC0-1.0
                 #mapping_set_id: {self.mapping_set_id}
                 #mapping_set_title: {self.directory.name}
-                subject_id\tsubject_label\tpredicate_id\tpredicate_modifier\tobject_id\tobject_label\tmapping_justification\tauthor_id\tconfidence
-                chebi:10001\tVisnadin\tskos:exactMatch\t\tmesh:C067604\tvisnadin\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t
-                ex:1\t1\tskos:exactMatch\t\tex:2\t2\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t
-                ex:3\t3\tskos:exactMatch\tNot\tex:4\t4\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t
-                ex:7\t7\tskos:exactMatch\t\tex:8\t8\tsemapv:LexicalMatching\t\t0.77
+                subject_id\tsubject_label\tpredicate_id\tpredicate_modifier\tobject_id\tobject_label\tmapping_justification\tauthor_id\tmapping_date\tconfidence
+                chebi:10001\tVisnadin\tskos:exactMatch\t\tmesh:C067604\tvisnadin\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t\t
+                ex:1\t1\tskos:exactMatch\t\tex:2\t2\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t{TODAY_STR}\t1.0
+                ex:3\t3\tskos:exactMatch\tNot\tex:4\t4\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t{TODAY_STR}\t1.0
+                ex:7\t7\tskos:exactMatch\t\tex:8\t8\tsemapv:LexicalMatching\t\t\t0.77
             """).rstrip(),
             self.output_tsv_path.read_text().rstrip(),
         )

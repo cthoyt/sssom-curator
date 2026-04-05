@@ -21,14 +21,12 @@ classifiers = [
     "Environment :: Console",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Framework :: Pytest",
     "Framework :: tox",
     "Framework :: Sphinx",
     "Natural Language :: English",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -50,20 +48,19 @@ keywords = [
 
 # License Information.
 # See PEP-639 at https://peps.python.org/pep-0639/#add-license-files-key
-license-files = [
-    "LICENSE",
-]
+license = "MIT"
+license-files = ["LICENSE"]
 
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "requests",
     "click",
     "pyyaml",
     "tqdm",
-    "curies>=0.12.5",
-    "pystow>=0.7.15",
-    "bioregistry>=0.12.43",
-    "sssom-pydantic>=0.1.17",
+    "curies>=0.13.0",
+    "pystow>=0.8.0",
+    "bioregistry>=0.13.0",
+    "sssom-pydantic>=0.3.0",
     "typing-extensions",
     "jinja2",
 ]
@@ -139,6 +136,8 @@ predict-lexical = [
 ]
 exports = [
     "sssom",
+    "linkml>=1.10.0",
+    "linkml-runtime>=1.10.0",
     "pandas",
     "ndex2",
     "matplotlib",
