@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
@@ -54,6 +55,7 @@ def predict_embedding_mappings(
     mapping_tool = resolve_mapping_tool(mapping_tool)
 
     predictions = []
+    today = datetime.date.today()
     for target in tqdm(targets, disable=len(targets) == 1):
         target_df = pyobo.get_text_embeddings_df(
             target, model=model, force=force, force_process=force_process
@@ -69,6 +71,7 @@ def predict_embedding_mappings(
                     justification=lexical_matching_process,
                     confidence=confidence,
                     mapping_tool=mapping_tool,
+                    mapping_date=today,
                 )
             )
     return predictions
