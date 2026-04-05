@@ -93,7 +93,6 @@ class TestMerge(cases.RepositoryTestCase):
     def test_merge_with_curations_no_standardization(self) -> None:
         """Test adding some extra mappings that also have preferred prefixes."""
         self.repository.merge_standardize_bioregistry = False
-        self.maxDiff = None
         mapping = SemanticMapping(
             subject=curies.NamedReference(prefix="chebi", identifier="10001", name="Visnadin"),
             predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
