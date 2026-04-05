@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 import itertools as itt
 import logging
 import typing
@@ -198,6 +199,7 @@ def _predict_lexical_mappings_all_by_all(
 def _all_by_all_gilda(
     grounder: gilda.Grounder, predicate: curies.Reference, mapping_tool: MappingTool | None = None
 ) -> Iterable[SemanticMapping]:
+    today = datetime.date.today()
     for values in grounder.entries.values():
         for s, o in itt.combinations(values, 2):
             if s.db == o.db:
@@ -209,6 +211,7 @@ def _all_by_all_gilda(
                 justification=lexical_matching_process,
                 confidence=_gilda_get_score(s, o),
                 mapping_tool=mapping_tool,
+                mapping_date=today,
             )
 
 
@@ -244,6 +247,7 @@ def predict_lexical_mappings(
     mapping_tool = resolve_mapping_tool(mapping_tool)
 
     name_prediction_count = 0
+    today = datetime.date.today()
     for identifier, name in it:
         for scored_match in get_matches(name):
             name_prediction_count += 1
@@ -254,6 +258,7 @@ def predict_lexical_mappings(
                 justification=lexical_matching_process,
                 confidence=round(scored_match.score, 3),
                 mapping_tool=mapping_tool,
+                mapping_date=today,
             )
 
     tqdm.write(f"[{prefix}] generated {name_prediction_count:,} predictions from names")
@@ -275,6 +280,7 @@ def predict_lexical_mappings(
                     justification=lexical_matching_process,
                     confidence=round(scored_match.score, 3),
                     mapping_tool=mapping_tool,
+                    mapping_date=today,
                 )
         tqdm.write(
             f"[{prefix}] generated {identifier_prediction_count:,} predictions from identifiers"
