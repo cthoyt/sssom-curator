@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
 import curies
+import pystow
 from curies.vocabulary import lexical_matching_process
 from sssom_pydantic import MappingTool, SemanticMapping
 from tqdm.asyncio import tqdm
@@ -45,7 +46,7 @@ def predict_embedding_mappings(
     if batch_size is None:
         batch_size = 10_000
 
-    model = pyobo.api.embedding.get_text_embedding_model()
+    model = pystow.get_sentence_transformer()
     source_df = pyobo.get_text_embeddings_df(
         prefix, model=model, force=force, force_process=force_process
     )

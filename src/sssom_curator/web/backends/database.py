@@ -46,7 +46,7 @@ class DatabaseController(Controller):
         semantic_mapping_hash: SemanticMappingHash | None = None,
         converter: curies.Converter,
         target_references: Iterable[Reference] | None = None,
-        add_date: bool = False,
+        add_date: bool = True,
         populate: bool = False,
     ) -> None:
         """Initialize the database controller."""

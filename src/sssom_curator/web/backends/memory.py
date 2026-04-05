@@ -36,6 +36,7 @@ class DictController(Controller):
         repository: Repository,
         converter: curies.Converter,
         mapping_hash: SemanticMappingHash | None = None,
+        add_date: bool = True,
     ) -> None:
         """Instantiate the web controller.
 
@@ -49,6 +50,7 @@ class DictController(Controller):
             converter=converter,
             target_references=target_references,
         )
+        self.add_date = add_date
         predicted_mappings, _, self._predictions_metadata = sssom_pydantic.read(
             self.repository.predictions_path
         )
@@ -156,8 +158,7 @@ class DictController(Controller):
 
         mapping = self._predictions.pop(reference)
 
-        # TODO start using dates!
-        new_mapping = curate(mapping, authors=authors, mark=mark, add_date=False)
+        new_mapping = curate(mapping, authors=authors, mark=mark, add_date=self.add_date)
         self.curations[MARK_TO_CALL[mark]].append(new_mapping)
 
     def count_unpersisted(self) -> int:
