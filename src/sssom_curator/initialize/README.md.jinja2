@@ -48,7 +48,7 @@ $ uv run main.py test
 
 ## License
 
-{% if mapping_set.license == cco_curie %}
+{% if is_cco %}
 Semantic mappings curated in this directory are licensed under the
 [Creative Commons Zero v1.0 Universal (CC0-1.0) License](https://creativecommons.org/publicdomain/zero/1.0/legalcode).
 {% elif mapping_set.license %}

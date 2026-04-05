@@ -55,6 +55,7 @@ class DatabaseController(Controller):
             semantic_mapping_hash=semantic_mapping_hash,
             converter=converter,
             target_references=target_references,
+            add_date=add_date,
         )
         if self.target_references:
             raise NotImplementedError
@@ -73,7 +74,6 @@ class DatabaseController(Controller):
             semantic_mapping_hash=self.mapping_hash,
             converter=converter,
         )
-        self.add_date = add_date
         self._unpersisted = 0
 
         if populate:

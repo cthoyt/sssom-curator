@@ -31,6 +31,7 @@ class Controller(ABC):
         semantic_mapping_hash: SemanticMappingHash | None = None,
         converter: curies.Converter,
         target_references: Iterable[Reference] | None = None,
+        add_date: bool = True,
     ) -> None:
         """Initialize the controller."""
         self.repository = repository
@@ -38,6 +39,7 @@ class Controller(ABC):
         self.converter = converter
         self.total_curated = 0
         self.target_references = set(target_references) if target_references is not None else None
+        self.add_date = add_date
 
     @abstractmethod
     def get_prefix_counter(self, state: State | None = None) -> Counter[tuple[str, str]]:

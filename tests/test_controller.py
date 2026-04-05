@@ -34,7 +34,7 @@ class TestDatabaseController(wsgi_cases.TestWSGI):
         self.connection = f"sqlite:///{self.connection_path}"
         self.controller_kwargs = {
             "connection": self.connection,
-            "add_date": False,
+            "add_date": True,
             "populate": True,
         }
         super().setUp()

@@ -229,12 +229,14 @@ def initialize_folder(  # noqa:C901
     # Add user, group, and other execute bits
     os.chmod(script_path, mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
+    is_cco = str(mapping_set.license) == CC0_URL
+
     readme_template = environment.get_template("README.md.jinja2")
-    readme_text = readme_template.render(mapping_set=mapping_set, cco_curie=CC0_URL)
+    readme_text = readme_template.render(mapping_set=mapping_set, is_cco=is_cco)
     readme_path = directory.joinpath(readme_filename)
     readme_path.write_text(readme_text + "\n")
 
-    if str(mapping_set.license) == CC0_URL:
+    if is_cco:
         license_path = directory.joinpath("LICENSE")
         license_path.write_text(HERE.joinpath("cc0.txt").read_text())
 

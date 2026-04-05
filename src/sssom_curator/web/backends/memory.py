@@ -49,8 +49,8 @@ class DictController(Controller):
             semantic_mapping_hash=mapping_hash,
             converter=converter,
             target_references=target_references,
+            add_date=add_date,
         )
-        self.add_date = add_date
         predicted_mappings, _, self._predictions_metadata = sssom_pydantic.read(
             self.repository.predictions_path
         )

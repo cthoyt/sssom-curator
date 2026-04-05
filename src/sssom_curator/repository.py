@@ -684,7 +684,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
                     x_proto=1,  # gets whether its http or https from the X-Forwarded header
                     # the other ones are left as default
                 )
-                middleware = WSGIMiddleware(proxy_fix_inst)  # type:ignore[arg-type]
+                middleware = WSGIMiddleware(proxy_fix_inst)
             else:
                 middleware = WSGIMiddleware(app)
             fastapi_app.mount("/", cast(ASGIApp, middleware))
