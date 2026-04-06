@@ -1,6 +1,6 @@
 {
   "template": "https://github.com/cthoyt/cookiecutter-snekpack",
-  "commit": "51c129dd1be40ae2826e9c4a79c953dd842a92cd",
+  "commit": "06a65a4b81b93e8df5e3df51e24a19b865eb84df",
   "checkout": null,
   "context": {
     "cookiecutter": {
@@ -15,6 +15,7 @@
       "command_line_interface": true,
       "gitlab": false,
       "runner": "tox",
+      "citation_file": false,
       "__not_charlie": "",
       "__runner": "tox -e",
       "__runner_uv": "--with tox-uv tox -e",
@@ -23,8 +24,9 @@
       "__runner_install_pip": "python3 -m pip install tox tox-uv",
       "__runner_tests": "py",
       "__gh_slug": "cthoyt/sssom-curator",
+      "__package_name_dashed": "sssom-curator",
       "_template": "https://github.com/cthoyt/cookiecutter-snekpack",
-      "_commit": "51c129dd1be40ae2826e9c4a79c953dd842a92cd"
+      "_commit": "06a65a4b81b93e8df5e3df51e24a19b865eb84df"
     }
   },
   "directory": null
