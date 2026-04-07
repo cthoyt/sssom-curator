@@ -33,7 +33,7 @@ TEST_USER = Reference(prefix="orcid", identifier="0000-0000-0000-0000")
 # The first two mappings are the ones seeded
 TEST_POSITIVE_MAPPING = SemanticMapping(
     subject=NamedReference.from_curie("chebi:131408", name="glyoxime"),
-    predicate=exact_match,
+    predicate=exact_match.pair.to_pydantic(),
     object=NamedReference.from_curie("mesh:C018305", name="glyoxal dioxime"),
     justification=manual_mapping_curation.pair.to_pydantic(),
 )
@@ -49,7 +49,7 @@ TEST_PREDICTED_MAPPING = SemanticMapping(
 # The following mappings are ones that are curated
 TEST_PREDICTED_MAPPING_MARKED_TRUE = SemanticMapping(
     subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
-    predicate=exact_match,
+    predicate=exact_match.pair.to_pydantic(),
     object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
     justification=manual_mapping_curation.pair.to_pydantic(),
     authors=[TEST_USER],
@@ -57,7 +57,7 @@ TEST_PREDICTED_MAPPING_MARKED_TRUE = SemanticMapping(
 )
 TEST_PREDICTED_MAPPING_MARKED_UNSURE = SemanticMapping(
     subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
-    predicate=exact_match,
+    predicate=exact_match.pair.to_pydantic(),
     object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
     justification=lexical_matching_process.pair.to_pydantic(),
     confidence=0.95,
@@ -68,7 +68,7 @@ TEST_PREDICTED_MAPPING_MARKED_UNSURE = SemanticMapping(
 )
 TEST_PREDICTED_MAPPING_MARKED_BROAD = SemanticMapping(
     subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
-    predicate=broad_match,
+    predicate=broad_match.pair.to_pydantic(),
     object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
     justification=manual_mapping_curation.pair.to_pydantic(),
     authors=[TEST_USER],
@@ -76,7 +76,7 @@ TEST_PREDICTED_MAPPING_MARKED_BROAD = SemanticMapping(
 )
 TEST_PREDICTED_MAPPING_MARKED_NARROW = SemanticMapping(
     subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
-    predicate=narrow_match,
+    predicate=narrow_match.pair.to_pydantic(),
     object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
     justification=manual_mapping_curation.pair.to_pydantic(),
     authors=[TEST_USER],
@@ -84,7 +84,7 @@ TEST_PREDICTED_MAPPING_MARKED_NARROW = SemanticMapping(
 )
 TEST_PREDICTED_MAPPING_MARKED_FALSE = SemanticMapping(
     subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
-    predicate=exact_match,
+    predicate=exact_match.pair.to_pydantic(),
     object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
     justification=manual_mapping_curation.pair.to_pydantic(),
     authors=[TEST_USER],
