@@ -7,8 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TypeAlias
 
-from curies import Reference
-from sssom_pydantic.api import MAPPING_HASH_V1_PREFIX, mapping_hash_v1
+from sssom_pydantic.api import MAPPING_HASH_V1_PREFIX
 
 if TYPE_CHECKING:
     import curies
@@ -23,7 +22,6 @@ __all__ = [
     "UNSURE_NAME",
     "PredictionMethod",
     "RecognitionMethod",
-    "default_hash",
     "ensure_converter",
     "insert",
 ]
@@ -72,11 +70,6 @@ NEGATIVES_NAME = "negative.sssom.tsv"
 UNSURE_NAME = "unsure.sssom.tsv"
 
 DEFAULT_HASH_PREFIX = MAPPING_HASH_V1_PREFIX
-
-
-def default_hash(m: SemanticMapping) -> Reference:
-    """Hash a mapping into a reference."""
-    return mapping_hash_v1(m)
 
 
 def insert(
