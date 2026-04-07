@@ -35,11 +35,15 @@ class Controller(ABC):
     ) -> None:
         """Initialize the controller."""
         self.repository = repository
-        self.mapping_hash = semantic_mapping_hash or mapping_hash_v1
+        self._mapping_hash = semantic_mapping_hash or mapping_hash_v1
         self.converter = converter
         self.total_curated = 0
         self.target_references = set(target_references) if target_references is not None else None
         self.add_date = add_date
+
+    def mapping_hash(self, mapping: SemanticMapping) -> Reference:
+        """Get the hash of a mapping."""
+        return self._mapping_hash(mapping, self.converter)
 
     @abstractmethod
     def get_prefix_counter(self, state: State | None = None) -> Counter[tuple[str, str]]:

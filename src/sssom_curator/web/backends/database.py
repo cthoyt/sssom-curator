@@ -71,7 +71,7 @@ class DatabaseController(Controller):
 
         self.db = SemanticMappingDatabase.from_connection(
             connection=connection,
-            semantic_mapping_hash=self.mapping_hash,
+            semantic_mapping_hash=self._mapping_hash,
             converter=converter,
         )
         self._unpersisted = 0
