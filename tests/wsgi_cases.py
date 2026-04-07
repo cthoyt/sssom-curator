@@ -39,7 +39,7 @@ TEST_POSITIVE_MAPPING = SemanticMapping(
 )
 TEST_PREDICTED_MAPPING = SemanticMapping(
     subject=NamedReference.from_curie("chebi:133530", name="tyramine sulfate"),
-    predicate=exact_match,
+    predicate=exact_match.pair.to_pydantic(),
     object=NamedReference.from_curie("mesh:C027957", name="tyramine O-sulfate"),
     justification=lexical_matching_process.pair.to_pydantic(),
     confidence=0.95,
