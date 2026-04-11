@@ -567,7 +567,10 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             default=DEFAULT_RESOLVER_BASE,
             show_default=True,
         )
-        @click.option("--orcid", help="Your ORCID, if not automatically loadable")
+        @click.option(
+            "--orcid",
+            help="Your ORCID, if not automatically loadable. Don't use this with --live-login.",
+        )
         @click.option("--host", type=str, default="127.0.0.1", show_default=True)
         @click.option("--port", type=int, default=8775, show_default=True)
         @click.option(
@@ -579,6 +582,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
         @click.option(
             "--implementation",
             type=click.Choice(["dict", "sqlite"]),
+            show_default=True,
             default="dict",
             help="The type of backend for running the curation app. Dict means that data is stored "
             "in an in-memory dictionary data structure and SQLite means it uses a database w/ ORM",
@@ -595,11 +599,21 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
             help="Path to a SSL certificate file (with the .pem extension) to "
             "go along with the key file.",
         )
-        @click.option("--live-login", is_flag=True, help="If set, uses ORCiD for login")
-        @click.option("--orcid-client-id")
-        @click.option("--orcid-client-secret")
+        @click.option("--live-login", is_flag=True, help="Use ORCiD for OAuth-based login")
+        @click.option(
+            "--orcid-client-id",
+            help="If using --live-login, explicitly set the ORCiD Client ID. Otherwise, "
+            "loaded via PyStow",
+        )
+        @click.option(
+            "--orcid-client-secret",
+            help="If using --live-login, explicitly set the ORCiD Client secret. Otherwise, "
+            "loaded via PyStow",
+        )
         @click.option("--proxy-fix", is_flag=True, help="If set, sets passthroughs for proxies")
-        @click.option("--no-open", is_flag=True)
+        @click.option(
+            "--no-open", is_flag=True, help="Turn off automatic webpage opening on app start"
+        )
         @click.pass_obj
         def web(
             obj: Repository,
@@ -647,6 +661,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
                 user = NamableReference(prefix="orcid", identifier=orcid)
             elif get_user is not None:
                 user = get_user()
+                click.echo(f"using repository-configured ORCiD: {user.identifier}")
             else:
                 import pystow
 
@@ -658,6 +673,8 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
                         .rstrip("/")
                     )
                     pystow.write_config("sssom_curator", "orcid", orcid)
+                else:
+                    click.echo(f"using PyStow-configured ORCiD: {orcid}")
                 user = NamableReference(prefix="orcid", identifier=orcid)
 
             app = get_app(
