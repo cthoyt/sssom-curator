@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Iterable, Sequence
 from typing import TYPE_CHECKING
 
 import curies
@@ -12,10 +12,10 @@ from curies import Reference
 from sssom_pydantic import SemanticMapping
 from sssom_pydantic.api import SemanticMappingHash
 from sssom_pydantic.process import MARK_TO_CALL, Call, Mark, curate
-from sssom_pydantic.query import Query, filter_mappings
+from sssom_pydantic.query import Query, count_prefix_pairs, filter_mappings, paginate_mappings
 
 from .base import Controller
-from ..utils import Sort, State
+from ..utils import State
 from ...constants import insert
 
 if TYPE_CHECKING:
@@ -65,10 +65,7 @@ class DictController(Controller):
 
     def get_prefix_counter(self, state: State | None = None) -> Counter[tuple[str, str]]:
         """Get a subject/object prefix counter."""
-        return Counter(
-            (mapping.subject.prefix, mapping.object.prefix)
-            for mapping in self.iterate_predictions(state)
-        )
+        return count_prefix_pairs(self.iterate_predictions(state))
 
     def get_predictions(self, state: State | None = None) -> Sequence[SemanticMapping]:
         """Get predicted semantic mappings."""
@@ -76,59 +73,23 @@ class DictController(Controller):
 
     def iterate_predictions(self, state: State | None = None) -> Iterable[SemanticMapping]:
         """Iterate over pairs of positions and predicted semantic mappings."""
-        if state is None:
-            yield from self._help_it_predictions()
-            return
-
-        mappings = iter(self._help_it_predictions(state))
-        if state.sort is not None:
-            mappings = self._sort(mappings, state.sort)
-        if state.offset is not None:
-            try:
-                for _ in range(state.offset):
-                    next(mappings)
-            except StopIteration:
-                # if next() fails, then there are no remaining entries.
-                # do not pass go, do not collect 200 euro $
-                return
-        if state.limit is None:
-            yield from mappings
-        else:
-            for line_prediction, _ in zip(mappings, range(state.limit), strict=False):
-                yield line_prediction
-
-    @staticmethod
-    def _sort(mappings: Iterator[SemanticMapping], sort: Sort) -> Iterator[SemanticMapping]:
-        if sort == "desc":
-            mappings = iter(sorted(mappings, key=_get_confidence, reverse=True))
-        elif sort == "asc":
-            mappings = iter(sorted(mappings, key=_get_confidence, reverse=False))
-        elif sort == "subject":
-            mappings = iter(sorted(mappings, key=lambda m: m.subject.curie))
-        elif sort == "object":
-            mappings = iter(sorted(mappings, key=lambda m: m.object.curie))
-        else:
-            raise ValueError(f"unknown sort type: {sort}")
-        return mappings
+        yield from paginate_mappings(
+            self._help_it_predictions(state),
+            sort=state.sort if state is not None else None,
+            offset=state.offset if state is not None else None,
+            limit=state.limit if state is not None else None,
+        )
 
     def count_predictions(self, query: Query | None = None) -> int:
         """Count the number of predictions to check for the given filters."""
-        it = self._help_it_predictions(query)
-        return sum(1 for _ in it)
+        return sum(1 for _ in self._help_it_predictions(query))
 
     def _help_it_predictions(self, query: Query | None = None) -> Iterable[SemanticMapping]:
-        mappings = iter(self._predictions.values())
-        if self.target_references is not None:
-            mappings = (
-                mapping
-                for mapping in mappings
-                if mapping.subject in self.target_references
-                or mapping.object in self.target_references
-            )
-        if query is not None:
-            yield from filter_mappings(mappings, query)
-        else:
-            yield from mappings
+        yield from filter_mappings(
+            self._predictions.values(),
+            query=query,
+            target_references=self.target_references,
+        )
 
     def mark(
         self,
@@ -190,7 +151,3 @@ class DictController(Controller):
                 # TODO is there a way of pre-calculating some things to make this faster?
                 #  e.g., say "no condensation"
             )
-
-
-def _get_confidence(t: SemanticMapping) -> float:
-    return t.confidence or 0.0

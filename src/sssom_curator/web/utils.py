@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, NamedTuple, TypeAlias
+from typing import TYPE_CHECKING, Literal, NamedTuple
 
 from pydantic import BaseModel, Field
-from sssom_pydantic.query import Query
+from sssom_pydantic.query import Query, Sort
 
 if TYPE_CHECKING:
     from subprocess import CalledProcessError
@@ -25,9 +25,6 @@ DEFAULT_LIMIT: int = 10
 
 #: The default offset
 DEFAULT_OFFSET: int = 0
-
-#: Sort mechanisms
-Sort: TypeAlias = Literal["asc", "desc", "subject", "object"]
 
 
 def persist_remote(
