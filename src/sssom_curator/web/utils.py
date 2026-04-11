@@ -98,7 +98,7 @@ class PaginationElement(NamedTuple):
 
 
 def get_pagination_elements(
-    pagination_query: PaginationQuery, remaining_rows: int
+    pagination_query: PaginationQuery, total: int
 ) -> list[PaginationElement]:
     """Get pagination elements."""
     rv = []
@@ -113,12 +113,12 @@ def get_pagination_elements(
     if 0 <= offset - limit:
         _append(None, "skip-start-circle", "First", "after")
         _append(offset - limit, "skip-backward-circle", f"Previous {limit:,}", "after")
-    if offset < remaining_rows - limit:
+    if offset < total - limit:
         _append(offset + limit, "skip-forward-circle", f"Next {limit:,}", "before")
         _append(
-            remaining_rows - limit,
+            total - limit,
             "skip-end-circle",
-            f"Last ({remaining_rows:,})",
+            f"Last ({total:,})",
             "before",
         )
     return rv
