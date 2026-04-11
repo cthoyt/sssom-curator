@@ -134,6 +134,7 @@ def _get_merged_sssom(
         *repository.read_positive_mappings(),
         *repository.read_negative_mappings(),
         *repository.read_predicted_mappings(),
+        *repository.read_unsure_mappings(),
     ]
 
     if standardize_bioregistry:
