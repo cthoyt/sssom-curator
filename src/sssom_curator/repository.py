@@ -6,13 +6,14 @@ import sys
 import typing
 from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, Self, TypeAlias, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeAlias, cast
 
 import click
 import curies
 import sssom_pydantic
 from pydantic import BaseModel, Field
 from sssom_pydantic.process import Call
+from typing_extensions import Self
 
 from .constants import (
     DEFAULT_RESOLVER_BASE,
@@ -26,7 +27,6 @@ from .constants import (
 )
 
 if TYPE_CHECKING:
-    import curies
     from curies import Converter
     from sssom_pydantic import MappingTool, SemanticMapping, SemanticMappingPredicate
 
@@ -40,7 +40,7 @@ __all__ = [
 ]
 
 #: A function that returns the current user
-UserGetter: TypeAlias = Callable[[], "curies.Reference"]
+UserGetter: TypeAlias = Callable[[], curies.Reference]
 
 #: A function that returns a dictionary from ORCID to name
 OrcidNameGetter: TypeAlias = Callable[[], dict[str, str]]
