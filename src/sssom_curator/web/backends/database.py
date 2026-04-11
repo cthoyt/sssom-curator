@@ -21,7 +21,7 @@ from sssom_pydantic.database import (
     clauses_from_query,
 )
 from sssom_pydantic.process import Mark
-from sssom_pydantic.query import Query
+from sssom_pydantic.query import Query, count_prefix_pairs
 
 from .base import Controller
 from ..utils import State
@@ -83,23 +83,21 @@ class DatabaseController(Controller):
     def count_predictions(self, query: Query | None = None) -> int:
         """Count predictions (i.e., anything that's not manually curated)."""
         return self.db.count_mappings(
-            where_clauses=[UNCURATED_NOT_UNSURE_CLAUSE, *clauses_from_query(query)]
+            query=[UNCURATED_NOT_UNSURE_CLAUSE, *clauses_from_query(query)]
         )
 
     def get_predictions(self, state: State | None = None) -> Sequence[SemanticMapping]:
         """Iterate over pairs of positions and predicted semantic mappings."""
-        if state is not None and state.sort is not None:
-            raise NotImplementedError
-        models = self.db.get_mappings(
-            where_clauses=[UNCURATED_NOT_UNSURE_CLAUSE, *clauses_from_query(state)],
+        return self.db.get_mappings(
+            query=[UNCURATED_NOT_UNSURE_CLAUSE, *clauses_from_query(state)],
             limit=state.limit if state is not None else None,
             offset=state.offset if state is not None else None,
+            order_by=state.sort if state is not None else None,
         )
-        return models
 
     def get_prefix_counter(self, state: State | None = None) -> Counter[tuple[str, str]]:
         """Count the number of predictions to check for the given filters."""
-        return Counter((m.subject.prefix, m.object.prefix) for m in self.get_predictions(state))
+        return count_prefix_pairs(self.get_predictions(state))
 
     def mark(self, reference: Reference, mark: Mark, authors: Reference | list[Reference]) -> None:
         """Mark the given mapping as correct."""

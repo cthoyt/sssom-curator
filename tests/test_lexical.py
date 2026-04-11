@@ -6,18 +6,15 @@ import unittest.mock
 import pandas as pd
 import ssslm
 import sssom_pydantic
-from curies import NamedReference
 from curies.vocabulary import exact_match, manual_mapping_curation
 from sssom_pydantic import SemanticMapping
+from sssom_pydantic.examples import R1, R2
 
 from sssom_curator.predict.embedding import _calculate_similarities
 from sssom_curator.predict.lexical import (
     _predict_lexical_mappings_all_by_all,
 )
 from tests import cases
-
-a1 = NamedReference(prefix="mesh", identifier="C000089", name="ammeline")
-b1 = NamedReference(prefix="chebi", identifier="28646", name="ammeline")
 
 
 class TestLexical(unittest.TestCase):
@@ -26,8 +23,8 @@ class TestLexical(unittest.TestCase):
     def test_all_by_all(self) -> None:
         """Test all-by-all predictions."""
         literal_mappings = [
-            ssslm.LiteralMapping(reference=a1, text="test"),
-            ssslm.LiteralMapping(reference=b1, text="test"),
+            ssslm.LiteralMapping(reference=R1, text="test"),
+            ssslm.LiteralMapping(reference=R2, text="test"),
         ]
         grounder = ssslm.make_grounder(literal_mappings)
         if not isinstance(grounder, ssslm.GildaGrounder):
@@ -37,8 +34,8 @@ class TestLexical(unittest.TestCase):
         mappings = list(_predict_lexical_mappings_all_by_all(grounder))
         self.assertEqual(1, len(mappings))
         mapping = mappings[0]
-        self.assertEqual(a1.pair, mapping.object.pair)
-        self.assertEqual(b1.pair, mapping.subject.pair)
+        self.assertEqual(R1.pair, mapping.object.pair)
+        self.assertEqual(R2.pair, mapping.subject.pair)
 
 
 class TestAppend(cases.RepositoryTestCase):
@@ -47,11 +44,11 @@ class TestAppend(cases.RepositoryTestCase):
     def test_append_lexical_predictions(self) -> None:
         """Test."""
         _, converter, _ = sssom_pydantic.read(self.repository.predictions_path)
-        self.assertIsNone(converter.get_record(a1.prefix, strict=False))
-        self.assertIsNone(converter.get_record(b1.prefix, strict=False))
+        self.assertIsNone(converter.get_record(R1.prefix, strict=False))
+        self.assertIsNone(converter.get_record(R2.prefix, strict=False))
 
         sm = SemanticMapping(
-            subject=a1, predicate=exact_match, object=b1, justification=manual_mapping_curation
+            subject=R1, predicate=exact_match, object=R2, justification=manual_mapping_curation
         )
         with unittest.mock.patch("sssom_curator.predict.lexical.get_predictions") as p:
             p.return_value = [sm]
@@ -64,8 +61,8 @@ class TestAppend(cases.RepositoryTestCase):
 
         # Test that the prefixes got added properly
         _, converter, _ = sssom_pydantic.read(self.repository.predictions_path)
-        self.assertIsNotNone(converter.get_record(a1.prefix, strict=False))
-        self.assertIsNotNone(converter.get_record(b1.prefix, strict=False))
+        self.assertIsNotNone(converter.get_record(R1.prefix, strict=False))
+        self.assertIsNotNone(converter.get_record(R2.prefix, strict=False))
 
 
 class TestEmbeddingSimilarity(unittest.TestCase):
