@@ -170,8 +170,6 @@ class TestWSGI(cases.RepositoryTestCase):
         self.controller.count_predictions(State(sort="object"))
         self.controller.count_predictions(State(same_text=True))
         self.controller.count_predictions(State(same_text=False))
-        self.controller.count_predictions(State(show_relations=True))
-        self.controller.count_predictions(State(show_relations=False))
         self.controller.count_predictions(State(show_lines=True))
         self.controller.count_predictions(State(show_lines=False))
         self.controller.count_predictions(State(limit=5))

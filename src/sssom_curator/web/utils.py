@@ -57,7 +57,7 @@ def persist_remote(
     return PersistRemoteSuccess(commit_res.stdout + "\n" + push_res.stderr)
 
 
-class Config(BaseModel):
+class PaginationQuery(BaseModel):
     """Configuration for a query over SSSOM."""
 
     limit: int | None = Field(
@@ -69,10 +69,9 @@ class Config(BaseModel):
         description="If `desc`, sorts in descending confidence order. If `asc`, sorts in "
         "increasing confidence order. Otherwise, do not sort.",
     )
-    show_relations: bool = True
 
 
-class State(Query, Config):
+class State(Query, PaginationQuery):
     """Contains the state for queries to the curation app."""
 
 
@@ -98,7 +97,9 @@ class PaginationElement(NamedTuple):
     position: Literal["before", "after"]
 
 
-def get_pagination_elements(state: State, remaining_rows: int) -> list[PaginationElement]:
+def get_pagination_elements(
+    pagination_query: PaginationQuery, remaining_rows: int
+) -> list[PaginationElement]:
     """Get pagination elements."""
     rv = []
 
@@ -107,8 +108,8 @@ def get_pagination_elements(state: State, remaining_rows: int) -> list[Paginatio
     ) -> None:
         rv.append(PaginationElement(offset, icon, text, position))
 
-    offset = state.offset or DEFAULT_OFFSET
-    limit = state.limit or DEFAULT_LIMIT
+    offset = pagination_query.offset or DEFAULT_OFFSET
+    limit = pagination_query.limit or DEFAULT_LIMIT
     if 0 <= offset - limit:
         _append(None, "skip-start-circle", "First", "after")
         _append(offset - limit, "skip-backward-circle", f"Previous {limit:,}", "after")
