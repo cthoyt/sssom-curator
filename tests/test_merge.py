@@ -50,7 +50,7 @@ class TestMerge(cases.RepositoryTestCase):
                 ex:1\t1\tskos:exactMatch\t\tex:2\t2\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t\t{TODAY_STR}\t\t1.0\t
                 ex:3\t3\tskos:exactMatch\tNot\tex:4\t4\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t\t{TODAY_STR}\t\t1.0\t
                 ex:7\t7\tskos:exactMatch\t\tex:8\t8\tsemapv:LexicalMatching\t\t\t\t\t0.77\t
-                ex:5\t5\tskos:exactMatch\t\tex:6\t6\tsemapv:ManualMappingCuration\t\torcid:0000-0003-4423-4370\t\t2026-04-11\t\t0.0
+                ex:5\t5\tskos:exactMatch\t\tex:6\t6\tsemapv:ManualMappingCuration\t\torcid:0000-0003-4423-4370\t\t{TODAY_STR}\t\t0.0
             """).rstrip(),
             self.output_tsv_path.read_text().rstrip(),
         )
@@ -87,7 +87,7 @@ class TestMerge(cases.RepositoryTestCase):
                 ex:1\t1\tskos:exactMatch\t\tex:2\t2\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t\t{TODAY_STR}\t\t1.0\t
                 ex:3\t3\tskos:exactMatch\tNot\tex:4\t4\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t\t{TODAY_STR}\t\t1.0\t
                 ex:7\t7\tskos:exactMatch\t\tex:8\t8\tsemapv:LexicalMatching\t\t\t\t\t0.77\t
-                ex:5\t5\tskos:exactMatch\t\tex:6\t6\tsemapv:ManualMappingCuration\t\torcid:0000-0003-4423-4370\t\t2026-04-11\t\t0.0
+                ex:5\t5\tskos:exactMatch\t\tex:6\t6\tsemapv:ManualMappingCuration\t\torcid:0000-0003-4423-4370\t\t{TODAY_STR}\t\t0.0
             """).rstrip(),
             self.output_tsv_path.read_text().rstrip(),
         )
@@ -126,7 +126,7 @@ class TestMerge(cases.RepositoryTestCase):
                 ex:1\t1\tskos:exactMatch\t\tex:2\t2\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t\t{TODAY_STR}\t\t1.0\t
                 ex:3\t3\tskos:exactMatch\tNot\tex:4\t4\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t\t{TODAY_STR}\t\t1.0\t
                 ex:7\t7\tskos:exactMatch\t\tex:8\t8\tsemapv:LexicalMatching\t\t\t\t\t0.77\t
-                ex:5\t5\tskos:exactMatch\t\tex:6\t6\tsemapv:ManualMappingCuration\t\torcid:0000-0003-4423-4370\t\t2026-04-11\t\t0.0
+                ex:5\t5\tskos:exactMatch\t\tex:6\t6\tsemapv:ManualMappingCuration\t\torcid:0000-0003-4423-4370\t\t{TODAY_STR}\t\t0.0
             """).rstrip(),
             self.output_tsv_path.read_text().rstrip(),
         )
