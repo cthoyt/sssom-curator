@@ -98,6 +98,7 @@ TEST_CONVERTER = curies.Converter.from_prefix_map(
         "mesh": "http://id.nlm.nih.gov/mesh/",
         "semapv": "https://w3id.org/semapv/vocab/",
         "skos": "http://www.w3.org/2004/02/skos/core#",
+        "orcid": "https://orcid.org/",
     }
 )
 
