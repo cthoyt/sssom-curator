@@ -1,4 +1,4 @@
-"""The biomappings CLI."""
+"""Make charts summarizing a semantic mapping curation project."""
 
 from __future__ import annotations
 
@@ -10,19 +10,21 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
-from curies import Reference
-from sssom_pydantic import SemanticMapping
 
 from ..constants import DEFAULT_RESOLVER_BASE
-from ..repository import Repository
+
+if TYPE_CHECKING:
+    import matplotlib.axes
+    import networkx
+    from curies import Reference
+    from sssom_pydantic import SemanticMapping
+
+    from ..repository import Repository
 
 __all__ = [
     "make_charts",
 ]
 
-if TYPE_CHECKING:
-    import matplotlib.axes
-    import networkx
 
 logger = logging.getLogger(__name__)
 

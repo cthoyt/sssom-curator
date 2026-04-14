@@ -7,14 +7,13 @@ from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TypeAlias
 
-from sssom_pydantic.api import MAPPING_HASH_V1_PREFIX
+from sssom_pydantic.api import MAPPING_HASH_CURIE_PREFIX
 
 if TYPE_CHECKING:
     import curies
     from sssom_pydantic import SemanticMapping
 
 __all__ = [
-    "DEFAULT_HASH_PREFIX",
     "DEFAULT_RESOLVER_BASE",
     "NEGATIVES_NAME",
     "POSITIVES_NAME",
@@ -69,8 +68,6 @@ POSITIVES_NAME = "positive.sssom.tsv"
 NEGATIVES_NAME = "negative.sssom.tsv"
 UNSURE_NAME = "unsure.sssom.tsv"
 
-DEFAULT_HASH_PREFIX = MAPPING_HASH_V1_PREFIX
-
 
 def insert(
     path: Path,
@@ -90,8 +87,8 @@ def insert(
             prefixes.update(mapping.get_prefixes())
             mappings.append(mapping)
 
-        if DEFAULT_HASH_PREFIX in prefixes:
-            prefixes.remove(DEFAULT_HASH_PREFIX)
+        if MAPPING_HASH_CURIE_PREFIX in prefixes:
+            prefixes.remove(MAPPING_HASH_CURIE_PREFIX)
         for prefix in prefixes:
             if not converter_processed.standardize_prefix(prefix):
                 raise NotImplementedError(f"amending prefixes not yet implemented: {prefix}")
