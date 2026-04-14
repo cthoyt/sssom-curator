@@ -339,7 +339,11 @@ def _get_entity_to_mapped_prefixes(prefixes: Iterable[str]) -> dict[curies.Refer
 
     entity_to_mapped_prefixes: defaultdict[curies.Reference, set[str]] = defaultdict(set)
     for prefix in prefixes:
-        for mapping in pyobo.get_semantic_mappings(prefix):
+        try:
+            mappings = pyobo.get_semantic_mappings(prefix)
+        except pyobo.getters.NoBuildError:
+            continue
+        for mapping in mappings:
             entity_to_mapped_prefixes[mapping.subject].add(mapping.object.prefix)
             entity_to_mapped_prefixes[mapping.object].add(mapping.subject.prefix)
     return dict(entity_to_mapped_prefixes)
@@ -390,7 +394,11 @@ def _mutual_mapping_graph(prefixes: Iterable[str]) -> nx.Graph:
     prefixes = set(prefixes)
     graph = nx.Graph()
     for prefix in sorted(prefixes):
-        for mapping in pyobo.get_semantic_mappings(prefix):
+        try:
+            mappings = pyobo.get_semantic_mappings(prefix)
+        except pyobo.getters.NoBuildError:
+            continue
+        for mapping in mappings:
             if mapping.object.prefix not in prefixes:
                 continue
             graph.add_edge(mapping.subject, mapping.object)

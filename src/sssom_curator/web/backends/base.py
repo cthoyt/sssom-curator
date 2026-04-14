@@ -9,7 +9,7 @@ from collections.abc import Iterable, Sequence
 import curies
 from curies import Reference
 from sssom_pydantic import SemanticMapping
-from sssom_pydantic.api import SemanticMappingHash, mapping_hash_v1
+from sssom_pydantic.api import SemanticMappingHash, hash_mapping_to_reference
 from sssom_pydantic.process import Mark
 from sssom_pydantic.query import Query
 
@@ -35,7 +35,7 @@ class Controller(ABC):
     ) -> None:
         """Initialize the controller."""
         self.repository = repository
-        self._mapping_hash = semantic_mapping_hash or mapping_hash_v1
+        self._mapping_hash = semantic_mapping_hash or hash_mapping_to_reference
         self.converter = converter
         self.total_curated = 0
         self.target_references = set(target_references) if target_references is not None else None
