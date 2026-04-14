@@ -3,7 +3,7 @@ requires = ["uv_build>=0.9.6,<1.0"]
 build-backend = "uv_build"
 
 [project]
-name = "sssom_curator"
+name = "sssom-curator"
 version = "0.3.2-dev"
 description = "Tools for predicting and curating semantic mappings"
 readme = "README.md"
@@ -77,7 +77,7 @@ docs = [
     "sphinx-rtd-theme>=3.0",
     "sphinx-click",
     "sphinx_automodapi",
-    "autodoc_pydantic",
+    "autodoc-pydantic",
 ]
 lint = [
     "ruff",
