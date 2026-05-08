@@ -14,7 +14,7 @@ from pydantic import AnyUrl
 
 if TYPE_CHECKING:
     import jinja2
-    from sssom_pydantic import MappingSet, SemanticMapping
+    from sssom_pydantic import MappingSet, MappingTool, SemanticMapping
 
     from ..repository import Repository
 
@@ -89,6 +89,7 @@ def initialize_folder(  # noqa:C901
         NEGATIVES_NAME,
         POSITIVES_NAME,
         PREDICTIONS_NAME,
+        TOOL_NAME,
         TOOL_REFERENCE,
         UNSURE_NAME,
     )
@@ -200,7 +201,7 @@ def initialize_folder(  # noqa:C901
                 ),
                 justification=lexical_matching_process,
                 confidence=0.77,
-                mapping_tool=TOOL_REFERENCE,
+                mapping_tool=MappingTool(reference=TOOL_REFERENCE, name=TOOL_NAME, version="0.4.2"),
             )
         ]
         if predicted_seed is None
