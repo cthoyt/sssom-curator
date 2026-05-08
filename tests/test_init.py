@@ -142,7 +142,7 @@ class TestInitializeFolder(unittest.TestCase):
                 #  orcid: https://orcid.org/
                 #  semapv: https://w3id.org/semapv/vocab/
                 #  skos: http://www.w3.org/2004/02/skos/core#
-                #mapping_date: {TODAY_STR}
+                #mapping_date: '{TODAY_STR}'
                 #mapping_set_id: https://example.org/ms/components/{POSITIVES_NAME}
                 subject_id\tsubject_label\tpredicate_id\tobject_id\tobject_label\tmapping_justification\tauthor_id\tconfidence
                 ex:1\t1\tskos:exactMatch\tex:2\t2\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t1.0
@@ -159,7 +159,7 @@ class TestInitializeFolder(unittest.TestCase):
                 #  orcid: https://orcid.org/
                 #  semapv: https://w3id.org/semapv/vocab/
                 #  skos: http://www.w3.org/2004/02/skos/core#
-                #mapping_date: {TODAY_STR}
+                #mapping_date: '{TODAY_STR}'
                 #mapping_set_id: https://example.org/ms/components/{NEGATIVES_NAME}
                 subject_id\tsubject_label\tpredicate_id\tpredicate_modifier\tobject_id\tobject_label\tmapping_justification\tauthor_id\tconfidence
                 ex:3\t3\tskos:exactMatch\tNot\tex:4\t4\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t1.0
