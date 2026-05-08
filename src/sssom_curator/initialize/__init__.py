@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 import click
 import curies
+from curies.mixins import standardize_many
 from pydantic import AnyUrl
 
 if TYPE_CHECKING:
@@ -194,7 +195,7 @@ def initialize_folder(  # noqa:C901
             raise FileExistsError(f"{path} already exists. cowardly refusing to overwrite.")
 
         # this will raise an exception if the mappings are not standard
-        mappings = [mapping.standardize(converter) for mapping in mappings]
+        mappings = standardize_many(mappings, converter)
 
         metadata = MappingSet(id=f"{purl_base}{name}")
         sssom_pydantic.write(mappings, path, metadata=metadata, converter=converter)
@@ -227,7 +228,7 @@ def initialize_folder(  # noqa:C901
     # Get current permissions
     mode = os.stat(script_path).st_mode
     # Add user, group, and other execute bits
-    os.chmod(script_path, mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    os.chmod(script_path, mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)  # noqa:S103
 
     is_cco = str(mapping_set.license) == CC0_URL
 

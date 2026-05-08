@@ -52,7 +52,7 @@ class DictController(Controller):
             add_date=add_date,
         )
         predicted_mappings, _, self._predictions_metadata = sssom_pydantic.read(
-            self.repository.predictions_path
+            self.repository.predictions_path, progress=True
         )
         self._predictions = {}
         for mapping in predicted_mappings:  # this is fast
