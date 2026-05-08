@@ -7,6 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TypeAlias
 
+from curies import NamedReference
 from sssom_pydantic.api import MAPPING_HASH_CURIE_PREFIX
 
 if TYPE_CHECKING:
@@ -18,6 +19,7 @@ __all__ = [
     "NEGATIVES_NAME",
     "POSITIVES_NAME",
     "PREDICTIONS_NAME",
+    "TOOL_REFERENCE",
     "UNSURE_NAME",
     "PredictionMethod",
     "RecognitionMethod",
@@ -102,3 +104,8 @@ def insert(
         drop_duplicates=True,
         exclude_columns=exclude_columns,
     )
+
+
+#: The name of the lexical mapping tool
+TOOL_NAME = "sssom-curator"
+TOOL_REFERENCE = NamedReference(prefix="wikidata", identifier="Q138902949", name="SSSOM Curator")

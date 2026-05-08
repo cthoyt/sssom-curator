@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import datetime
 import os
 import stat
 from pathlib import Path
@@ -86,7 +85,13 @@ def initialize_folder(  # noqa:C901
     from curies.vocabulary import charlie, lexical_matching_process, manual_mapping_curation
     from sssom_pydantic import MappingSet, SemanticMapping
 
-    from ..constants import NEGATIVES_NAME, POSITIVES_NAME, PREDICTIONS_NAME, UNSURE_NAME
+    from ..constants import (
+        NEGATIVES_NAME,
+        POSITIVES_NAME,
+        PREDICTIONS_NAME,
+        TOOL_REFERENCE,
+        UNSURE_NAME,
+    )
     from ..repository import CONFIGURATION_FILENAME, Repository
 
     if repository_filename is None:
@@ -126,7 +131,8 @@ def initialize_folder(  # noqa:C901
     if converter is None:
         converter = curies.Converter.from_prefix_map(
             {
-                "ex": "https://example.org/",
+                "CHEBI": "http://purl.obolibrary.org/obo/CHEBI_",
+                "mesh": "http://id.nlm.nih.gov/mesh/",
                 "skos": "http://www.w3.org/2004/02/skos/core#",
                 "semapv": "https://w3id.org/semapv/vocab/",
                 "orcid": "https://orcid.org/",
@@ -135,12 +141,16 @@ def initialize_folder(  # noqa:C901
     name_to_examples: dict[str, list[SemanticMapping]] = {
         positive_mappings_filename: [
             SemanticMapping(
-                subject=curies.NamedReference(prefix="ex", identifier="1", name="1"),
-                predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
-                object=curies.NamedReference(prefix="ex", identifier="2", name="2"),
+                subject=curies.NamedReference(
+                    prefix="CHEBI", identifier="11986", name="4-fluoro-L-threonine"
+                ),
+                predicate=curies.NamableReference(prefix="skos", identifier="exactMatch"),
+                object=curies.NamedReference(
+                    prefix="mesh", identifier="C048271", name="4-fluorothreonine"
+                ),
                 justification=manual_mapping_curation,
                 authors=[charlie],
-                mapping_date=datetime.date.today(),
+                mapping_date="2026-05-08",
                 confidence=1.0,
             )
         ]
@@ -148,13 +158,17 @@ def initialize_folder(  # noqa:C901
         else positive_seed,
         negative_mappings_filename: [
             SemanticMapping(
-                subject=curies.NamedReference(prefix="ex", identifier="3", name="3"),
-                predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
-                object=curies.NamedReference(prefix="ex", identifier="4", name="4"),
+                subject=curies.NamedReference(
+                    prefix="CHEBI", identifier="10057", name="9H-xanthene"
+                ),
+                predicate=curies.NamableReference(prefix="skos", identifier="exactMatch"),
+                object=curies.NamedReference(
+                    prefix="mesh", identifier="C002563", name="xanthan gum"
+                ),
                 justification=manual_mapping_curation,
                 predicate_modifier="Not",
                 authors=[charlie],
-                mapping_date=datetime.date.today(),
+                mapping_date="2026-05-08",
                 confidence=1.0,
             )
         ]
@@ -162,12 +176,14 @@ def initialize_folder(  # noqa:C901
         else negative_seed,
         unsure_mappings_filename: [
             SemanticMapping(
-                subject=curies.NamedReference(prefix="ex", identifier="5", name="5"),
-                predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
-                object=curies.NamedReference(prefix="ex", identifier="6", name="6"),
+                subject=curies.NamedReference(
+                    prefix="CHEBI", identifier="61700", name="(+)-valencene"
+                ),
+                predicate=curies.NamableReference(prefix="skos", identifier="exactMatch"),
+                object=curies.NamedReference(prefix="mesh", identifier="C506706", name="valencene"),
                 justification=manual_mapping_curation,
                 reviewers=[charlie],
-                review_date=datetime.date.today(),
+                review_date="2026-05-08",
                 reviewer_agreement=0.0,
             )
         ]
@@ -175,11 +191,16 @@ def initialize_folder(  # noqa:C901
         else unsure_seed,
         predicted_mappings_filename: [
             SemanticMapping(
-                subject=curies.NamedReference(prefix="ex", identifier="7", name="7"),
-                predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
-                object=curies.NamedReference(prefix="ex", identifier="8", name="8"),
+                subject=curies.NamedReference(
+                    prefix="CHEBI", identifier="101096", name="ethoxzolamide"
+                ),
+                predicate=curies.NamableReference(prefix="skos", identifier="exactMatch"),
+                object=curies.NamedReference(
+                    prefix="mesh", identifier="C523270", name="6-ethoxybenzothiazole-2-sulfonamide"
+                ),
                 justification=lexical_matching_process,
                 confidence=0.77,
+                mapping_tool=TOOL_REFERENCE,
             )
         ]
         if predicted_seed is None
