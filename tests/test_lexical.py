@@ -6,6 +6,7 @@ import unittest.mock
 import pandas as pd
 import ssslm
 import sssom_pydantic
+from curies import NamableReference
 from curies.vocabulary import exact_match, manual_mapping_curation
 from sssom_pydantic import SemanticMapping
 from sssom_pydantic.examples import R1, R2
@@ -43,26 +44,37 @@ class TestAppend(cases.RepositoryTestCase):
 
     def test_append_lexical_predictions(self) -> None:
         """Test."""
+        r1 = NamableReference.from_curie("doid:0110974")
+        r2 = NamableReference.from_curie("omim:607004")
+
         _, converter, _ = sssom_pydantic.read(self.repository.predictions_path)
-        self.assertIsNone(converter.get_record(R1.prefix, strict=False))
-        self.assertIsNone(converter.get_record(R2.prefix, strict=False))
+        self.assertIsNone(converter.get_record(r1.prefix, strict=False))
+        self.assertIsNone(converter.get_record(r2.prefix, strict=False))
 
         sm = SemanticMapping(
-            subject=R1, predicate=exact_match, object=R2, justification=manual_mapping_curation
+            subject=r1, predicate=exact_match, object=r2, justification=manual_mapping_curation
         )
         with unittest.mock.patch("sssom_curator.predict.lexical.get_predictions") as p:
             p.return_value = [sm]
-            self.repository.append_lexical_predictions("a", "b")
+            self.repository.append_lexical_predictions("DOID", "OMIM")
 
-        self.assertIn(sm, self.repository.read_predicted_mappings())
+        _mappings, converter, _metadata = sssom_pydantic.read(self.repository.predictions_path)
+        self.assertIsNotNone(converter.get_record(r1.prefix, strict=False))
+        self.assertIsNotNone(converter.get_record(r2.prefix, strict=False))
+
+        self.assertIn(
+            sm,
+            self.repository.read_predicted_mappings(),
+            msg=f"Predictions file:\n\n{self.repository.predictions_path.read_text()}",
+        )
         self.assertNotIn(sm, self.repository.read_unsure_mappings())
         self.assertNotIn(sm, self.repository.read_negative_mappings())
         self.assertNotIn(sm, self.repository.read_positive_mappings())
 
         # Test that the prefixes got added properly
         _, converter, _ = sssom_pydantic.read(self.repository.predictions_path)
-        self.assertIsNotNone(converter.get_record(R1.prefix, strict=False))
-        self.assertIsNotNone(converter.get_record(R2.prefix, strict=False))
+        self.assertIsNotNone(converter.get_record(r1.prefix, strict=False))
+        self.assertIsNotNone(converter.get_record(r2.prefix, strict=False))
 
 
 class TestEmbeddingSimilarity(unittest.TestCase):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 import os
 import stat
 from pathlib import Path
@@ -14,7 +15,7 @@ from pydantic import AnyUrl
 
 if TYPE_CHECKING:
     import jinja2
-    from sssom_pydantic import MappingSet, MappingTool, SemanticMapping
+    from sssom_pydantic import MappingSet, SemanticMapping
 
     from ..repository import Repository
 
@@ -83,7 +84,7 @@ def initialize_folder(  # noqa:C901
     import curies
     import sssom_pydantic
     from curies.vocabulary import charlie, lexical_matching_process, manual_mapping_curation
-    from sssom_pydantic import MappingSet, SemanticMapping
+    from sssom_pydantic import MappingSet, MappingTool, SemanticMapping
 
     from ..constants import (
         NEGATIVES_NAME,
@@ -151,7 +152,7 @@ def initialize_folder(  # noqa:C901
                 ),
                 justification=manual_mapping_curation,
                 authors=[charlie],
-                mapping_date="2026-05-08",
+                mapping_date=datetime.date.fromisoformat("2026-05-08"),
                 confidence=1.0,
             )
         ]
@@ -169,7 +170,7 @@ def initialize_folder(  # noqa:C901
                 justification=manual_mapping_curation,
                 predicate_modifier="Not",
                 authors=[charlie],
-                mapping_date="2026-05-08",
+                mapping_date=datetime.date.fromisoformat("2026-05-08"),
                 confidence=1.0,
             )
         ]
@@ -184,7 +185,7 @@ def initialize_folder(  # noqa:C901
                 object=curies.NamedReference(prefix="mesh", identifier="C506706", name="valencene"),
                 justification=manual_mapping_curation,
                 reviewers=[charlie],
-                review_date="2026-05-08",
+                review_date=datetime.date.fromisoformat("2026-05-08"),
                 reviewer_agreement=0.0,
             )
         ]
