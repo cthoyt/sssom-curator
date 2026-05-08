@@ -195,10 +195,10 @@ def initialize_folder(  # noqa:C901
             raise FileExistsError(f"{path} already exists. cowardly refusing to overwrite.")
 
         # this will raise an exception if the mappings are not standard
-        mappings = standardize_many(mappings, converter)
+        mappings_it = standardize_many(mappings, converter)
 
         metadata = MappingSet(id=f"{purl_base}{name}")
-        sssom_pydantic.write(mappings, path, metadata=metadata, converter=converter)
+        sssom_pydantic.write(mappings_it, path, metadata=metadata, converter=converter)
 
     data_directory_stub = Path(DATA_DIR_NAME)
     repository = Repository(

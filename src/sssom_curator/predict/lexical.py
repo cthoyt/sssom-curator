@@ -15,7 +15,7 @@ import click
 import curies
 import ssslm
 import sssom_pydantic
-from bioregistry import NormalizedNamedReference
+from bioregistry import NormalizedNamableReference, NormalizedNamedReference
 from curies.vocabulary import lexical_matching_process
 from more_click import verbose_option
 from sssom_pydantic import MappingTool, SemanticMapping
@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 NestedMappingDict: TypeAlias = Mapping[str, Mapping[str, Mapping[str, str]]]
 
 #: A callable that gets matches
-MatchCallable: TypeAlias = Callable[[str], list[ssslm.Match]]
+MatchCallable: TypeAlias = Callable[[str], list[ssslm.Match[NormalizedNamableReference]]]
 
 
 def get_predictions(
@@ -165,12 +165,14 @@ def get_predictions(
     return predictions
 
 
-def _get_get_matches(method: RecognitionMethod | None, grounder: ssslm.Grounder) -> MatchCallable:
+def _get_get_matches(
+    method: RecognitionMethod | None, grounder: ssslm.Grounder[NormalizedNamableReference]
+) -> MatchCallable:
     if method is None or method == "grounding":
         return cast(MatchCallable, grounder.get_matches)
     elif method == "ner":
 
-        def _get_matches(s: str) -> list[ssslm.Match]:
+        def _get_matches(s: str) -> list[ssslm.Match[NormalizedNamableReference]]:
             return [a.match for a in grounder.annotate(s)]
 
         return _get_matches
@@ -180,7 +182,7 @@ def _get_get_matches(method: RecognitionMethod | None, grounder: ssslm.Grounder)
 
 
 def _predict_lexical_mappings_all_by_all(
-    grounder: ssslm.Grounder,
+    grounder: ssslm.Grounder[NormalizedNamableReference],
     *,
     predicate: str | curies.Reference | None = None,
     method: RecognitionMethod | None = None,
@@ -206,7 +208,7 @@ def _all_by_all_gilda(
                 continue
             yield SemanticMapping(
                 subject=NormalizedNamedReference(prefix=s.db, identifier=s.id, name=s.entry_name),
-                predicate=predicate,
+                predicate=NormalizedNamableReference.from_reference(predicate),
                 object=NormalizedNamedReference(prefix=o.db, identifier=o.id, name=o.entry_name),
                 justification=lexical_matching_process,
                 confidence=_gilda_get_score(s, o),
@@ -228,7 +230,7 @@ def predict_lexical_mappings(
     prefix: str,
     *,
     predicate: str | curies.Reference | None = None,
-    grounder: ssslm.Grounder,
+    grounder: ssslm.Grounder[NormalizedNamableReference],
     identifiers_are_names: bool = False,
     strict: bool = False,
     method: RecognitionMethod | None = None,
@@ -253,7 +255,7 @@ def predict_lexical_mappings(
             name_prediction_count += 1
             yield SemanticMapping(
                 subject=NormalizedNamedReference(prefix=prefix, identifier=identifier, name=name),
-                predicate=predicate,
+                predicate=NormalizedNamableReference.from_reference(predicate),
                 object=scored_match.reference,
                 justification=lexical_matching_process,
                 confidence=round(scored_match.score, 3),
@@ -275,7 +277,7 @@ def predict_lexical_mappings(
                     subject=NormalizedNamedReference(
                         prefix=prefix, identifier=identifier, name=identifier
                     ),
-                    predicate=predicate,
+                    predicate=NormalizedNamableReference.from_reference(predicate),
                     object=scored_match.reference,
                     justification=lexical_matching_process,
                     confidence=round(scored_match.score, 3),

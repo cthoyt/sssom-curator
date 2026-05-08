@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from curies.mixins import standardize_many
-
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -128,9 +126,11 @@ def _get_merged_sssom(
         raise ValueError
 
     import curies
+    from curies.mixins import standardize_many
 
     from ..constants import ensure_converter
 
+    # TODO get converter by chaining together metadata from each file
     converter = repository.get_converter()
     mappings: list[SemanticMapping] = [
         *repository.read_positive_mappings(),
@@ -142,7 +142,7 @@ def _get_merged_sssom(
     if standardize_bioregistry:
         bioregistry_converter = ensure_converter(preferred=True)
         converter = curies.chain([bioregistry_converter, converter])
-        mappings = standardize_many(mappings, converter)
+        mappings = list(standardize_many(mappings, converter))
 
     # this is also built-in to sssom-pydantic writing,
     # but needs to be done or the sssom-py code gets
