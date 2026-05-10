@@ -19,6 +19,7 @@ __all__ = [
     "NEGATIVES_NAME",
     "POSITIVES_NAME",
     "PREDICTIONS_NAME",
+    "TOOL_NAME",
     "TOOL_REFERENCE",
     "UNSURE_NAME",
     "PredictionMethod",
