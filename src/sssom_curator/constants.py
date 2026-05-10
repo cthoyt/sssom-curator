@@ -78,6 +78,7 @@ def insert(
     converter: curies.Converter | None = None,
     include_mappings: Iterable[SemanticMapping] | None = None,
     exclude_columns: Collection[str] | None = None,
+    sort: bool = True,
 ) -> None:
     """Append eagerly with linting at the same time."""
     import sssom_pydantic
@@ -101,7 +102,7 @@ def insert(
         path,
         converter=converter_processed,
         metadata=metadata,
-        sort=True,
+        sort=sort,
         drop_duplicates=True,
         exclude_columns=exclude_columns,
     )

@@ -174,31 +174,37 @@ def initialize_folder(  # noqa:C901
                 "wikidata": "http://www.wikidata.org/entity/",
             }
         )
-    name_to_examples: dict[str, list[SemanticMapping]] = {
-        positive_mappings_filename: [EXAMPLE_POSITIVE_MAPPING]
-        if positive_seed is None
-        else positive_seed,
-        negative_mappings_filename: [EXAMPLE_NEGATIVE_MAPPING]
-        if negative_seed is None
-        else negative_seed,
-        unsure_mappings_filename: [EXAMPLE_UNSURE_MAPPING] if unsure_seed is None else unsure_seed,
-        predicted_mappings_filename: [EXAMPLE_PREDICTED_MAPPING]
-        if predicted_seed is None
-        else predicted_seed,
-    }
+    name_to_examples: list[tuple[str, list[SemanticMapping]]] = [
+        (
+            positive_mappings_filename,
+            [EXAMPLE_POSITIVE_MAPPING] if positive_seed is None else positive_seed,
+        ),
+        (
+            negative_mappings_filename,
+            [EXAMPLE_NEGATIVE_MAPPING] if negative_seed is None else negative_seed,
+        ),
+        (
+            predicted_mappings_filename,
+            [EXAMPLE_PREDICTED_MAPPING] if predicted_seed is None else predicted_seed,
+        ),
+        (
+            unsure_mappings_filename,
+            [EXAMPLE_UNSURE_MAPPING] if unsure_seed is None else unsure_seed,
+        ),
+    ]
 
     # Create the SSSOM files in a nested directory
     data_directory = directory.joinpath(DATA_DIR_NAME)
     data_directory.mkdir(exist_ok=True)
-    for name, mappings in name_to_examples.items():
-        path = data_directory.joinpath(name)
+    for filename, mappings in name_to_examples:
+        path = data_directory.joinpath(filename)
         if path.exists():
             raise FileExistsError(f"{path} already exists. cowardly refusing to overwrite.")
 
         # this will raise an exception if the mappings are not standard
         mappings_it = standardize_many(mappings, converter)
 
-        metadata = MappingSet(id=f"{purl_base}{name}")
+        metadata = MappingSet(id=f"{purl_base}{filename}")
         sssom_pydantic.write(mappings_it, path, metadata=metadata, converter=converter)
 
     data_directory_stub = Path(DATA_DIR_NAME)

@@ -28,6 +28,7 @@ def merge(  # noqa:C901
     output_owl: bool = True,
     output_json: bool = True,
     sssompy_validate: bool = True,
+    sort: bool = True,
 ) -> None:
     """Merge the SSSOM files together and output to a directory."""
     if repository.mapping_set is None:
@@ -72,7 +73,11 @@ def merge(  # noqa:C901
     metadata_path = stub.with_suffix(".sssom.yml")
 
     sssom_pydantic.write(
-        mappings, path=tsv_path, converter=converter, metadata=repository.mapping_set
+        mappings,
+        path=tsv_path,
+        converter=converter,
+        metadata=repository.mapping_set,
+        sort=sort,
     )
 
     with open(metadata_path, "w") as file:
