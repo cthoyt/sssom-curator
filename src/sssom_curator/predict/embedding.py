@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 import curies
 import pystow
-from curies.vocabulary import lexical_matching_process
+from curies.vocabulary import exact_match, lexical_matching_process
 from sssom_pydantic import MappingTool, SemanticMapping
 from tqdm.asyncio import tqdm
 
@@ -37,6 +37,9 @@ def predict_embedding_mappings(
 ) -> list[SemanticMapping]:
     """Predict semantic mappings with embeddings."""
     import pyobo.api.embedding
+
+    if relation is None:
+        relation = curies.NamableReference.from_reference(exact_match.without_name())
 
     if isinstance(target_prefixes, str):
         targets = [target_prefixes]
