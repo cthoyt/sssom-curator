@@ -7,7 +7,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TypeAlias
 
-from sssom_pydantic.api import MAPPING_HASH_CURIE_PREFIX
+from curies import NamedReference
+from sssom_pydantic.api import MAPPING_HASH_CURIE_PREFIX, MAPPING_HASH_URI_PREFIX
 
 if TYPE_CHECKING:
     import curies
@@ -18,6 +19,8 @@ __all__ = [
     "NEGATIVES_NAME",
     "POSITIVES_NAME",
     "PREDICTIONS_NAME",
+    "TOOL_NAME",
+    "TOOL_REFERENCE",
     "UNSURE_NAME",
     "PredictionMethod",
     "RecognitionMethod",
@@ -73,32 +76,35 @@ def insert(
     path: Path,
     *,
     converter: curies.Converter | None = None,
-    include_mappings: Iterable[SemanticMapping] | None = None,
+    include_mappings: Iterable[SemanticMapping],
     exclude_columns: Collection[str] | None = None,
+    sort: bool = True,
 ) -> None:
     """Append eagerly with linting at the same time."""
     import sssom_pydantic
 
-    mappings, converter_processed, metadata = sssom_pydantic.read(path, converter=converter)
+    mappings, converter_processed, metadata = sssom_pydantic.read(
+        path, converter=converter, return_errors=False
+    )
 
-    if include_mappings is not None:
-        prefixes: set[str] = set()
-        for mapping in include_mappings:
-            prefixes.update(mapping.get_prefixes())
-            mappings.append(mapping)
+    # make sure that the converter knows about the sssom.record prefix
+    converter_processed.add_prefix(MAPPING_HASH_CURIE_PREFIX, MAPPING_HASH_URI_PREFIX, merge=True)
 
-        if MAPPING_HASH_CURIE_PREFIX in prefixes:
-            prefixes.remove(MAPPING_HASH_CURIE_PREFIX)
-        for prefix in prefixes:
-            if not converter_processed.standardize_prefix(prefix):
-                raise NotImplementedError(f"amending prefixes not yet implemented: {prefix}")
+    for mapping in include_mappings:
+        mappings.append(mapping.standardize(converter_processed))
 
     sssom_pydantic.write(
         mappings,
         path,
         converter=converter_processed,
         metadata=metadata,
-        sort=True,
+        sort=sort,
         drop_duplicates=True,
         exclude_columns=exclude_columns,
+        exclude_prefixes={MAPPING_HASH_CURIE_PREFIX},
     )
+
+
+#: The name of the lexical mapping tool
+TOOL_NAME = "sssom-curator"
+TOOL_REFERENCE = NamedReference(prefix="wikidata", identifier="Q138902949", name="SSSOM Curator")

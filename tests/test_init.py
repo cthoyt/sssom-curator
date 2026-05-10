@@ -1,6 +1,5 @@
 """Test initialization."""
 
-import datetime
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,7 +11,6 @@ from sssom_curator.constants import NEGATIVES_NAME, POSITIVES_NAME, PREDICTIONS_
 from sssom_curator.initialize import initialize_folder
 
 TEST_PURL_BASE = "https://example.com/test/"
-TODAY_STR = datetime.date.today().strftime("%Y-%m-%d")
 
 
 class TestInitializeFolder(unittest.TestCase):
@@ -138,14 +136,15 @@ class TestInitializeFolder(unittest.TestCase):
         self.assertEqual(
             dedent(f"""\
                 #curie_map:
-                #  ex: https://example.org/
+                #  CHEBI: http://purl.obolibrary.org/obo/CHEBI_
+                #  mesh: http://id.nlm.nih.gov/mesh/
                 #  orcid: https://orcid.org/
                 #  semapv: https://w3id.org/semapv/vocab/
                 #  skos: http://www.w3.org/2004/02/skos/core#
-                #mapping_date: '{TODAY_STR}'
+                #mapping_date: '2026-05-08'
                 #mapping_set_id: https://example.org/ms/components/{POSITIVES_NAME}
                 subject_id\tsubject_label\tpredicate_id\tobject_id\tobject_label\tmapping_justification\tauthor_id\tconfidence
-                ex:1\t1\tskos:exactMatch\tex:2\t2\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t1.0
+                CHEBI:11986\t4-fluoro-L-threonine\tskos:exactMatch\tmesh:C048271\t4-fluorothreonine\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t1.0
             """).rstrip(),
             positives_path.read_text().rstrip(),
         )
@@ -155,15 +154,16 @@ class TestInitializeFolder(unittest.TestCase):
         self.assertEqual(
             dedent(f"""\
                 #curie_map:
-                #  ex: https://example.org/
+                #  CHEBI: http://purl.obolibrary.org/obo/CHEBI_
+                #  mesh: http://id.nlm.nih.gov/mesh/
                 #  orcid: https://orcid.org/
                 #  semapv: https://w3id.org/semapv/vocab/
                 #  skos: http://www.w3.org/2004/02/skos/core#
-                #mapping_date: '{TODAY_STR}'
+                #mapping_date: '2026-05-08'
                 #mapping_set_id: https://example.org/ms/components/{NEGATIVES_NAME}
                 subject_id\tsubject_label\tpredicate_id\tpredicate_modifier\tobject_id\tobject_label\tmapping_justification\tauthor_id\tconfidence
-                ex:3\t3\tskos:exactMatch\tNot\tex:4\t4\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t1.0
-            """).rstrip(),
+                CHEBI:10057\t9H-xanthene\tskos:exactMatch\tNot\tmesh:C002563\txanthan gum\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t1.0
+            """).rstrip(),  # noqa:E501
             negatives_path.read_text().rstrip(),
         )
 
@@ -172,12 +172,17 @@ class TestInitializeFolder(unittest.TestCase):
         self.assertEqual(
             dedent(f"""\
                 #curie_map:
-                #  ex: https://example.org/
+                #  CHEBI: http://purl.obolibrary.org/obo/CHEBI_
+                #  mesh: http://id.nlm.nih.gov/mesh/
                 #  semapv: https://w3id.org/semapv/vocab/
                 #  skos: http://www.w3.org/2004/02/skos/core#
+                #  wikidata: http://www.wikidata.org/entity/
                 #mapping_set_id: https://example.org/ms/components/{PREDICTIONS_NAME}
+                #mapping_tool: sssom-curator
+                #mapping_tool_id: wikidata:Q138902949
+                #mapping_tool_version: 0.4.2
                 subject_id\tsubject_label\tpredicate_id\tobject_id\tobject_label\tmapping_justification\tconfidence
-                ex:7\t7\tskos:exactMatch\tex:8\t8\tsemapv:LexicalMatching\t0.77
+                CHEBI:101096\tethoxzolamide\tskos:exactMatch\tmesh:C523270\t6-ethoxybenzothiazole-2-sulfonamide\tsemapv:LexicalMatching\t0.77
             """).rstrip(),
             predictions_path.read_text().rstrip(),
         )

@@ -22,7 +22,7 @@ from sssom_pydantic import MappingTool, SemanticMapping
 from tqdm.auto import tqdm
 
 from .embedding import predict_embedding_mappings
-from .utils import TOOL_NAME, resolve_mapping_tool, resolve_predicate
+from .utils import resolve_mapping_tool, resolve_predicate
 from ..constants import PredictionMethod, RecognitionMethod
 
 if TYPE_CHECKING:
@@ -31,7 +31,6 @@ if TYPE_CHECKING:
     import networkx as nx
 
 __all__ = [
-    "TOOL_NAME",
     "append_lexical_predictions",
     "append_predictions",
     "filter_custom",

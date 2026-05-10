@@ -264,7 +264,12 @@ class Repository(BaseModel):
         return curies.chain([sssom_pydantic.read(path)[1] for path in self.paths])
 
     def append_positive_mappings(
-        self, mappings: Iterable[SemanticMapping], *, converter: curies.Converter | None = None
+        self,
+        mappings: Iterable[SemanticMapping],
+        *,
+        converter: curies.Converter | None = None,
+        sort: bool = True,
+        **kwargs: Any,
     ) -> None:
         """Append new lines to the positive mappings document."""
         converter = ensure_converter(converter)
@@ -272,6 +277,8 @@ class Repository(BaseModel):
             self.positives_path,
             converter=converter,
             include_mappings=mappings,
+            sort=sort,
+            **kwargs,
         )
 
     def append_negative_mappings(

@@ -10,12 +10,16 @@ from typing import TYPE_CHECKING
 
 import click
 import curies
+import sssom_pydantic
 from curies.mixins import standardize_many
+from curies.vocabulary import charlie, lexical_matching_process, manual_mapping_curation
 from pydantic import AnyUrl
+from sssom_pydantic import MappingSet, MappingTool, SemanticMapping
+
+from ..constants import TOOL_NAME, TOOL_REFERENCE
 
 if TYPE_CHECKING:
     import jinja2
-    from sssom_pydantic import MappingSet, SemanticMapping
 
     from ..repository import Repository
 
@@ -38,6 +42,47 @@ SKIPS = {
         "other",
     }
 }
+
+EXAMPLE_POSITIVE_MAPPING = SemanticMapping(
+    subject=curies.NamedReference(prefix="CHEBI", identifier="11986", name="4-fluoro-L-threonine"),
+    predicate=curies.NamableReference(prefix="skos", identifier="exactMatch"),
+    object=curies.NamedReference(prefix="mesh", identifier="C048271", name="4-fluorothreonine"),
+    justification=manual_mapping_curation,
+    authors=[charlie],
+    mapping_date=datetime.date.fromisoformat("2026-05-08"),
+    confidence=1.0,
+)
+EXAMPLE_NEGATIVE_MAPPING = SemanticMapping(
+    subject=curies.NamedReference(prefix="CHEBI", identifier="10057", name="9H-xanthene"),
+    predicate=curies.NamableReference(prefix="skos", identifier="exactMatch"),
+    object=curies.NamedReference(prefix="mesh", identifier="C002563", name="xanthan gum"),
+    justification=manual_mapping_curation,
+    predicate_modifier="Not",
+    authors=[charlie],
+    mapping_date=datetime.date.fromisoformat("2026-05-08"),
+    confidence=1.0,
+)
+
+EXAMPLE_UNSURE_MAPPING = SemanticMapping(
+    subject=curies.NamedReference(prefix="CHEBI", identifier="61700", name="(+)-valencene"),
+    predicate=curies.NamableReference(prefix="skos", identifier="exactMatch"),
+    object=curies.NamedReference(prefix="mesh", identifier="C506706", name="valencene"),
+    justification=manual_mapping_curation,
+    reviewers=[charlie],
+    review_date=datetime.date.fromisoformat("2026-05-08"),
+    reviewer_agreement=0.0,
+)
+
+EXAMPLE_PREDICTED_MAPPING = SemanticMapping(
+    subject=curies.NamedReference(prefix="CHEBI", identifier="101096", name="ethoxzolamide"),
+    predicate=curies.NamableReference(prefix="skos", identifier="exactMatch"),
+    object=curies.NamedReference(
+        prefix="mesh", identifier="C523270", name="6-ethoxybenzothiazole-2-sulfonamide"
+    ),
+    justification=lexical_matching_process,
+    confidence=0.77,
+    mapping_tool=MappingTool(reference=TOOL_REFERENCE, name=TOOL_NAME, version="0.4.2"),
+)
 
 
 def normalize_name(name: str) -> str:
@@ -81,11 +126,6 @@ def initialize_folder(  # noqa:C901
     if mapping_set is None and mapping_set_id is None:
         raise ValueError("either a mapping set or a mapping set ID should be given")
 
-    import curies
-    import sssom_pydantic
-    from curies.vocabulary import charlie, lexical_matching_process, manual_mapping_curation
-    from sssom_pydantic import MappingSet, SemanticMapping
-
     from ..constants import NEGATIVES_NAME, POSITIVES_NAME, PREDICTIONS_NAME, UNSURE_NAME
     from ..repository import CONFIGURATION_FILENAME, Repository
 
@@ -126,78 +166,45 @@ def initialize_folder(  # noqa:C901
     if converter is None:
         converter = curies.Converter.from_prefix_map(
             {
-                "ex": "https://example.org/",
+                "CHEBI": "http://purl.obolibrary.org/obo/CHEBI_",
+                "mesh": "http://id.nlm.nih.gov/mesh/",
                 "skos": "http://www.w3.org/2004/02/skos/core#",
                 "semapv": "https://w3id.org/semapv/vocab/",
                 "orcid": "https://orcid.org/",
+                "wikidata": "http://www.wikidata.org/entity/",
             }
         )
-    name_to_examples: dict[str, list[SemanticMapping]] = {
-        positive_mappings_filename: [
-            SemanticMapping(
-                subject=curies.NamedReference(prefix="ex", identifier="1", name="1"),
-                predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
-                object=curies.NamedReference(prefix="ex", identifier="2", name="2"),
-                justification=manual_mapping_curation,
-                authors=[charlie],
-                mapping_date=datetime.date.today(),
-                confidence=1.0,
-            )
-        ]
-        if positive_seed is None
-        else positive_seed,
-        negative_mappings_filename: [
-            SemanticMapping(
-                subject=curies.NamedReference(prefix="ex", identifier="3", name="3"),
-                predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
-                object=curies.NamedReference(prefix="ex", identifier="4", name="4"),
-                justification=manual_mapping_curation,
-                predicate_modifier="Not",
-                authors=[charlie],
-                mapping_date=datetime.date.today(),
-                confidence=1.0,
-            )
-        ]
-        if negative_seed is None
-        else negative_seed,
-        unsure_mappings_filename: [
-            SemanticMapping(
-                subject=curies.NamedReference(prefix="ex", identifier="5", name="5"),
-                predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
-                object=curies.NamedReference(prefix="ex", identifier="6", name="6"),
-                justification=manual_mapping_curation,
-                reviewers=[charlie],
-                review_date=datetime.date.today(),
-                reviewer_agreement=0.0,
-            )
-        ]
-        if unsure_seed is None
-        else unsure_seed,
-        predicted_mappings_filename: [
-            SemanticMapping(
-                subject=curies.NamedReference(prefix="ex", identifier="7", name="7"),
-                predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
-                object=curies.NamedReference(prefix="ex", identifier="8", name="8"),
-                justification=lexical_matching_process,
-                confidence=0.77,
-            )
-        ]
-        if predicted_seed is None
-        else predicted_seed,
-    }
+    name_to_examples: list[tuple[str, list[SemanticMapping]]] = [
+        (
+            positive_mappings_filename,
+            [EXAMPLE_POSITIVE_MAPPING] if positive_seed is None else positive_seed,
+        ),
+        (
+            negative_mappings_filename,
+            [EXAMPLE_NEGATIVE_MAPPING] if negative_seed is None else negative_seed,
+        ),
+        (
+            predicted_mappings_filename,
+            [EXAMPLE_PREDICTED_MAPPING] if predicted_seed is None else predicted_seed,
+        ),
+        (
+            unsure_mappings_filename,
+            [EXAMPLE_UNSURE_MAPPING] if unsure_seed is None else unsure_seed,
+        ),
+    ]
 
     # Create the SSSOM files in a nested directory
     data_directory = directory.joinpath(DATA_DIR_NAME)
     data_directory.mkdir(exist_ok=True)
-    for name, mappings in name_to_examples.items():
-        path = data_directory.joinpath(name)
+    for filename, mappings in name_to_examples:
+        path = data_directory.joinpath(filename)
         if path.exists():
             raise FileExistsError(f"{path} already exists. cowardly refusing to overwrite.")
 
         # this will raise an exception if the mappings are not standard
         mappings_it = standardize_many(mappings, converter)
 
-        metadata = MappingSet(id=f"{purl_base}{name}")
+        metadata = MappingSet(id=f"{purl_base}{filename}")
         sssom_pydantic.write(mappings_it, path, metadata=metadata, converter=converter)
 
     data_directory_stub = Path(DATA_DIR_NAME)
