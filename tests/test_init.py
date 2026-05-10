@@ -176,6 +176,7 @@ class TestInitializeFolder(unittest.TestCase):
                 #  mesh: http://id.nlm.nih.gov/mesh/
                 #  semapv: https://w3id.org/semapv/vocab/
                 #  skos: http://www.w3.org/2004/02/skos/core#
+                #  wikidata: http://www.wikidata.org/entity/
                 #mapping_set_id: https://example.org/ms/components/{PREDICTIONS_NAME}
                 #mapping_tool: sssom-curator
                 #mapping_tool_id: wikidata:Q138902949

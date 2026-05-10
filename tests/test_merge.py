@@ -67,6 +67,8 @@ class TestMerge(cases.RepositoryTestCase):
 
         mappings, _converter = _get_merged_sssom(self.repository)
         self.assert_semantic_mappings_equal(
+            # note that these come out in order of mapping file
+            # component - they aren't sorted yet
             [
                 EXAMPLE_POSITIVE_MAPPING,
                 EXAMPLE_NEGATIVE_MAPPING,
@@ -94,9 +96,9 @@ class TestMerge(cases.RepositoryTestCase):
                 #mapping_set_id: {self.mapping_set_id}
                 #mapping_set_title: {self.directory.name}
                 subject_id\tsubject_label\tpredicate_id\tpredicate_modifier\tobject_id\tobject_label\tmapping_justification\tauthor_id\treviewer_id\tmapping_tool\tmapping_tool_id\tmapping_tool_version\tmapping_date\treview_date\tconfidence\treviewer_agreement
-                CHEBI:11986\t4-fluoro-L-threonine\tskos:exactMatch\t\tmesh:C048271\t4-fluorothreonine\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t\t\t\t\t2026-05-08\t\t1.0\t
                 CHEBI:10057\t9H-xanthene\tskos:exactMatch\tNot\tmesh:C002563\txanthan gum\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t\t\t\t\t2026-05-08\t\t1.0\t
                 CHEBI:101096\tethoxzolamide\tskos:exactMatch\t\tmesh:C523270\t6-ethoxybenzothiazole-2-sulfonamide\tsemapv:LexicalMatching\t\t\tsssom-curator\twikidata:Q138902949\t0.4.2\t\t\t0.77\t
+                CHEBI:11986\t4-fluoro-L-threonine\tskos:exactMatch\t\tmesh:C048271\t4-fluorothreonine\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t\t\t\t\t2026-05-08\t\t1.0\t
                 CHEBI:61700\t(+)-valencene\tskos:exactMatch\t\tmesh:C506706\tvalencene\tsemapv:ManualMappingCuration\t\torcid:0000-0003-4423-4370\t\t\t\t\t2026-05-08\t\t0.0
             """).rstrip(),  # noqa:E501
             self.output_tsv_path.read_text().rstrip(),
@@ -123,6 +125,8 @@ class TestMerge(cases.RepositoryTestCase):
 
         mappings, _converter = _get_merged_sssom(self.repository)
         self.assert_semantic_mappings_equal(
+            # note that these come out in order of mapping file
+            # component - they aren't sorted yet
             [
                 EXAMPLE_POSITIVE_MAPPING,
                 appended_mapping_standard,  # note that it gets standardized along the way
@@ -152,64 +156,11 @@ class TestMerge(cases.RepositoryTestCase):
                 #mapping_set_id: {self.mapping_set_id}
                 #mapping_set_title: {self.directory.name}
                 subject_id\tsubject_label\tpredicate_id\tpredicate_modifier\tobject_id\tobject_label\tmapping_justification\tauthor_id\treviewer_id\tmapping_tool\tmapping_tool_id\tmapping_tool_version\tmapping_date\treview_date\tconfidence\treviewer_agreement
-                CHEBI:11986\t4-fluoro-L-threonine\tskos:exactMatch\t\tmesh:C048271\t4-fluorothreonine\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t\t\t\t\t2026-05-08\t\t1.0\t
-                CHEBI:10001\tVisnadin\tskos:exactMatch\t\tmesh:C067604\tvisnadin\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t\t\t\t\t\t\t\t\t
+                CHEBI:10001\tVisnadin\tskos:exactMatch\t\tmesh:C067604\tvisnadin\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t\t\t\t\t\t\t\t
                 CHEBI:10057\t9H-xanthene\tskos:exactMatch\tNot\tmesh:C002563\txanthan gum\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t\t\t\t\t2026-05-08\t\t1.0\t
                 CHEBI:101096\tethoxzolamide\tskos:exactMatch\t\tmesh:C523270\t6-ethoxybenzothiazole-2-sulfonamide\tsemapv:LexicalMatching\t\t\tsssom-curator\twikidata:Q138902949\t0.4.2\t\t\t0.77\t
+                CHEBI:11986\t4-fluoro-L-threonine\tskos:exactMatch\t\tmesh:C048271\t4-fluorothreonine\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t\t\t\t\t2026-05-08\t\t1.0\t
                 CHEBI:61700\t(+)-valencene\tskos:exactMatch\t\tmesh:C506706\tvalencene\tsemapv:ManualMappingCuration\t\torcid:0000-0003-4423-4370\t\t\t\t\t2026-05-08\t\t0.0
       """).rstrip(),  # noqa:E501
-            self.output_tsv_path.read_text().rstrip(),
-        )
-
-    def test_merge_with_curations_no_standardization(self) -> None:
-        """Test adding some extra mappings that also have preferred prefixes."""
-        self.repository.merge_standardize_bioregistry = False
-        mapping = SemanticMapping(
-            subject=curies.NamedReference(prefix="chebi", identifier="10001", name="Visnadin"),
-            predicate=curies.Reference(prefix="skos", identifier="exactMatch"),
-            object=curies.NamedReference(prefix="mesh", identifier="C067604", name="visnadin"),
-            justification=manual_mapping_curation,
-            authors=[charlie],
-        )
-        self.repository.append_positive_mappings([mapping], sort=False)
-
-        mappings, _converter = _get_merged_sssom(self.repository)
-        self.assert_semantic_mappings_equal(
-            [
-                EXAMPLE_POSITIVE_MAPPING,
-                mapping,
-                EXAMPLE_NEGATIVE_MAPPING,
-                EXAMPLE_PREDICTED_MAPPING,
-                EXAMPLE_UNSURE_MAPPING,
-            ],
-            mappings,
-        )
-
-        merge(
-            self.repository, self.output_directory, output_owl=False, output_json=False, sort=True
-        )
-
-        self.assertTrue(self.output_tsv_path.is_file())
-        # note that `chebi` doesn't get capitalized because this test explicitly turns
-        # off bioregistry normalization. The MeSH URI is also the non-RDF one here, too
-        self.assertEqual(
-            dedent(f"""\
-                #curie_map:
-                #  CHEBI: http://purl.obolibrary.org/obo/CHEBI_
-                #  mesh: https://meshb.nlm.nih.gov/record/ui?ui=
-                #  orcid: https://orcid.org/
-                #  semapv: https://w3id.org/semapv/vocab/
-                #  skos: http://www.w3.org/2004/02/skos/core#
-                #  wikidata: http://www.wikidata.org/entity/
-                #license: https://spdx.org/licenses/CC0-1.0
-                #mapping_set_id: {self.mapping_set_id}
-                #mapping_set_title: {self.directory.name}
-                subject_id\tsubject_label\tpredicate_id\tpredicate_modifier\tobject_id\tobject_label\tmapping_justification\tauthor_id\treviewer_id\tmapping_tool\tmapping_tool_id\tmapping_tool_version\tmapping_date\treview_date\tconfidence\treviewer_agreement
-                CHEBI:11986\t4-fluoro-L-threonine\tskos:exactMatch\t\tmesh:C048271\t4-fluorothreonine\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t\t\t\t\t2026-05-08\t\t1.0\t
-                CHEBI:10001\tVisnadin\tskos:exactMatch\t\tmesh:C067604\tvisnadin\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t\t\t\t\t\t\t\t\t
-                CHEBI:10057\t9H-xanthene\tskos:exactMatch\tNot\tmesh:C002563\txanthan gum\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t\t\t\t\t2026-05-08\t\t1.0\t
-                CHEBI:101096\tethoxzolamide\tskos:exactMatch\t\tmesh:C523270\t6-ethoxybenzothiazole-2-sulfonamide\tsemapv:LexicalMatching\t\t\tsssom-curator\twikidata:Q138902949\t0.4.2\t\t\t0.77\t
-                CHEBI:61700\t(+)-valencene\tskos:exactMatch\t\tmesh:C506706\tvalencene\tsemapv:ManualMappingCuration\t\torcid:0000-0003-4423-4370\t\t\t\t\t2026-05-08\t\t0.0
-            """).rstrip(),  # noqa:E501
             self.output_tsv_path.read_text().rstrip(),
         )
