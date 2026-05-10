@@ -7,6 +7,13 @@ test:
     just coverage report
     just coverage html
 
+[doc("run an end-to-end test of creating a repo and populating it with mappings from lexical prediction")]
+e2e:
+    rm -rf scratch/test/
+    mkdir -p scratch/test/
+    uv run sssom_curator init -d scratch/test/ --mapping-set-title "CHMO to PaNET Mapping Test Repository" --purl-base https://w3id.org/biopragmatics/sssom-curator/test.sssom.tsv
+    uv run sssom_curator -p scratch/test/ predict lexical chmo panet
+
 [doc("remove testing coverage artifacts")]
 coverage-clean:
     just coverage erase
