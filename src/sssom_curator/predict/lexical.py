@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime
 import itertools as itt
 import logging
+import time
 import typing
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Mapping
@@ -237,7 +238,9 @@ def predict_lexical_mappings(
 ) -> Iterable[SemanticMapping]:
     """Iterate over prediction tuples for a given prefix."""
     import pyobo
+    from humanize import naturaldelta
 
+    start = time.time()
     id_name_mapping = pyobo.get_id_name_mapping(prefix, strict=strict)
     it = tqdm(
         id_name_mapping.items(), desc=f"[{prefix}] lexical tuples", unit_scale=True, unit="name"
@@ -262,9 +265,13 @@ def predict_lexical_mappings(
                 mapping_date=today,
             )
 
-    tqdm.write(f"[{prefix}] generated {name_prediction_count:,} predictions from names")
+    tqdm.write(
+        f"[{prefix}] generated {name_prediction_count:,} predictions from names "
+        f"in {naturaldelta(time.time() - start)}"
+    )
 
     if identifiers_are_names:
+        start = time.time()
         it = tqdm(
             pyobo.get_ids(prefix), desc=f"[{prefix}] lexical tuples", unit_scale=True, unit="id"
         )
@@ -284,7 +291,8 @@ def predict_lexical_mappings(
                     mapping_date=today,
                 )
         tqdm.write(
-            f"[{prefix}] generated {identifier_prediction_count:,} predictions from identifiers"
+            f"[{prefix}] generated {identifier_prediction_count:,} predictions from identifiers "
+            f"in {naturaldelta(time.time() - start)}"
         )
 
 
@@ -529,7 +537,6 @@ def append_lexical_predictions(
         cache=cache,
         all_by_all=all_by_all,
     )
-    tqdm.write(f"[{prefix}] generated {len(predictions):,} predictions")
 
     # since the function that constructs the predictions already
     # pre-standardizes, we don't have to worry about standardizing again

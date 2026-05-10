@@ -76,7 +76,7 @@ docs = [
     "sphinx>=8,<9",
     "sphinx-rtd-theme>=3.0",
     "sphinx-click",
-    "sphinx_automodapi",
+    "sphinx-automodapi",
     "autodoc-pydantic",
 ]
 lint = [
@@ -134,6 +134,7 @@ web = [
 ]
 predict-lexical = [
     "pyobo[gilda-slim]>=0.12.11",
+    "humanize",
 ]
 exports = [
     "sssom",
