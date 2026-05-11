@@ -48,7 +48,10 @@ def get_app(  # noqa:C901
     from flask import redirect, request, url_for
 
     from .blueprint import blueprint, url_for_state
-    from ..constants import DEFAULT_RESOLVER_BASE, ensure_converter
+    from ..constants import DEFAULT_RESOLVER_BASE, WEB_TITLE_DEFAULT, ensure_converter
+
+    if title is None:
+        title = WEB_TITLE_DEFAULT
 
     app = flask.Flask(__name__)
     app.config["WTF_CSRF_ENABLED"] = False

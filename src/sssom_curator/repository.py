@@ -688,7 +688,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
                 repository=obj,
                 resolver_base=resolver_base,
                 user=user,
-                title=obj.web_title or "Semantic Mapping Curator",
+                title=obj.web_title,
                 footer=obj.web_footer,
                 eager_persist=eager_persist,
                 implementation=implementation,

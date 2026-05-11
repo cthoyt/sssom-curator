@@ -22,6 +22,7 @@ __all__ = [
     "TOOL_NAME",
     "TOOL_REFERENCE",
     "UNSURE_NAME",
+    "WEB_TITLE_DEFAULT",
     "PredictionMethod",
     "RecognitionMethod",
     "ensure_converter",
@@ -108,3 +109,5 @@ def insert(
 #: The name of the lexical mapping tool
 TOOL_NAME = "sssom-curator"
 TOOL_REFERENCE = NamedReference(prefix="wikidata", identifier="Q138902949", name="SSSOM Curator")
+
+WEB_TITLE_DEFAULT = "Semantic Mapping Curator"
