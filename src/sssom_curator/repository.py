@@ -175,6 +175,7 @@ class Repository(BaseModel):
     merge_standardize_bioregistry: Annotated[
         bool | None,
         Field(
+            description="""\
             If set to true, uses the preferred prefixes in the Bioregistry
             to standardize the merged SSSOM output. This maintains backwards
             compatibility in the Biomappings repository. You shouldn't use this
@@ -490,7 +491,7 @@ def get_merge_command(sssom_directory: Path | None = None) -> click.Command:
     def main(obj: Repository, sssom_directory: Path) -> None:
         """Merge files together to a single SSSOM."""
         if sssom_directory is None:
-            click.secho("--sssom-directory is required", fg="red")
+            click.secho("--sssom-directory is required, or add ", fg="red")
             raise sys.exit(1)
         if obj.mapping_set is None:
             click.secho("repository doesn't configure ``mapping_set``", fg="red")
@@ -786,12 +787,12 @@ def get_ndex_command() -> click.Command:
 
 
 def _pin_version_callback(
-    ctx: click.Context, option: click.Option, value: list[tuple[str, str]]
-) -> None:
+    ctx: click.Context, option: click.Option | click.Parameter, value: Any
+) -> Any:
     if value:
         import pyobo.api.utils
 
-        for prefix, version in value:
+        for prefix, version in cast(list[tuple[str, str]], value):
             click.echo(f"pinning {prefix} to {version}")
             pyobo.api.utils.pin_version(prefix, version)
 
