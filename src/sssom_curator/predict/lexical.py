@@ -110,12 +110,14 @@ def get_predictions(
                 force=force,
                 force_process=force_process,
                 cache=cache,
+                versions=versions
             )
             predictions = _predict_lexical_mappings_all_by_all(
                 grounder,
                 predicate=relation,
                 mapping_tool=mapping_tool,
                 method=cast(RecognitionMethod | None, method),
+                versions=versions,
             )
         else:
             # by default, PyOBO wraps a gilda grounder, but
@@ -187,6 +189,7 @@ def _predict_lexical_mappings_all_by_all(
     predicate: str | curies.Reference | None = None,
     method: RecognitionMethod | None = None,
     mapping_tool: str | MappingTool | None = None,
+    versions: dict[str, str] | None = None
 ) -> Iterable[SemanticMapping]:
     """Iterate over predictions."""
     predicate = resolve_predicate(predicate)
@@ -195,11 +198,11 @@ def _predict_lexical_mappings_all_by_all(
         raise NotImplementedError(f"all-by-all requires grounding method, {method} not allowed")
     if not isinstance(grounder, ssslm.GildaGrounder):
         raise NotImplementedError(f"all-by-all requires gilda grounder. got: {type(grounder)}")
-    yield from _all_by_all_gilda(grounder._grounder, predicate, mapping_tool)
+    yield from _all_by_all_gilda(grounder._grounder, predicate, mapping_tool, versions=versions)
 
 
 def _all_by_all_gilda(
-    grounder: gilda.Grounder, predicate: curies.Reference, mapping_tool: MappingTool | None = None
+    grounder: gilda.Grounder, predicate: curies.Reference, mapping_tool: MappingTool | None = None, versions:dict[str, str] | None = None
 ) -> Iterable[SemanticMapping]:
     today = datetime.date.today()
     for values in grounder.entries.values():
@@ -208,8 +211,10 @@ def _all_by_all_gilda(
                 continue
             yield SemanticMapping(
                 subject=NormalizedNamedReference(prefix=s.db, identifier=s.id, name=s.entry_name),
+                subject_source_version=versions.get(s.db),
                 predicate=NormalizedNamableReference.from_reference(predicate),
                 object=NormalizedNamedReference(prefix=o.db, identifier=o.id, name=o.entry_name),
+                object_source_version=versions.get(o.db),
                 justification=lexical_matching_process,
                 confidence=_gilda_get_score(s, o),
                 mapping_tool=mapping_tool,
@@ -235,6 +240,7 @@ def predict_lexical_mappings(
     strict: bool = False,
     method: RecognitionMethod | None = None,
     mapping_tool: str | MappingTool | None = None,
+    versions: dict[str, str] | None = None,
 ) -> Iterable[SemanticMapping]:
     """Iterate over prediction tuples for a given prefix."""
     import pyobo
@@ -246,9 +252,14 @@ def predict_lexical_mappings(
         id_name_mapping.items(), desc=f"[{prefix}] lexical tuples", unit_scale=True, unit="name"
     )
 
+    if versions is None:
+        versions = {}
+
     predicate = resolve_predicate(predicate)
     get_matches = _get_get_matches(method, grounder)
     mapping_tool = resolve_mapping_tool(mapping_tool)
+
+    logging.getLogger("gilda").setLevel(logging.WARNING)
 
     name_prediction_count = 0
     today = datetime.date.today()
@@ -257,8 +268,10 @@ def predict_lexical_mappings(
             name_prediction_count += 1
             yield SemanticMapping(
                 subject=NormalizedNamedReference(prefix=prefix, identifier=identifier, name=name),
+                subject_source_version=versions.get(prefix),
                 predicate=NormalizedNamableReference.from_reference(predicate),
                 object=scored_match.reference,
+                object_source_version=versions.get(scored_match.reference.prefix),
                 justification=lexical_matching_process,
                 confidence=round(scored_match.score, 3),
                 mapping_tool=mapping_tool,
@@ -283,8 +296,10 @@ def predict_lexical_mappings(
                     subject=NormalizedNamedReference(
                         prefix=prefix, identifier=identifier, name=identifier
                     ),
+                    subject_source_version=versions.get(prefix),
                     predicate=NormalizedNamableReference.from_reference(predicate),
                     object=scored_match.reference,
+                    object_source_version=versions.get(scored_match.reference.prefix),
                     justification=lexical_matching_process,
                     confidence=round(scored_match.score, 3),
                     mapping_tool=mapping_tool,
