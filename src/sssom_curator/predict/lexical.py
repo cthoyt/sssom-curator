@@ -101,7 +101,6 @@ def get_predictions(
         targets = list(target_prefixes)
 
     mapping_tool = resolve_mapping_tool(mapping_tool)
-
     versions = _get_versions(prefix, *targets)
 
     if method is None or method in typing.get_args(RecognitionMethod):
