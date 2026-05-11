@@ -771,6 +771,29 @@ def get_ndex_command() -> click.Command:
     return ndex
 
 
+def _pin_version_callback(
+    ctx: click.Context, option: click.Option, value: list[tuple[str, str]]
+) -> None:
+    if value:
+        import pyobo.api.utils
+
+        for prefix, version in value:
+            click.echo(f"pinning {prefix} to {version}")
+            pyobo.api.utils.pin_version(prefix, version)
+
+
+PIN_VERSION_OPTION = click.option(
+    "-pv",
+    "--pin-version",
+    nargs=2,
+    multiple=True,
+    expose_value=False,  # i.e., don't pass through to function
+    callback=_pin_version_callback,
+    help="Pin resource versions in PyOBO by giving a pair of prefix + version, such as "
+    "`--pin-version chmo 2025-10-21`",
+)
+
+
 def get_predict_command(
     *,
     source_prefix: str | None = None,
@@ -840,6 +863,7 @@ def get_predict_command(
         is_flag=True,
         help="Consider identifiers as names. This is typical for data models/schemas",
     )
+    @PIN_VERSION_OPTION
     @click.pass_obj
     def lexical(
         obj: Repository,
