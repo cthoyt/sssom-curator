@@ -92,7 +92,7 @@ class TestMerge(cases.RepositoryTestCase):
                 #  semapv: https://w3id.org/semapv/vocab/
                 #  skos: http://www.w3.org/2004/02/skos/core#
                 #  wikidata: http://www.wikidata.org/entity/
-                #license: https://spdx.org/licenses/CC0-1.0
+                #license: https://creativecommons.org/publicdomain/zero/1.0/
                 #mapping_set_id: {self.mapping_set_id}
                 #mapping_set_title: {self.directory.name}
                 subject_id\tsubject_label\tpredicate_id\tpredicate_modifier\tobject_id\tobject_label\tmapping_justification\tauthor_id\treviewer_id\tmapping_tool\tmapping_tool_id\tmapping_tool_version\tmapping_date\treview_date\tconfidence\treviewer_agreement
@@ -152,7 +152,7 @@ class TestMerge(cases.RepositoryTestCase):
                 #  semapv: https://w3id.org/semapv/vocab/
                 #  skos: http://www.w3.org/2004/02/skos/core#
                 #  wikidata: http://www.wikidata.org/entity/
-                #license: https://spdx.org/licenses/CC0-1.0
+                #license: https://creativecommons.org/publicdomain/zero/1.0/
                 #mapping_set_id: {self.mapping_set_id}
                 #mapping_set_title: {self.directory.name}
                 subject_id\tsubject_label\tpredicate_id\tpredicate_modifier\tobject_id\tobject_label\tmapping_justification\tauthor_id\treviewer_id\tmapping_tool\tmapping_tool_id\tmapping_tool_version\tmapping_date\treview_date\tconfidence\treviewer_agreement

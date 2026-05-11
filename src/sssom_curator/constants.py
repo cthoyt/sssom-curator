@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TypeAlias
 
 from curies import NamedReference
+from pydantic import AnyUrl
 from sssom_pydantic.api import MAPPING_HASH_CURIE_PREFIX, MAPPING_HASH_URI_PREFIX
 
 if TYPE_CHECKING:
@@ -15,6 +16,8 @@ if TYPE_CHECKING:
     from sssom_pydantic import SemanticMapping
 
 __all__ = [
+    "CC0_ANYURL",
+    "CC0_URL",
     "DEFAULT_RESOLVER_BASE",
     "NEGATIVES_NAME",
     "POSITIVES_NAME",
@@ -22,6 +25,7 @@ __all__ = [
     "TOOL_NAME",
     "TOOL_REFERENCE",
     "UNSURE_NAME",
+    "WEB_TITLE_DEFAULT",
     "PredictionMethod",
     "RecognitionMethod",
     "ensure_converter",
@@ -108,3 +112,7 @@ def insert(
 #: The name of the lexical mapping tool
 TOOL_NAME = "sssom-curator"
 TOOL_REFERENCE = NamedReference(prefix="wikidata", identifier="Q138902949", name="SSSOM Curator")
+
+WEB_TITLE_DEFAULT = "Semantic Mapping Curator"
+CC0_URL = "https://creativecommons.org/publicdomain/zero/1.0/"
+CC0_ANYURL = AnyUrl(CC0_URL)
