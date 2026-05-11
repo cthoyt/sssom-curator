@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Literal, TypeAlias
 
 from curies import NamedReference
 from pydantic import AnyUrl
-from sssom_pydantic.api import MAPPING_HASH_CURIE_PREFIX, MAPPING_HASH_URI_PREFIX
 
 if TYPE_CHECKING:
     import curies
@@ -86,6 +85,7 @@ def insert(
 ) -> None:
     """Append eagerly with linting at the same time."""
     import sssom_pydantic
+    from sssom_pydantic.api import MAPPING_HASH_CURIE_PREFIX, MAPPING_HASH_URI_PREFIX
 
     mappings, converter_processed, metadata = sssom_pydantic.read(
         path, converter=converter, return_errors=False

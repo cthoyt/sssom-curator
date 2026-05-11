@@ -24,14 +24,12 @@ from tqdm.auto import tqdm
 
 from .embedding import predict_embedding_mappings
 from .utils import resolve_mapping_tool, resolve_predicate
+from ..constants import CC0_URL, PredictionMethod, RecognitionMethod
 
 if TYPE_CHECKING:
     import gilda
     import gilda.scorer
     import networkx as nx
-
-    from ..constants import PredictionMethod, RecognitionMethod
-
 
 __all__ = [
     "append_lexical_predictions",
@@ -224,8 +222,6 @@ def _all_by_all_gilda(
     versions: dict[str, str] | None = None,
     mapping_date: datetime.date | None = None,
 ) -> Iterable[SemanticMapping]:
-    from ..constants import CC0_URL
-
     if versions is None:
         versions = {}
     if mapping_date is None:
