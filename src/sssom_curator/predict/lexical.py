@@ -245,6 +245,8 @@ def predict_lexical_mappings(
     import pyobo
     from humanize import naturaldelta
 
+    from ..constants import CC0_URL
+
     start = time.time()
     id_name_mapping = pyobo.get_id_name_mapping(prefix, strict=strict)
     it = tqdm(
