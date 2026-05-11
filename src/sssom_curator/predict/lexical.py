@@ -24,12 +24,14 @@ from tqdm.auto import tqdm
 
 from .embedding import predict_embedding_mappings
 from .utils import resolve_mapping_tool, resolve_predicate
-from ..constants import PredictionMethod, RecognitionMethod
 
 if TYPE_CHECKING:
     import gilda
     import gilda.scorer
     import networkx as nx
+
+    from ..constants import PredictionMethod, RecognitionMethod
+
 
 __all__ = [
     "append_lexical_predictions",
