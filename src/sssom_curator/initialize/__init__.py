@@ -30,7 +30,6 @@ __all__ = [
 HERE = Path(__file__).parent.resolve()
 SCRIPT_NAME = "main.py"
 README_NAME = "README.md"
-CC0_URL = "https://spdx.org/licenses/CC0-1.0"
 DATA_DIR_NAME = "data"
 SKIPS = {
     "mapping_set": {
@@ -103,7 +102,7 @@ def initialize_folder(  # noqa:C901
     script_filename: str = SCRIPT_NAME,
     readme_filename: str = README_NAME,
     add_license: bool = True,
-    mapping_set_id: str | None = None,
+    mapping_set_id: str | AnyUrl | None = None,
     positive_seed: list[SemanticMapping] | None = None,
     negative_seed: list[SemanticMapping] | None = None,
     predicted_seed: list[SemanticMapping] | None = None,
@@ -123,10 +122,14 @@ def initialize_folder(  # noqa:C901
     3. A README.md file with explanation about how the code was generated, how to use
        it, etc.
     """
-    if mapping_set is None and mapping_set_id is None:
-        raise ValueError("either a mapping set or a mapping set ID should be given")
-
-    from ..constants import NEGATIVES_NAME, POSITIVES_NAME, PREDICTIONS_NAME, UNSURE_NAME
+    from ..constants import (
+        CC0_ANYURL,
+        CC0_URL,
+        NEGATIVES_NAME,
+        POSITIVES_NAME,
+        PREDICTIONS_NAME,
+        UNSURE_NAME,
+    )
     from ..repository import CONFIGURATION_FILENAME, Repository
 
     if repository_filename is None:
@@ -143,16 +146,20 @@ def initialize_folder(  # noqa:C901
     directory = Path(directory).expanduser().resolve()
 
     if mapping_set is None:
+        if mapping_set_id is None:
+            raise ValueError("either a mapping set or a mapping set ID should be given")
+
         mapping_set = MappingSet(
-            id=mapping_set_id,
+            id=AnyUrl(mapping_set_id),
             version="1",
+            license=CC0_ANYURL,
         )
 
     if mapping_set.title is None:
         mapping_set = mapping_set.model_copy(update={"title": directory.name})
 
     if mapping_set.license is None and add_license:
-        mapping_set = mapping_set.model_copy(update={"license": AnyUrl(CC0_URL)})
+        mapping_set = mapping_set.model_copy(update={"license": CC0_ANYURL})
 
     if not purl_base:
         purl_base, _, _ = str(mapping_set.id).rpartition("/")  # TODO there might be a better way

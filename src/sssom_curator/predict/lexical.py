@@ -201,6 +201,8 @@ def _predict_lexical_mappings_all_by_all(
 def _all_by_all_gilda(
     grounder: gilda.Grounder, predicate: curies.Reference, mapping_tool: MappingTool | None = None
 ) -> Iterable[SemanticMapping]:
+    from ..constants import CC0_URL
+
     today = datetime.date.today()
     for values in grounder.entries.values():
         for s, o in itt.combinations(values, 2):
@@ -214,6 +216,7 @@ def _all_by_all_gilda(
                 confidence=_gilda_get_score(s, o),
                 mapping_tool=mapping_tool,
                 mapping_date=today,
+                license=CC0_URL,
             )
 
 
@@ -289,6 +292,7 @@ def predict_lexical_mappings(
                     confidence=round(scored_match.score, 3),
                     mapping_tool=mapping_tool,
                     mapping_date=today,
+                    license=CC0_URL,
                 )
         tqdm.write(
             f"[{prefix}] generated {identifier_prediction_count:,} predictions from identifiers "
