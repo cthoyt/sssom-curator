@@ -6,7 +6,7 @@ import sys
 import typing
 from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeAlias, cast
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, TypeAlias, cast
 
 import click
 import curies
@@ -151,23 +151,37 @@ class Repository(BaseModel):
     negatives_path: Path
     unsure_path: Path
     mapping_set: sssom_pydantic.MappingSet | None = None
-    purl_base: str | None = None
+    purl_base: Annotated[
+        str | None,
+        Field(
+            description="The beginning part of URLs for files in this repository. For example, if "
+            "https://example.com/purl-base/ is given, then the SSSOM positive mappings file will "
+            "have the ID https://example.com/purl-base/positive.sssom.tsv"
+        ),
+    ] = None
     basename: str | None = None
     ndex_uuid: str | None = None
 
-    web_title: str | None = None
+    web_title: Annotated[
+        str | None,
+        Field(description="Custom HTML to put in the title for the SSSOM Curator web interface"),
+    ] = None
     web_disabled_message: str | None = None
-    web_footer: str | None = None
+    web_footer: Annotated[
+        str | None,
+        Field(description="Custom HTML to put in the footer for the SSSOM Curator web interface"),
+    ] = None
 
-    merge_standardize_bioregistry: bool | None = Field(
-        None,
-        description="""\
+    merge_standardize_bioregistry: Annotated[
+        bool | None,
+        Field(
             If set to true, uses the preferred prefixes in the Bioregistry
             to standardize the merged SSSOM output. This maintains backwards
             compatibility in the Biomappings repository. You shouldn't use this
             field.
-        """,
-    )
+        """
+        ),
+    ] = None
 
     def update_relative_paths(self, directory: Path) -> None:
         """Update paths relative to the directory."""
