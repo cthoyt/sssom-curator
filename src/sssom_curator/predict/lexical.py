@@ -100,6 +100,8 @@ def get_predictions(
 
     mapping_tool = resolve_mapping_tool(mapping_tool)
 
+    versions = _get_versions(prefix, *targets)
+
     if method is None or method in typing.get_args(RecognitionMethod):
         import pyobo
 
@@ -110,7 +112,7 @@ def get_predictions(
                 force=force,
                 force_process=force_process,
                 cache=cache,
-                versions=versions
+                versions=versions,
             )
             predictions = _predict_lexical_mappings_all_by_all(
                 grounder,
@@ -128,6 +130,7 @@ def get_predictions(
                 force=force,
                 force_process=force_process,
                 cache=cache,
+                versions=versions,
             )
             predictions = predict_lexical_mappings(
                 prefix,
@@ -136,6 +139,7 @@ def get_predictions(
                 mapping_tool=mapping_tool,
                 identifiers_are_names=identifiers_are_names,
                 method=cast(RecognitionMethod | None, method),
+                versions=versions,
             )
     elif method == "embedding":
         if all_by_all:
@@ -150,6 +154,7 @@ def get_predictions(
             cutoff=cutoff,
             batch_size=batch_size,
             progress=progress,
+            versions=versions,
         )
     else:
         raise ValueError(f"invalid lexical prediction method: {method}")
@@ -165,6 +170,16 @@ def get_predictions(
 
     predictions = sorted(predictions)
     return predictions
+
+
+def _get_versions(*prefixes: str) -> dict[str, str]:
+    from pyobo.api.utils import get_version
+
+    return {
+        prefix: prefix_version
+        for prefix in prefixes
+        if (prefix_version := get_version(prefix, strict=False))
+    }
 
 
 def _get_get_matches(
@@ -189,7 +204,7 @@ def _predict_lexical_mappings_all_by_all(
     predicate: str | curies.Reference | None = None,
     method: RecognitionMethod | None = None,
     mapping_tool: str | MappingTool | None = None,
-    versions: dict[str, str] | None = None
+    versions: dict[str, str] | None = None,
 ) -> Iterable[SemanticMapping]:
     """Iterate over predictions."""
     predicate = resolve_predicate(predicate)
@@ -202,9 +217,16 @@ def _predict_lexical_mappings_all_by_all(
 
 
 def _all_by_all_gilda(
-    grounder: gilda.Grounder, predicate: curies.Reference, mapping_tool: MappingTool | None = None, versions:dict[str, str] | None = None
+    grounder: gilda.Grounder,
+    predicate: curies.Reference,
+    mapping_tool: MappingTool | None = None,
+    versions: dict[str, str] | None = None,
+    mapping_date: datetime.date | None = None,
 ) -> Iterable[SemanticMapping]:
-    today = datetime.date.today()
+    if versions is None:
+        versions = {}
+    if mapping_date is None:
+        mapping_date = datetime.date.today()
     for values in grounder.entries.values():
         for s, o in itt.combinations(values, 2):
             if s.db == o.db:
@@ -218,7 +240,7 @@ def _all_by_all_gilda(
                 justification=lexical_matching_process,
                 confidence=_gilda_get_score(s, o),
                 mapping_tool=mapping_tool,
-                mapping_date=today,
+                mapping_date=mapping_date,
             )
 
 
@@ -241,6 +263,7 @@ def predict_lexical_mappings(
     method: RecognitionMethod | None = None,
     mapping_tool: str | MappingTool | None = None,
     versions: dict[str, str] | None = None,
+    mapping_date: datetime.date | None = None,
 ) -> Iterable[SemanticMapping]:
     """Iterate over prediction tuples for a given prefix."""
     import pyobo
@@ -254,6 +277,8 @@ def predict_lexical_mappings(
 
     if versions is None:
         versions = {}
+    if mapping_date is None:
+        mapping_date = datetime.date.today()
 
     predicate = resolve_predicate(predicate)
     get_matches = _get_get_matches(method, grounder)
@@ -262,7 +287,6 @@ def predict_lexical_mappings(
     logging.getLogger("gilda").setLevel(logging.WARNING)
 
     name_prediction_count = 0
-    today = datetime.date.today()
     for identifier, name in it:
         for scored_match in get_matches(name):
             name_prediction_count += 1
@@ -275,7 +299,7 @@ def predict_lexical_mappings(
                 justification=lexical_matching_process,
                 confidence=round(scored_match.score, 3),
                 mapping_tool=mapping_tool,
-                mapping_date=today,
+                mapping_date=mapping_date,
             )
 
     tqdm.write(
@@ -303,7 +327,7 @@ def predict_lexical_mappings(
                     justification=lexical_matching_process,
                     confidence=round(scored_match.score, 3),
                     mapping_tool=mapping_tool,
-                    mapping_date=today,
+                    mapping_date=mapping_date,
                 )
         tqdm.write(
             f"[{prefix}] generated {identifier_prediction_count:,} predictions from identifiers "
