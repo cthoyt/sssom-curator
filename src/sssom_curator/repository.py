@@ -6,7 +6,7 @@ import sys
 import typing
 from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeAlias, cast
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, TypeAlias, cast
 
 import click
 import curies
@@ -151,23 +151,38 @@ class Repository(BaseModel):
     negatives_path: Path
     unsure_path: Path
     mapping_set: sssom_pydantic.MappingSet | None = None
-    purl_base: str | None = None
+    purl_base: Annotated[
+        str | None,
+        Field(
+            description="The beginning part of URLs for files in this repository. For example, if "
+            "https://example.com/purl-base/ is given, then the SSSOM positive mappings file will "
+            "have the ID https://example.com/purl-base/positive.sssom.tsv"
+        ),
+    ] = None
     basename: str | None = None
     ndex_uuid: str | None = None
 
-    web_title: str | None = None
+    web_title: Annotated[
+        str | None,
+        Field(description="Custom HTML to put in the title for the SSSOM Curator web interface"),
+    ] = None
     web_disabled_message: str | None = None
-    web_footer: str | None = None
+    web_footer: Annotated[
+        str | None,
+        Field(description="Custom HTML to put in the footer for the SSSOM Curator web interface"),
+    ] = None
 
-    merge_standardize_bioregistry: bool | None = Field(
-        None,
-        description="""\
+    merge_standardize_bioregistry: Annotated[
+        bool | None,
+        Field(
+            description="""\
             If set to true, uses the preferred prefixes in the Bioregistry
             to standardize the merged SSSOM output. This maintains backwards
             compatibility in the Biomappings repository. You shouldn't use this
             field.
-        """,
-    )
+        """
+        ),
+    ] = None
 
     def update_relative_paths(self, directory: Path) -> None:
         """Update paths relative to the directory."""
@@ -476,7 +491,7 @@ def get_merge_command(sssom_directory: Path | None = None) -> click.Command:
     def main(obj: Repository, sssom_directory: Path) -> None:
         """Merge files together to a single SSSOM."""
         if sssom_directory is None:
-            click.secho("--sssom-directory is required", fg="red")
+            click.secho("--sssom-directory is required, or add ", fg="red")
             raise sys.exit(1)
         if obj.mapping_set is None:
             click.secho("repository doesn't configure ``mapping_set``", fg="red")
@@ -688,7 +703,7 @@ def get_web_command(*, enable: bool = True, get_user: UserGetter | None = None) 
                 repository=obj,
                 resolver_base=resolver_base,
                 user=user,
-                title=obj.web_title or "Semantic Mapping Curator",
+                title=obj.web_title,
                 footer=obj.web_footer,
                 eager_persist=eager_persist,
                 implementation=implementation,
@@ -771,6 +786,29 @@ def get_ndex_command() -> click.Command:
     return ndex
 
 
+def _pin_version_callback(
+    ctx: click.Context, option: click.Option | click.Parameter, value: Any
+) -> Any:
+    if value:
+        import pyobo.api.utils
+
+        for prefix, version in cast(list[tuple[str, str]], value):
+            click.echo(f"pinning {prefix} to {version}")
+            pyobo.api.utils.pin_version(prefix, version)
+
+
+PIN_VERSION_OPTION = click.option(
+    "-pv",
+    "--pin-version",
+    nargs=2,
+    multiple=True,
+    expose_value=False,  # i.e., don't pass through to function
+    callback=_pin_version_callback,
+    help="Pin resource versions in PyOBO by giving a pair of prefix + version, such as "
+    "`--pin-version chmo 2025-10-21`",
+)
+
+
 def get_predict_command(
     *,
     source_prefix: str | None = None,
@@ -840,6 +878,7 @@ def get_predict_command(
         is_flag=True,
         help="Consider identifiers as names. This is typical for data models/schemas",
     )
+    @PIN_VERSION_OPTION
     @click.pass_obj
     def lexical(
         obj: Repository,

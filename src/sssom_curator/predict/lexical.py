@@ -24,12 +24,14 @@ from tqdm.auto import tqdm
 
 from .embedding import predict_embedding_mappings
 from .utils import resolve_mapping_tool, resolve_predicate
-from ..constants import PredictionMethod, RecognitionMethod
 
 if TYPE_CHECKING:
     import gilda
     import gilda.scorer
     import networkx as nx
+
+    from ..constants import PredictionMethod, RecognitionMethod
+
 
 __all__ = [
     "append_lexical_predictions",
@@ -223,6 +225,8 @@ def _all_by_all_gilda(
     versions: dict[str, str] | None = None,
     mapping_date: datetime.date | None = None,
 ) -> Iterable[SemanticMapping]:
+    from ..constants import CC0_URL
+
     if versions is None:
         versions = {}
     if mapping_date is None:
@@ -241,6 +245,7 @@ def _all_by_all_gilda(
                 confidence=_gilda_get_score(s, o),
                 mapping_tool=mapping_tool,
                 mapping_date=mapping_date,
+                license=CC0_URL,
             )
 
 
@@ -268,6 +273,8 @@ def predict_lexical_mappings(
     """Iterate over prediction tuples for a given prefix."""
     import pyobo
     from humanize import naturaldelta
+
+    from ..constants import CC0_URL
 
     start = time.time()
     id_name_mapping = pyobo.get_id_name_mapping(prefix, strict=strict)
@@ -328,6 +335,7 @@ def predict_lexical_mappings(
                     confidence=round(scored_match.score, 3),
                     mapping_tool=mapping_tool,
                     mapping_date=mapping_date,
+                    license=CC0_URL,
                 )
         tqdm.write(
             f"[{prefix}] generated {identifier_prediction_count:,} predictions from identifiers "

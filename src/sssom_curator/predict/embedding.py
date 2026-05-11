@@ -39,6 +39,8 @@ def predict_embedding_mappings(
     """Predict semantic mappings with embeddings."""
     import pyobo.api.embedding
 
+    from ..constants import CC0_URL
+
     if relation is None:
         relation = curies.NamableReference.from_reference(exact_match.without_name())
     if versions is None:
@@ -80,6 +82,7 @@ def predict_embedding_mappings(
                     confidence=confidence,
                     mapping_tool=mapping_tool,
                     mapping_date=today,
+                    license=CC0_URL,
                 )
             )
     return predictions
