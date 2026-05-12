@@ -12,7 +12,7 @@ e2e:
     rm -rf scratch/test/
     mkdir -p scratch/test/
     uv run sssom_curator init -d scratch/test/ --mapping-set-title "CHMO to PaNET Mapping Test Repository" --purl-base https://w3id.org/biopragmatics/sssom-curator/test.sssom.tsv
-    uv run sssom_curator -p scratch/test/ predict lexical chmo panet -x chmo 2025-10-21
+    uv run sssom_curator -p scratch/test/ predict lexical chmo panet -pv chmo 2025-10-21
 
 [doc("remove testing coverage artifacts")]
 coverage-clean:
