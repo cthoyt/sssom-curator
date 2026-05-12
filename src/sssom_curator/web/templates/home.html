@@ -105,8 +105,10 @@
                             </td>
                             <td>{{ p.object_name }}</td>
                             <td>
+                                {%- set confidence_raw = p.confidence or p.similarity %}
+                                {%- if confidence_raw %}
+                                {% set confidence = (confidence_raw * 100) | int %}
                                 <div class="progress" style="margin-bottom: 0">
-                                    {% set confidence = ((p.confidence | float) * 100) | int %}
                                     <div class="progress-bar progress-bar-striped {{ progress_color(confidence) }}"
                                          role="progressbar"
                                          aria-valuenow="{{ confidence }}" aria-valuemin="0"
@@ -115,6 +117,7 @@
                                         <span>{{ confidence }}%</span>
                                     </div>
                                 </div>
+                                {%- endif %}
                             </td>
                             <td>
                                 <a data-bs-toggle="tooltip" title="The {{ p.predicate.curie }} relationship is correct."
