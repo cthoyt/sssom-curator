@@ -6,14 +6,13 @@ import sys
 import typing
 from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, TypeAlias, cast
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, Self, TypeAlias, cast
 
 import click
 import curies
 import sssom_pydantic
 from pydantic import BaseModel, Field
 from sssom_pydantic.process import Call
-from typing_extensions import Self
 
 from .constants import (
     DEFAULT_RESOLVER_BASE,
