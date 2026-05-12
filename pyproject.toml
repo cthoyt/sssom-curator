@@ -133,7 +133,7 @@ web = [
     "a2wsgi",
 ]
 predict-lexical = [
-    "pyobo[gilda-slim]>=0.12.11",
+    "pyobo[gilda-slim]>=0.12.22",
     "humanize",
 ]
 exports = [
@@ -147,6 +147,7 @@ exports = [
     "networkx", # for graph-based queries
 ]
 predict-embeddings = [
+    "pyobo>=0.12.22",
     "sentence-transformers",
     "torch",
     "pandas",
