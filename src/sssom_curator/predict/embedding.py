@@ -34,6 +34,7 @@ def predict_embedding_mappings(
     progress: bool = True,
     force: bool = False,
     force_process: bool = False,
+    versions: dict[str, str] | None = None,
 ) -> list[SemanticMapping]:
     """Predict semantic mappings with embeddings."""
     import pyobo.api.embedding
@@ -42,6 +43,8 @@ def predict_embedding_mappings(
 
     if relation is None:
         relation = curies.NamableReference.from_reference(exact_match.without_name())
+    if versions is None:
+        versions = {}
 
     if isinstance(target_prefixes, str):
         targets = [target_prefixes]
@@ -71,8 +74,10 @@ def predict_embedding_mappings(
             predictions.append(
                 SemanticMapping(
                     subject=_r(prefix=prefix, identifier=source_id),
+                    subject_source_version=versions.get(prefix),
                     predicate=relation,
                     object=_r(prefix=target, identifier=target_id),
+                    object_source_version=versions.get(target),
                     justification=lexical_matching_process,
                     confidence=confidence,
                     mapping_tool=mapping_tool,

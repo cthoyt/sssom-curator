@@ -24,14 +24,12 @@ from tqdm.auto import tqdm
 
 from .embedding import predict_embedding_mappings
 from .utils import resolve_mapping_tool, resolve_predicate
+from ..constants import CC0_URL, PredictionMethod, RecognitionMethod
 
 if TYPE_CHECKING:
     import gilda
     import gilda.scorer
     import networkx as nx
-
-    from ..constants import PredictionMethod, RecognitionMethod
-
 
 __all__ = [
     "append_lexical_predictions",
@@ -101,6 +99,7 @@ def get_predictions(
         targets = list(target_prefixes)
 
     mapping_tool = resolve_mapping_tool(mapping_tool)
+    versions = _get_versions(prefix, *targets)
 
     if method is None or method in typing.get_args(RecognitionMethod):
         import pyobo
@@ -112,12 +111,14 @@ def get_predictions(
                 force=force,
                 force_process=force_process,
                 cache=cache,
+                versions=versions,
             )
             predictions = _predict_lexical_mappings_all_by_all(
                 grounder,
                 predicate=relation,
                 mapping_tool=mapping_tool,
                 method=cast(RecognitionMethod | None, method),
+                versions=versions,
             )
         else:
             # by default, PyOBO wraps a gilda grounder, but
@@ -128,6 +129,7 @@ def get_predictions(
                 force=force,
                 force_process=force_process,
                 cache=cache,
+                versions=versions,
             )
             predictions = predict_lexical_mappings(
                 prefix,
@@ -136,6 +138,7 @@ def get_predictions(
                 mapping_tool=mapping_tool,
                 identifiers_are_names=identifiers_are_names,
                 method=cast(RecognitionMethod | None, method),
+                versions=versions,
             )
     elif method == "embedding":
         if all_by_all:
@@ -150,6 +153,7 @@ def get_predictions(
             cutoff=cutoff,
             batch_size=batch_size,
             progress=progress,
+            versions=versions,
         )
     else:
         raise ValueError(f"invalid lexical prediction method: {method}")
@@ -165,6 +169,16 @@ def get_predictions(
 
     predictions = sorted(predictions)
     return predictions
+
+
+def _get_versions(*prefixes: str) -> dict[str, str]:
+    from pyobo.api.utils import get_version
+
+    return {
+        prefix: prefix_version
+        for prefix in prefixes
+        if (prefix_version := get_version(prefix, strict=False))
+    }
 
 
 def _get_get_matches(
@@ -189,6 +203,7 @@ def _predict_lexical_mappings_all_by_all(
     predicate: str | curies.Reference | None = None,
     method: RecognitionMethod | None = None,
     mapping_tool: str | MappingTool | None = None,
+    versions: dict[str, str] | None = None,
 ) -> Iterable[SemanticMapping]:
     """Iterate over predictions."""
     predicate = resolve_predicate(predicate)
@@ -197,27 +212,34 @@ def _predict_lexical_mappings_all_by_all(
         raise NotImplementedError(f"all-by-all requires grounding method, {method} not allowed")
     if not isinstance(grounder, ssslm.GildaGrounder):
         raise NotImplementedError(f"all-by-all requires gilda grounder. got: {type(grounder)}")
-    yield from _all_by_all_gilda(grounder._grounder, predicate, mapping_tool)
+    yield from _all_by_all_gilda(grounder._grounder, predicate, mapping_tool, versions=versions)
 
 
 def _all_by_all_gilda(
-    grounder: gilda.Grounder, predicate: curies.Reference, mapping_tool: MappingTool | None = None
+    grounder: gilda.Grounder,
+    predicate: curies.Reference,
+    mapping_tool: MappingTool | None = None,
+    versions: dict[str, str] | None = None,
+    mapping_date: datetime.date | None = None,
 ) -> Iterable[SemanticMapping]:
-    from ..constants import CC0_URL
-
-    today = datetime.date.today()
+    if versions is None:
+        versions = {}
+    if mapping_date is None:
+        mapping_date = datetime.date.today()
     for values in grounder.entries.values():
         for s, o in itt.combinations(values, 2):
             if s.db == o.db:
                 continue
             yield SemanticMapping(
                 subject=NormalizedNamedReference(prefix=s.db, identifier=s.id, name=s.entry_name),
+                subject_source_version=versions.get(s.db),
                 predicate=NormalizedNamableReference.from_reference(predicate),
                 object=NormalizedNamedReference(prefix=o.db, identifier=o.id, name=o.entry_name),
+                object_source_version=versions.get(o.db),
                 justification=lexical_matching_process,
                 confidence=_gilda_get_score(s, o),
                 mapping_tool=mapping_tool,
-                mapping_date=today,
+                mapping_date=mapping_date,
                 license=CC0_URL,
             )
 
@@ -240,6 +262,8 @@ def predict_lexical_mappings(
     strict: bool = False,
     method: RecognitionMethod | None = None,
     mapping_tool: str | MappingTool | None = None,
+    versions: dict[str, str] | None = None,
+    mapping_date: datetime.date | None = None,
 ) -> Iterable[SemanticMapping]:
     """Iterate over prediction tuples for a given prefix."""
     import pyobo
@@ -253,23 +277,31 @@ def predict_lexical_mappings(
         id_name_mapping.items(), desc=f"[{prefix}] lexical tuples", unit_scale=True, unit="name"
     )
 
+    if versions is None:
+        versions = {}
+    if mapping_date is None:
+        mapping_date = datetime.date.today()
+
     predicate = resolve_predicate(predicate)
     get_matches = _get_get_matches(method, grounder)
     mapping_tool = resolve_mapping_tool(mapping_tool)
 
+    logging.getLogger("gilda").setLevel(logging.WARNING)
+
     name_prediction_count = 0
-    today = datetime.date.today()
     for identifier, name in it:
         for scored_match in get_matches(name):
             name_prediction_count += 1
             yield SemanticMapping(
                 subject=NormalizedNamedReference(prefix=prefix, identifier=identifier, name=name),
+                subject_source_version=versions.get(prefix),
                 predicate=NormalizedNamableReference.from_reference(predicate),
                 object=scored_match.reference,
+                object_source_version=versions.get(scored_match.reference.prefix),
                 justification=lexical_matching_process,
                 confidence=round(scored_match.score, 3),
                 mapping_tool=mapping_tool,
-                mapping_date=today,
+                mapping_date=mapping_date,
             )
 
     tqdm.write(
@@ -290,12 +322,14 @@ def predict_lexical_mappings(
                     subject=NormalizedNamedReference(
                         prefix=prefix, identifier=identifier, name=identifier
                     ),
+                    subject_source_version=versions.get(prefix),
                     predicate=NormalizedNamableReference.from_reference(predicate),
                     object=scored_match.reference,
+                    object_source_version=versions.get(scored_match.reference.prefix),
                     justification=lexical_matching_process,
                     confidence=round(scored_match.score, 3),
                     mapping_tool=mapping_tool,
-                    mapping_date=today,
+                    mapping_date=mapping_date,
                     license=CC0_URL,
                 )
         tqdm.write(
