@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Collection, Iterable
-from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TypeAlias
 
@@ -52,21 +51,11 @@ def ensure_converter(
         ) from e
 
     if preferred:
-        return _get_preferred()
+        return bioregistry.get_preferred_converter()
     else:
         # TODO should this also return a converter with
         #  the RDF URI prefix prioritized?
         return bioregistry.get_default_converter()
-
-
-@lru_cache(1)
-def _get_preferred() -> curies.Converter:
-    import bioregistry
-
-    return bioregistry.get_converter(
-        uri_prefix_priority=["rdf", "default"],
-        prefix_priority=["preferred", "default"],
-    )
 
 
 PREDICTIONS_NAME = "predictions.sssom.tsv"
