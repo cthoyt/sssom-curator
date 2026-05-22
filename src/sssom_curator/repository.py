@@ -565,10 +565,10 @@ def get_lint_command(converter: curies.Converter | None = None) -> click.Command
 
         exclude_mappings = []
         for path in obj.curated_paths:
-            sssom_pydantic.lint(path, converter=converter)
+            sssom_pydantic.format(path, converter=converter)
             exclude_mappings.extend(sssom_pydantic.read(path)[0])
 
-        sssom_pydantic.lint(
+        sssom_pydantic.format(
             obj.predictions_path,
             exclude_mappings=exclude_mappings,
             drop_duplicates=True,
