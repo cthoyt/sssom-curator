@@ -550,8 +550,9 @@ def get_lint_command(converter: curies.Converter | None = None) -> click.Command
 
     @click.command()
     @strategy_option
+    @click.option("--relabel", is_flag=True)
     @click.pass_obj
-    def lint(obj: Repository, strategy: ConverterStrategy) -> None:
+    def lint(obj: Repository, strategy: ConverterStrategy, relabel: bool) -> None:
         """Sort files and remove duplicates."""
         import sssom_pydantic
 
@@ -572,6 +573,7 @@ def get_lint_command(converter: curies.Converter | None = None) -> click.Command
             obj.predictions_path,
             exclude_mappings=exclude_mappings,
             drop_duplicates=True,
+            relabel=relabel,
         )
 
     return lint
