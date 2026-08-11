@@ -813,7 +813,7 @@ PIN_VERSION_OPTION = click.option(
 def get_predict_command(
     *,
     source_prefix: str | None = None,
-    target_prefix: str | None | list[str] = None,
+    target_prefix: str | list[str] | None = None,
 ) -> click.Group:
     """Create a prediction command."""
     from more_click import verbose_option

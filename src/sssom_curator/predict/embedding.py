@@ -28,7 +28,7 @@ def predict_embedding_mappings(
     target_prefixes: str | Iterable[str],
     mapping_tool: str | MappingTool,
     *,
-    relation: str | None | curies.NamableReference = None,
+    relation: str | curies.NamableReference | None = None,
     cutoff: float | None = None,
     batch_size: int | None = None,
     progress: bool = True,
