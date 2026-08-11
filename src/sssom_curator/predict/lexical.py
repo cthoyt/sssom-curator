@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, TypeAlias, cast
 
 import click
+from tqdm.contrib.logging import logging_redirect_tqdm
+
 import curies
 import ssslm
 import sssom_pydantic
@@ -105,14 +107,16 @@ def get_predictions(
         import pyobo
 
         if all_by_all:
-            grounder = pyobo.get_grounder(
-                [prefix, *targets],
-                raise_on_missing=False,
-                force=force,
-                force_process=force_process,
-                cache=cache,
-                versions=versions,
-            )
+            with logging_redirect_tqdm():
+                grounder = pyobo.get_grounder(
+                    [prefix, *targets],
+                    raise_on_missing=False,
+                    force=force,
+                    force_process=force_process,
+                    cache=cache,
+                    versions=versions,
+                    use_tqdm=progress,
+                )
             predictions = _predict_lexical_mappings_all_by_all(
                 grounder,
                 predicate=relation,
