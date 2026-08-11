@@ -297,8 +297,13 @@ def predict_lexical_mappings(
     for identifier, name in it:
         for scored_match in get_matches(name):
             name_prediction_count += 1
+            try:
+                subject = NormalizedNamedReference(prefix=prefix, identifier=identifier, name=name)
+            except ValueError:
+                tqdm.write(f"broken identifier {prefix}:{identifier}")
+                continue
             yield SemanticMapping(
-                subject=NormalizedNamedReference(prefix=prefix, identifier=identifier, name=name),
+                subject=subject,
                 subject_source_version=versions.get(prefix),
                 predicate=NormalizedNamableReference.from_reference(predicate),
                 object=scored_match.reference,
@@ -430,12 +435,12 @@ def _get_mutual_mapping_filter(prefix: str, targets: str | Iterable[str]) -> Nes
     for node in graph:
         if node.prefix != prefix:
             continue
-        for xref_prefix, xref_identifier in nx.single_source_shortest_path(graph, node):
-            rv[xref_prefix][node.identifier] = xref_identifier
+        for xref in nx.single_source_shortest_path(graph, node):
+            rv[xref.prefix][node.identifier] = xref.identifier
     return {prefix: dict(rv)}
 
 
-def _mutual_mapping_graph(prefixes: Iterable[str]) -> nx.Graph:
+def _mutual_mapping_graph(prefixes: Iterable[str]) -> nx.Graph[curies.Reference]:
     """Get the undirected mapping graph between the given prefixes.
 
     :param prefixes: A list of prefixes to use with :func:`pyobo.get_filtered_xrefs` to
@@ -452,7 +457,7 @@ def _mutual_mapping_graph(prefixes: Iterable[str]) -> nx.Graph:
     for prefix in sorted(prefixes):
         try:
             mappings = pyobo.get_semantic_mappings(prefix)
-        except pyobo.getters.NoBuildError:
+        except Exception:
             continue
         for mapping in mappings:
             if mapping.object.prefix not in prefixes:
