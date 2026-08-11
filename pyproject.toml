@@ -57,10 +57,10 @@ dependencies = [
     "click",
     "pyyaml",
     "tqdm",
-    "curies>=0.13.11",
-    "pystow>=0.8.12",
-    "bioregistry>=0.13.56",
-    "sssom-pydantic>=0.5.11",
+    "curies>=0.15.0",
+    "pystow>=0.9.0",
+    "bioregistry>=0.14.0",
+    "sssom-pydantic>=0.6.0",
     "typing-extensions",
     "jinja2",
 ]
@@ -132,7 +132,7 @@ web = [
     "a2wsgi",
 ]
 predict-lexical = [
-    "pyobo[gilda-slim]>=0.12.22",
+    "pyobo[gilda-slim]>=0.13.3",
     "humanize",
 ]
 exports = [
@@ -146,7 +146,7 @@ exports = [
     "networkx", # for graph-based queries
 ]
 predict-embeddings = [
-    "pyobo>=0.12.22",
+    "pyobo>=0.13.3",
     "sentence-transformers",
     "torch",
     "pandas",
