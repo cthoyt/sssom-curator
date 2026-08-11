@@ -608,8 +608,9 @@ def lexical_prediction_cli(
 
     @click.command(help=f"Generate mappings from {prefix} to {tt}")
     @click.option("--force", is_flag=True)
+    @click.option("--force-process", is_flag=True)
     @verbose_option
-    def main(force: bool) -> None:
+    def main(force: bool, force_process: bool) -> None:
         """Generate mappings."""
         append_lexical_predictions(
             prefix,
@@ -624,6 +625,7 @@ def lexical_prediction_cli(
             custom_filter_function=custom_filter_function,
             mapping_tool=mapping_tool,
             force=force,
+            force_process=force_process,
         )
 
     main()
