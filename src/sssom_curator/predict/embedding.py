@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 import curies
 import pystow
+from curies import ReferenceTuple
 from curies.vocabulary import exact_match, lexical_matching_process
 from sssom_pydantic import MappingTool, SemanticMapping
 from tqdm.asyncio import tqdm
@@ -166,5 +167,7 @@ def _r(prefix: str, identifier: str) -> NormalizedNamableReference:
     import pyobo
 
     return bioregistry.NormalizedNamableReference(
-        prefix=prefix, identifier=identifier, name=pyobo.get_name(prefix, identifier)
+        prefix=prefix,
+        identifier=identifier,
+        name=pyobo.get_name(ReferenceTuple(prefix, identifier)),
     )
