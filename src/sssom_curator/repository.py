@@ -13,6 +13,7 @@ import curies
 import sssom_pydantic
 from pydantic import BaseModel, Field
 from sssom_pydantic.process import Call
+from typing_extensions import Unpack
 
 from .constants import (
     DEFAULT_RESOLVER_BASE,
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
     from curies import Converter
     from sssom_pydantic import MappingTool, SemanticMapping, SemanticMappingPredicate
 
+    from .predict.lexical import LexicalPredictionCLIKwargs
     from .testing import IntegrityTestCase
 
 __all__ = [
@@ -368,9 +370,7 @@ class Repository(BaseModel):
         prefix: str,
         target: str | list[str],
         /,
-        *,
-        mapping_tool: str | MappingTool | None = None,
-        **kwargs: Any,
+        **kwargs: Unpack[LexicalPredictionCLIKwargs],
     ) -> None:
         """Run the lexical predictions CLI."""
         from .predict import lexical
@@ -378,7 +378,6 @@ class Repository(BaseModel):
         return lexical.lexical_prediction_cli(
             prefix,
             target,
-            mapping_tool=mapping_tool,
             path=self.predictions_path,
             curated_paths=self.curated_paths,
             **kwargs,

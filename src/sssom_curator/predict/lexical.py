@@ -10,11 +10,9 @@ import typing
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, TypeAlias, cast
+from typing import TYPE_CHECKING, NotRequired, TypeAlias, cast
 
 import click
-from tqdm.contrib.logging import logging_redirect_tqdm
-
 import curies
 import ssslm
 import sssom_pydantic
@@ -23,6 +21,8 @@ from curies.vocabulary import lexical_matching_process
 from more_click import verbose_option
 from sssom_pydantic import MappingTool, SemanticMapping
 from tqdm.auto import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
+from typing_extensions import TypedDict
 
 from .embedding import predict_embedding_mappings
 from .utils import resolve_mapping_tool, resolve_predicate
@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     import networkx as nx
 
 __all__ = [
+    "LexicalPredictionCLIKwargs",
     "append_lexical_predictions",
     "append_predictions",
     "filter_custom",
@@ -589,12 +590,25 @@ def append_lexical_predictions(
     append_predictions(predictions, path=path, curated_paths=curated_paths, converter=converter)
 
 
+class LexicalPredictionCLIKwargs(TypedDict):
+    """Arguments for lexical prediction CLI."""
+
+    filter_mutual_mappings: NotRequired[bool]
+    identifiers_are_names: NotRequired[bool]
+    predicate: NotRequired[str | curies.NamableReference | None]
+    method: NotRequired[PredictionMethod | None]
+    cutoff: NotRequired[float | None]
+    custom_filter_function: NotRequired[Callable[[SemanticMapping], bool] | None]
+    mapping_tool: NotRequired[str | MappingTool | None]
+
+
 def lexical_prediction_cli(
     prefix: str,
     target: str | list[str],
     *,
     path: Path,
     curated_paths: list[Path] | None = None,
+    # the remaining are kwargs
     filter_mutual_mappings: bool = False,
     identifiers_are_names: bool = False,
     predicate: str | curies.NamableReference | None = None,
