@@ -402,7 +402,7 @@ def _get_entity_to_mapped_prefixes(prefixes: Iterable[str]) -> dict[curies.Refer
     for prefix in prefixes:
         try:
             mappings = pyobo.get_semantic_mappings(prefix)
-        except pyobo.getters.NoBuildError:
+        except Exception:
             continue
         for mapping in mappings:
             entity_to_mapped_prefixes[mapping.subject].add(mapping.object.prefix)
