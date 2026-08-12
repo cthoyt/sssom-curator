@@ -60,7 +60,7 @@ dependencies = [
     "curies>=0.15.0",
     "pystow>=0.9.0",
     "bioregistry>=0.14.0",
-    "sssom-pydantic>=0.6.0",
+    "sssom-pydantic>=0.6.1",
     "typing-extensions",
     "jinja2",
 ]
