@@ -13,6 +13,7 @@ import curies
 import sssom_pydantic
 from pydantic import BaseModel, Field
 from sssom_pydantic.process import Call
+from typing_extensions import Unpack
 
 from .constants import (
     DEFAULT_RESOLVER_BASE,
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
     from curies import Converter
     from sssom_pydantic import MappingTool, SemanticMapping, SemanticMappingPredicate
 
+    from .predict.lexical import LexicalPredictionCLIKwargs
     from .testing import IntegrityTestCase
 
 __all__ = [
@@ -368,9 +370,7 @@ class Repository(BaseModel):
         prefix: str,
         target: str | list[str],
         /,
-        *,
-        mapping_tool: str | MappingTool | None = None,
-        **kwargs: Any,
+        **kwargs: Unpack[LexicalPredictionCLIKwargs],
     ) -> None:
         """Run the lexical predictions CLI."""
         from .predict import lexical
@@ -378,7 +378,6 @@ class Repository(BaseModel):
         return lexical.lexical_prediction_cli(
             prefix,
             target,
-            mapping_tool=mapping_tool,
             path=self.predictions_path,
             curated_paths=self.curated_paths,
             **kwargs,
@@ -550,8 +549,9 @@ def get_lint_command(converter: curies.Converter | None = None) -> click.Command
 
     @click.command()
     @strategy_option
+    @click.option("--relabel", is_flag=True)
     @click.pass_obj
-    def lint(obj: Repository, strategy: ConverterStrategy) -> None:
+    def lint(obj: Repository, strategy: ConverterStrategy, relabel: bool) -> None:
         """Sort files and remove duplicates."""
         import sssom_pydantic
 
@@ -572,6 +572,7 @@ def get_lint_command(converter: curies.Converter | None = None) -> click.Command
             obj.predictions_path,
             exclude_mappings=exclude_mappings,
             drop_duplicates=True,
+            relabel=relabel,
         )
 
     return lint
@@ -811,7 +812,7 @@ PIN_VERSION_OPTION = click.option(
 def get_predict_command(
     *,
     source_prefix: str | None = None,
-    target_prefix: str | None | list[str] = None,
+    target_prefix: str | list[str] | None = None,
 ) -> click.Group:
     """Create a prediction command."""
     from more_click import verbose_option

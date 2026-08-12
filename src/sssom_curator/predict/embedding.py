@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 import curies
 import pystow
+from curies import ReferenceTuple
 from curies.vocabulary import exact_match, lexical_matching_process
 from sssom_pydantic import MappingTool, SemanticMapping
 from tqdm.asyncio import tqdm
@@ -28,7 +29,7 @@ def predict_embedding_mappings(
     target_prefixes: str | Iterable[str],
     mapping_tool: str | MappingTool,
     *,
-    relation: str | None | curies.NamableReference = None,
+    relation: str | curies.NamableReference | None = None,
     cutoff: float | None = None,
     batch_size: int | None = None,
     progress: bool = True,
@@ -166,5 +167,7 @@ def _r(prefix: str, identifier: str) -> NormalizedNamableReference:
     import pyobo
 
     return bioregistry.NormalizedNamableReference(
-        prefix=prefix, identifier=identifier, name=pyobo.get_name(prefix, identifier)
+        prefix=prefix,
+        identifier=identifier,
+        name=pyobo.get_name(ReferenceTuple(prefix, identifier)),
     )

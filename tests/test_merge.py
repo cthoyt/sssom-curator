@@ -92,9 +92,9 @@ class TestMerge(cases.RepositoryTestCase):
                 #  semapv: https://w3id.org/semapv/vocab/
                 #  skos: http://www.w3.org/2004/02/skos/core#
                 #  wikidata: http://www.wikidata.org/entity/
-                #license: https://creativecommons.org/publicdomain/zero/1.0/
                 #mapping_set_id: {self.mapping_set_id}
                 #mapping_set_title: {self.directory.name}
+                #license: https://creativecommons.org/publicdomain/zero/1.0/
                 subject_id\tsubject_label\tpredicate_id\tpredicate_modifier\tobject_id\tobject_label\tmapping_justification\tauthor_id\treviewer_id\tmapping_tool\tmapping_tool_id\tmapping_tool_version\tmapping_date\treview_date\tconfidence\treviewer_agreement
                 CHEBI:10057\t9H-xanthene\tskos:exactMatch\tNot\tmesh:C002563\txanthan gum\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t\t\t\t\t2026-05-08\t\t1.0\t
                 CHEBI:101096\tethoxzolamide\tskos:exactMatch\t\tmesh:C523270\t6-ethoxybenzothiazole-2-sulfonamide\tsemapv:LexicalMatching\t\t\tsssom-curator\twikidata:Q138902949\t0.4.2\t\t\t0.77\t
@@ -152,9 +152,9 @@ class TestMerge(cases.RepositoryTestCase):
                 #  semapv: https://w3id.org/semapv/vocab/
                 #  skos: http://www.w3.org/2004/02/skos/core#
                 #  wikidata: http://www.wikidata.org/entity/
-                #license: https://creativecommons.org/publicdomain/zero/1.0/
                 #mapping_set_id: {self.mapping_set_id}
                 #mapping_set_title: {self.directory.name}
+                #license: https://creativecommons.org/publicdomain/zero/1.0/
                 subject_id\tsubject_label\tpredicate_id\tpredicate_modifier\tobject_id\tobject_label\tmapping_justification\tauthor_id\treviewer_id\tmapping_tool\tmapping_tool_id\tmapping_tool_version\tmapping_date\treview_date\tconfidence\treviewer_agreement
                 CHEBI:10001\tVisnadin\tskos:exactMatch\t\tmesh:C067604\tvisnadin\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t\t\t\t\t\t\t\t
                 CHEBI:10057\t9H-xanthene\tskos:exactMatch\tNot\tmesh:C002563\txanthan gum\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t\t\t\t\t2026-05-08\t\t1.0\t

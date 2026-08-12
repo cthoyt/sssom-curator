@@ -57,10 +57,10 @@ dependencies = [
     "click",
     "pyyaml",
     "tqdm",
-    "curies>=0.13.11",
-    "pystow>=0.8.12",
-    "bioregistry>=0.13.56",
-    "sssom-pydantic>=0.5.8",
+    "curies>=0.15.0",
+    "pystow>=0.9.0",
+    "bioregistry>=0.14.0",
+    "sssom-pydantic>=0.6.1",
     "typing-extensions",
     "jinja2",
 ]
@@ -72,7 +72,7 @@ tests = [
     "coverage[toml]",
 ]
 docs = [
-    "sphinx>=8,<9",
+    "sphinx>=8",
     "sphinx-rtd-theme>=3.0",
     "sphinx-click",
     "sphinx-automodapi",
@@ -132,7 +132,7 @@ web = [
     "a2wsgi",
 ]
 predict-lexical = [
-    "pyobo[gilda-slim]>=0.12.22",
+    "pyobo[gilda-slim]>=0.13.3",
     "humanize",
 ]
 exports = [
@@ -146,7 +146,7 @@ exports = [
     "networkx", # for graph-based queries
 ]
 predict-embeddings = [
-    "pyobo>=0.12.22",
+    "pyobo>=0.13.3",
     "sentence-transformers",
     "torch",
     "pandas",
@@ -250,6 +250,7 @@ extend-select = [
 ignore = [
     "D105", # Missing docstring in magic method
     "E203", # Black conflicts with the following
+    "DTZ011",
 ]
 
 # See https://docs.astral.sh/ruff/settings/#per-file-ignores

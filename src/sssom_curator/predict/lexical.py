@@ -10,7 +10,7 @@ import typing
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, TypeAlias, cast
+from typing import TYPE_CHECKING, NotRequired, TypeAlias, cast
 
 import click
 import curies
@@ -21,6 +21,8 @@ from curies.vocabulary import lexical_matching_process
 from more_click import verbose_option
 from sssom_pydantic import MappingTool, SemanticMapping
 from tqdm.auto import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
+from typing_extensions import TypedDict
 
 from .embedding import predict_embedding_mappings
 from .utils import resolve_mapping_tool, resolve_predicate
@@ -32,6 +34,7 @@ if TYPE_CHECKING:
     import networkx as nx
 
 __all__ = [
+    "LexicalPredictionCLIKwargs",
     "append_lexical_predictions",
     "append_predictions",
     "filter_custom",
@@ -55,7 +58,7 @@ def get_predictions(
     prefix: str,
     target_prefixes: str | Iterable[str],
     *,
-    relation: str | None | curies.NamableReference = None,
+    relation: str | curies.NamableReference | None = None,
     identifiers_are_names: bool = False,
     method: PredictionMethod | None = None,
     cutoff: float | None = None,
@@ -105,14 +108,16 @@ def get_predictions(
         import pyobo
 
         if all_by_all:
-            grounder = pyobo.get_grounder(
-                [prefix, *targets],
-                raise_on_missing=False,
-                force=force,
-                force_process=force_process,
-                cache=cache,
-                versions=versions,
-            )
+            with logging_redirect_tqdm():
+                grounder = pyobo.get_grounder(
+                    [prefix, *targets],
+                    raise_on_missing=False,
+                    force=force,
+                    force_process=force_process,
+                    cache=cache,
+                    versions=versions,
+                    use_tqdm=progress,
+                )
             predictions = _predict_lexical_mappings_all_by_all(
                 grounder,
                 predicate=relation,
@@ -292,8 +297,13 @@ def predict_lexical_mappings(
     for identifier, name in it:
         for scored_match in get_matches(name):
             name_prediction_count += 1
+            try:
+                subject = NormalizedNamedReference(prefix=prefix, identifier=identifier, name=name)
+            except ValueError:
+                tqdm.write(f"broken identifier {prefix}:{identifier}")
+                continue
             yield SemanticMapping(
-                subject=NormalizedNamedReference(prefix=prefix, identifier=identifier, name=name),
+                subject=subject,
                 subject_source_version=versions.get(prefix),
                 predicate=NormalizedNamableReference.from_reference(predicate),
                 object=scored_match.reference,
@@ -392,7 +402,8 @@ def _get_entity_to_mapped_prefixes(prefixes: Iterable[str]) -> dict[curies.Refer
     for prefix in prefixes:
         try:
             mappings = pyobo.get_semantic_mappings(prefix)
-        except pyobo.getters.NoBuildError:
+        except Exception:  # noqa:BLE001
+            logger.warning("[%s] failed to get semantic mappings", prefix)
             continue
         for mapping in mappings:
             entity_to_mapped_prefixes[mapping.subject].add(mapping.object.prefix)
@@ -425,12 +436,12 @@ def _get_mutual_mapping_filter(prefix: str, targets: str | Iterable[str]) -> Nes
     for node in graph:
         if node.prefix != prefix:
             continue
-        for xref_prefix, xref_identifier in nx.single_source_shortest_path(graph, node):
-            rv[xref_prefix][node.identifier] = xref_identifier
+        for xref in nx.single_source_shortest_path(graph, node):
+            rv[xref.prefix][node.identifier] = xref.identifier
     return {prefix: dict(rv)}
 
 
-def _mutual_mapping_graph(prefixes: Iterable[str]) -> nx.Graph:
+def _mutual_mapping_graph(prefixes: Iterable[str]) -> nx.Graph[curies.Reference]:
     """Get the undirected mapping graph between the given prefixes.
 
     :param prefixes: A list of prefixes to use with :func:`pyobo.get_filtered_xrefs` to
@@ -447,7 +458,8 @@ def _mutual_mapping_graph(prefixes: Iterable[str]) -> nx.Graph:
     for prefix in sorted(prefixes):
         try:
             mappings = pyobo.get_semantic_mappings(prefix)
-        except pyobo.getters.NoBuildError:
+        except Exception:  # noqa:BLE001
+            logger.warning("[%s] failed to get semantic mappings", prefix)
             continue
         for mapping in mappings:
             if mapping.object.prefix not in prefixes:
@@ -525,7 +537,7 @@ def append_lexical_predictions(
     prefix: str,
     target_prefixes: str | Iterable[str],
     *,
-    relation: str | None | curies.NamableReference = None,
+    relation: str | curies.NamableReference | None = None,
     identifiers_are_names: bool = False,
     path: Path,
     method: PredictionMethod | None = None,
@@ -585,15 +597,28 @@ def append_lexical_predictions(
     append_predictions(predictions, path=path, curated_paths=curated_paths, converter=converter)
 
 
+class LexicalPredictionCLIKwargs(TypedDict):
+    """Arguments for lexical prediction CLI."""
+
+    filter_mutual_mappings: NotRequired[bool]
+    identifiers_are_names: NotRequired[bool]
+    predicate: NotRequired[str | curies.NamableReference | None]
+    method: NotRequired[PredictionMethod | None]
+    cutoff: NotRequired[float | None]
+    custom_filter_function: NotRequired[Callable[[SemanticMapping], bool] | None]
+    mapping_tool: NotRequired[str | MappingTool | None]
+
+
 def lexical_prediction_cli(
     prefix: str,
     target: str | list[str],
     *,
     path: Path,
     curated_paths: list[Path] | None = None,
+    # the remaining are kwargs
     filter_mutual_mappings: bool = False,
     identifiers_are_names: bool = False,
-    predicate: str | None | curies.NamableReference = None,
+    predicate: str | curies.NamableReference | None = None,
     method: PredictionMethod | None = None,
     cutoff: float | None = None,
     custom_filter_function: Callable[[SemanticMapping], bool] | None = None,
@@ -604,8 +629,9 @@ def lexical_prediction_cli(
 
     @click.command(help=f"Generate mappings from {prefix} to {tt}")
     @click.option("--force", is_flag=True)
+    @click.option("--force-process", is_flag=True)
     @verbose_option
-    def main(force: bool) -> None:
+    def main(force: bool, force_process: bool) -> None:
         """Generate mappings."""
         append_lexical_predictions(
             prefix,
@@ -620,6 +646,7 @@ def lexical_prediction_cli(
             custom_filter_function=custom_filter_function,
             mapping_tool=mapping_tool,
             force=force,
+            force_process=force_process,
         )
 
     main()

@@ -141,8 +141,8 @@ class TestInitializeFolder(unittest.TestCase):
                 #  orcid: https://orcid.org/
                 #  semapv: https://w3id.org/semapv/vocab/
                 #  skos: http://www.w3.org/2004/02/skos/core#
-                #mapping_date: '2026-05-08'
                 #mapping_set_id: https://example.org/ms/components/{POSITIVES_NAME}
+                #mapping_date: '2026-05-08'
                 subject_id\tsubject_label\tpredicate_id\tobject_id\tobject_label\tmapping_justification\tauthor_id\tconfidence
                 CHEBI:11986\t4-fluoro-L-threonine\tskos:exactMatch\tmesh:C048271\t4-fluorothreonine\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t1.0
             """).rstrip(),
@@ -159,8 +159,8 @@ class TestInitializeFolder(unittest.TestCase):
                 #  orcid: https://orcid.org/
                 #  semapv: https://w3id.org/semapv/vocab/
                 #  skos: http://www.w3.org/2004/02/skos/core#
-                #mapping_date: '2026-05-08'
                 #mapping_set_id: https://example.org/ms/components/{NEGATIVES_NAME}
+                #mapping_date: '2026-05-08'
                 subject_id\tsubject_label\tpredicate_id\tpredicate_modifier\tobject_id\tobject_label\tmapping_justification\tauthor_id\tconfidence
                 CHEBI:10057\t9H-xanthene\tskos:exactMatch\tNot\tmesh:C002563\txanthan gum\tsemapv:ManualMappingCuration\torcid:0000-0003-4423-4370\t1.0
             """).rstrip(),  # noqa:E501

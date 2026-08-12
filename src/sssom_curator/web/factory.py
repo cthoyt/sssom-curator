@@ -103,7 +103,7 @@ def get_app(  # noqa:C901
         app.register_blueprint(orcid_blueprint, url_prefix="/login")
 
         @app.before_request
-        def require_login() -> None | werkzeug.Response:
+        def require_login() -> werkzeug.Response | None:
             """Intercept requests to require login."""
             # Allow the login routes themselves
             if request.endpoint and request.endpoint.startswith(f"{orcid_blueprint.name}."):
