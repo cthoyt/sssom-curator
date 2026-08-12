@@ -402,7 +402,8 @@ def _get_entity_to_mapped_prefixes(prefixes: Iterable[str]) -> dict[curies.Refer
     for prefix in prefixes:
         try:
             mappings = pyobo.get_semantic_mappings(prefix)
-        except Exception:
+        except Exception:  # noqa:BLE001
+            logger.warning("[%s] failed to get semantic mappings", prefix)
             continue
         for mapping in mappings:
             entity_to_mapped_prefixes[mapping.subject].add(mapping.object.prefix)
@@ -457,7 +458,8 @@ def _mutual_mapping_graph(prefixes: Iterable[str]) -> nx.Graph[curies.Reference]
     for prefix in sorted(prefixes):
         try:
             mappings = pyobo.get_semantic_mappings(prefix)
-        except Exception:
+        except Exception:  # noqa:BLE001
+            logger.warning("[%s] failed to get semantic mappings", prefix)
             continue
         for mapping in mappings:
             if mapping.object.prefix not in prefixes:
