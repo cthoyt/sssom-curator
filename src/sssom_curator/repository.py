@@ -481,16 +481,14 @@ def get_merge_command(sssom_directory: Path | None = None) -> click.Command:
     @click.command(name="merge")
     @click.option(
         "--sssom-directory",
+        "sssom_directory_",
         type=click.Path(dir_okay=True, file_okay=False, exists=True),
         default=sssom_directory,
         required=True,
     )
     @click.pass_obj
-    def main(obj: Repository, sssom_directory: Path) -> None:
+    def main(obj: Repository, sssom_directory_: Path) -> None:
         """Merge files together to a single SSSOM."""
-        if sssom_directory is None:
-            click.secho("--sssom-directory is required, or add ", fg="red")
-            raise sys.exit(1)
         if obj.mapping_set is None:
             click.secho("repository doesn't configure ``mapping_set``", fg="red")
             raise sys.exit(1)
@@ -500,7 +498,7 @@ def get_merge_command(sssom_directory: Path | None = None) -> click.Command:
 
         from .export.merge import merge
 
-        merge(obj, directory=sssom_directory)
+        merge(obj, directory=sssom_directory_)
 
     return main
 
