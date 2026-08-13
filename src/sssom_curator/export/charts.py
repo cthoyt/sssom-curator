@@ -79,7 +79,7 @@ def make_charts(  # noqa:C901
         }
 
         unstable_edges = [
-            (u, v, false_graph[u, v])
+            (u.curie, v.curie)
             for u, v in itt.combinations(component, 2)
             if false_graph.has_edge(u, v)
         ]
@@ -189,7 +189,7 @@ def _graph_from_mappings(
     strata: str,
     include: Collection[Reference] | None = None,
     exclude: Collection[Reference] | None = None,
-) -> networkx.Graph:
+) -> networkx.Graph[Reference]:
     import networkx as nx
 
     graph = nx.Graph()
