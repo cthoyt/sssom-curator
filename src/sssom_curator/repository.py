@@ -375,7 +375,7 @@ class Repository(BaseModel):
         """Run the lexical predictions CLI."""
         from .predict import lexical
 
-        return lexical.lexical_prediction_cli(
+        lexical.lexical_prediction_cli(
             prefix,
             target,
             path=self.predictions_path,
@@ -399,7 +399,7 @@ class Repository(BaseModel):
         from .predict import lexical
 
         # TODO this should reuse repository function for appending
-        return lexical.append_lexical_predictions(
+        lexical.append_lexical_predictions(
             prefix,
             target_prefixes,
             mapping_tool=mapping_tool,
@@ -1015,7 +1015,7 @@ def get_import_command() -> click.Group:
         from sssom_pydantic.contrib.ontoportal import from_ontoportal
 
         client = ontoportal_resolver.make(instance)
-        registry = bioregistry.get_registry(instance)
+        registry = bioregistry.get_registry(instance, strict=False)
         if registry is None:
             click.secho(f"{instance} is not a valid Bioregistry registry", fg="red")
             sys.exit(1)
