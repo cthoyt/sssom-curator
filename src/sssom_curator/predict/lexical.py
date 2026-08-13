@@ -336,6 +336,7 @@ def predict_lexical_mappings(  # noqa:C901
                     mapping_tool=mapping_tool,
                     mapping_date=mapping_date,
                     license=license_url,
+                    # TODO add match text based on literal_mapping.text?
                 )
             else:
                 yield SemanticMapping(
