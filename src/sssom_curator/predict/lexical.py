@@ -71,6 +71,8 @@ def get_predictions(
     cache: bool = True,
     force_process: bool = False,
     all_by_all: bool = False,
+    versions: dict[str, str] | None = None,
+    flip: bool = False,
 ) -> list[SemanticMapping]:
     """Add lexical matching-based predictions to the Biomappings predictions.tsv file.
 
@@ -93,6 +95,10 @@ def get_predictions(
     :param cache: Should the results of processing the resources be cached?
     :param all_by_all: Enable all-by-all prediction mode, which doesn't just check
         between the given prefix and target_prefixes (1-n) but does all against all
+    :param versions: Explicitly pass versions for resources
+    :param flip: Should the subject and object be flipped on the mapping before output?
+        Use this in the situation where you have a 1-vs.-all mapping generation, but
+        want the "all" to be the subjects
 
     :returns: A list of predicted semantic mappings
     """
@@ -102,7 +108,11 @@ def get_predictions(
         targets = list(target_prefixes)
 
     mapping_tool = resolve_mapping_tool(mapping_tool)
-    versions = _get_versions(prefix, *targets)
+
+    if versions is None:
+        versions = _get_versions(prefix, *targets)
+    else:
+        versions.update(_get_versions(*{prefix, *targets}.difference(versions.keys())))
 
     if method is None or method in typing.get_args(RecognitionMethod):
         import pyobo
@@ -135,6 +145,7 @@ def get_predictions(
                 force_process=force_process,
                 cache=cache,
                 versions=versions,
+                use_tqdm=progress,
             )
             predictions = predict_lexical_mappings(
                 prefix,
@@ -144,6 +155,7 @@ def get_predictions(
                 identifiers_are_names=identifiers_are_names,
                 method=cast(RecognitionMethod | None, method),
                 versions=versions,
+                flip=flip,
             )
     elif method == "embedding":
         if all_by_all:
@@ -226,27 +238,34 @@ def _all_by_all_gilda(
     mapping_tool: MappingTool | None = None,
     versions: dict[str, str] | None = None,
     mapping_date: datetime.date | None = None,
+    add_license: bool = False,
 ) -> Iterable[SemanticMapping]:
     if versions is None:
         versions = {}
     if mapping_date is None:
         mapping_date = datetime.date.today()
+    predicate = NormalizedNamableReference.from_reference(predicate)
+    license_url = CC0_URL if add_license else None
     for values in grounder.entries.values():
         for s, o in itt.combinations(values, 2):
             if s.db == o.db:
                 continue
             yield SemanticMapping(
-                subject=NormalizedNamedReference(prefix=s.db, identifier=s.id, name=s.entry_name),
+                subject=_gilda_get_reference(s),
                 subject_source_version=versions.get(s.db),
-                predicate=NormalizedNamableReference.from_reference(predicate),
-                object=NormalizedNamedReference(prefix=o.db, identifier=o.id, name=o.entry_name),
+                predicate=predicate,
+                object=_gilda_get_reference(o),
                 object_source_version=versions.get(o.db),
                 justification=lexical_matching_process,
                 confidence=_gilda_get_score(s, o),
                 mapping_tool=mapping_tool,
                 mapping_date=mapping_date,
-                license=CC0_URL,
+                license=license_url,
             )
+
+
+def _gilda_get_reference(term: gilda.Term) -> NormalizedNamableReference:
+    return NormalizedNamedReference(prefix=term.db, identifier=term.id, name=term.entry_name)
 
 
 def _gilda_get_score(left: gilda.Term, right: gilda.Term) -> float:
@@ -258,7 +277,7 @@ def _gilda_get_score(left: gilda.Term, right: gilda.Term) -> float:
     return round(rv, 3)
 
 
-def predict_lexical_mappings(
+def predict_lexical_mappings(  # noqa:C901
     prefix: str,
     *,
     predicate: str | curies.Reference | None = None,
@@ -269,12 +288,12 @@ def predict_lexical_mappings(
     mapping_tool: str | MappingTool | None = None,
     versions: dict[str, str] | None = None,
     mapping_date: datetime.date | None = None,
+    flip: bool = False,
+    add_license: bool = False,
 ) -> Iterable[SemanticMapping]:
     """Iterate over prediction tuples for a given prefix."""
     import pyobo
     from humanize import naturaldelta
-
-    from ..constants import CC0_URL
 
     start = time.time()
     id_name_mapping = pyobo.get_id_name_mapping(prefix, strict=strict)
@@ -294,6 +313,9 @@ def predict_lexical_mappings(
     logging.getLogger("gilda").setLevel(logging.WARNING)
 
     name_prediction_count = 0
+    subject_source_version = versions.get(prefix)
+    predicate = NormalizedNamableReference.from_reference(predicate)
+    license_url = CC0_URL if add_license else None
     for identifier, name in it:
         for scored_match in get_matches(name):
             name_prediction_count += 1
@@ -302,17 +324,32 @@ def predict_lexical_mappings(
             except ValueError:
                 tqdm.write(f"broken identifier {prefix}:{identifier}")
                 continue
-            yield SemanticMapping(
-                subject=subject,
-                subject_source_version=versions.get(prefix),
-                predicate=NormalizedNamableReference.from_reference(predicate),
-                object=scored_match.reference,
-                object_source_version=versions.get(scored_match.reference.prefix),
-                justification=lexical_matching_process,
-                confidence=round(scored_match.score, 3),
-                mapping_tool=mapping_tool,
-                mapping_date=mapping_date,
-            )
+            if flip:
+                yield SemanticMapping(
+                    object=subject,
+                    object_source_version=subject_source_version,
+                    predicate=predicate,
+                    subject=scored_match.reference,
+                    subject_source_version=versions.get(scored_match.reference.prefix),
+                    justification=lexical_matching_process,
+                    confidence=round(scored_match.score, 3),
+                    mapping_tool=mapping_tool,
+                    mapping_date=mapping_date,
+                    license=license_url,
+                )
+            else:
+                yield SemanticMapping(
+                    subject=subject,
+                    subject_source_version=subject_source_version,
+                    predicate=predicate,
+                    object=scored_match.reference,
+                    object_source_version=versions.get(scored_match.reference.prefix),
+                    justification=lexical_matching_process,
+                    confidence=round(scored_match.score, 3),
+                    mapping_tool=mapping_tool,
+                    mapping_date=mapping_date,
+                    license=license_url,
+                )
 
     tqdm.write(
         f"[{prefix}] generated {name_prediction_count:,} predictions from names "
@@ -320,20 +357,26 @@ def predict_lexical_mappings(
     )
 
     if identifiers_are_names:
+        if flip:
+            raise NotImplementedError
         start = time.time()
         it = tqdm(
             pyobo.get_ids(prefix), desc=f"[{prefix}] lexical tuples", unit_scale=True, unit="id"
         )
         identifier_prediction_count = 0
+        subject_source_version = versions.get(prefix)
+        predicate = NormalizedNamableReference.from_reference(predicate)
+
         for identifier in it:
+            subject = NormalizedNamedReference(
+                prefix=prefix, identifier=identifier, name=identifier
+            )
             for scored_match in get_matches(identifier):
                 name_prediction_count += 1
                 yield SemanticMapping(
-                    subject=NormalizedNamedReference(
-                        prefix=prefix, identifier=identifier, name=identifier
-                    ),
-                    subject_source_version=versions.get(prefix),
-                    predicate=NormalizedNamableReference.from_reference(predicate),
+                    subject=subject,
+                    subject_source_version=subject_source_version,
+                    predicate=predicate,
                     object=scored_match.reference,
                     object_source_version=versions.get(scored_match.reference.prefix),
                     justification=lexical_matching_process,
@@ -432,13 +475,14 @@ def _get_mutual_mapping_filter(prefix: str, targets: str | Iterable[str]) -> Nes
     if isinstance(targets, str):
         targets = [targets]
     graph = _mutual_mapping_graph([prefix, *targets])
-    rv: defaultdict[str, dict[str, str]] = defaultdict(dict)
+    rv: defaultdict[str, defaultdict[str, dict[str, str]]] = defaultdict(lambda: defaultdict(dict))
     for node in graph:
         if node.prefix != prefix:
             continue
         for xref in nx.single_source_shortest_path(graph, node):
-            rv[xref.prefix][node.identifier] = xref.identifier
-    return {prefix: dict(rv)}
+            rv[node.prefix][xref.prefix][node.identifier] = xref.identifier
+            rv[xref.prefix][node.prefix][xref.identifier] = node.identifier
+    return {k: dict(v) for k, v in rv.items()}
 
 
 def _mutual_mapping_graph(prefixes: Iterable[str]) -> nx.Graph[curies.Reference]:
@@ -553,6 +597,8 @@ def append_lexical_predictions(
     cache: bool = True,
     converter: curies.Converter | None = None,
     all_by_all: bool = False,
+    versions: dict[str, str] | None = None,
+    flip: bool = False,
 ) -> None:
     """Add lexical matching-based predictions to the Biomappings predictions.tsv file.
 
@@ -590,6 +636,8 @@ def append_lexical_predictions(
         force_process=force_process,
         cache=cache,
         all_by_all=all_by_all,
+        versions=versions,
+        flip=flip,
     )
 
     # since the function that constructs the predictions already
@@ -623,16 +671,22 @@ def lexical_prediction_cli(
     cutoff: float | None = None,
     custom_filter_function: Callable[[SemanticMapping], bool] | None = None,
     mapping_tool: str | MappingTool | None = None,
+    versions: dict[str, str] | None = None,
+    flip: bool = False,
 ) -> None:
     """Construct a CLI and run it."""
     tt = target if isinstance(target, str) else ", ".join(target)
+    if versions is None:
+        versions = {}
 
     @click.command(help=f"Generate mappings from {prefix} to {tt}")
     @click.option("--force", is_flag=True)
     @click.option("--force-process", is_flag=True)
+    @click.option("--version", "option_versions", nargs=2, multiple=True)
     @verbose_option
-    def main(force: bool, force_process: bool) -> None:
+    def main(force: bool, force_process: bool, option_versions: list[tuple[str, str]]) -> None:
         """Generate mappings."""
+        versions.update(option_versions)
         append_lexical_predictions(
             prefix,
             target,
@@ -647,6 +701,8 @@ def lexical_prediction_cli(
             mapping_tool=mapping_tool,
             force=force,
             force_process=force_process,
+            versions=versions,
+            flip=flip,
         )
 
     main()
