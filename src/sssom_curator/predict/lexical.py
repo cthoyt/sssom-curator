@@ -296,9 +296,9 @@ def predict_lexical_mappings(  # noqa:C901
     from humanize import naturaldelta
 
     start = time.time()
-    id_name_mapping = pyobo.get_id_name_mapping(prefix, strict=strict)
+    literal_mappings = pyobo.get_literal_mappings(prefix, strict=strict)
     it = tqdm(
-        id_name_mapping.items(), desc=f"[{prefix}] lexical tuples", unit_scale=True, unit="name"
+        literal_mappings, desc=f"[{prefix}] lexical matching", unit_scale=True, unit="literal"
     )
 
     if versions is None:
@@ -316,13 +316,13 @@ def predict_lexical_mappings(  # noqa:C901
     subject_source_version = versions.get(prefix)
     predicate = NormalizedNamableReference.from_reference(predicate)
     license_url = CC0_URL if add_license else None
-    for identifier, name in it:
-        for scored_match in get_matches(name):
+    for literal_mapping in it:
+        for scored_match in get_matches(literal_mapping.text):
             name_prediction_count += 1
             try:
-                subject = NormalizedNamedReference(prefix=prefix, identifier=identifier, name=name)
+                subject = NormalizedNamedReference.from_reference(literal_mapping.reference)
             except ValueError:
-                tqdm.write(f"broken identifier {prefix}:{identifier}")
+                tqdm.write(f"broken identifier {literal_mapping.reference.curie}")
                 continue
             if flip:
                 yield SemanticMapping(
@@ -336,6 +336,7 @@ def predict_lexical_mappings(  # noqa:C901
                     mapping_tool=mapping_tool,
                     mapping_date=mapping_date,
                     license=license_url,
+                    # TODO add match text based on literal_mapping.text?
                 )
             else:
                 yield SemanticMapping(
