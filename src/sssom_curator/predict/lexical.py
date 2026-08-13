@@ -296,9 +296,10 @@ def predict_lexical_mappings(  # noqa:C901
     from humanize import naturaldelta
 
     start = time.time()
-    # FIXME we actually need more than just names, also synoynms
     literal_mappings = pyobo.get_literal_mappings(prefix, strict=strict)
-    it = tqdm(literal_mappings, desc=f"[{prefix}] lexical tuples", unit_scale=True, unit="name")
+    it = tqdm(
+        literal_mappings, desc=f"[{prefix}] lexical matching", unit_scale=True, unit="literal"
+    )
 
     if versions is None:
         versions = {}
