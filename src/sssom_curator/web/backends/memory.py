@@ -4,15 +4,17 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Sequence
+from functools import partial
 from typing import TYPE_CHECKING
 
 import curies
 import sssom_pydantic
 from curies import Reference
 from sssom_pydantic import SemanticMapping
-from sssom_pydantic.api import SemanticMappingHash
+from sssom_pydantic.api import SemanticMappingHash, hash_mapping_to_reference
 from sssom_pydantic.process import MARK_TO_CALL, Call, Mark, curate
 from sssom_pydantic.query import Query, count_prefix_pairs, filter_mappings, paginate_mappings
+from tqdm.contrib.concurrent import process_map
 
 from .base import Controller
 from ..utils import State
@@ -44,6 +46,8 @@ class DictController(Controller):
             given, pre-filters will be made before on predictions to only show ones
             where either the source or target appears in this set
         """
+        if mapping_hash is None:
+            mapping_hash = hash_mapping_to_reference
         super().__init__(
             repository=repository,
             semantic_mapping_hash=mapping_hash,
@@ -54,13 +58,17 @@ class DictController(Controller):
         predicted_mappings, _, self._predictions_metadata = sssom_pydantic.read(
             self.repository.predictions_path, progress=True
         )
-        self._predictions = {}
-        for mapping in predicted_mappings:  # this is fast
-            if mapping.record:
-                raise ValueError("SSSOM Curator doesn't yet support custom record_ids")
-            reference = self.mapping_hash(mapping)
-            self._predictions[reference] = mapping.model_copy(update={"record": reference})
-
+        self._predictions = dict(
+            process_map(
+                partial(_prepare_hashes, mapping_hash=mapping_hash, converter=converter),
+                predicted_mappings,
+                leave=False,
+                chunksize=5_000,
+                desc="hashing predictions",
+                unit="prediction",
+                unit_scale=True,
+            )
+        )
         self.curations: defaultdict[Call, list[SemanticMapping]] = defaultdict(list)
 
     def get_prefix_counter(self, state: State | None = None) -> Counter[tuple[str, str]]:
@@ -151,3 +159,12 @@ class DictController(Controller):
                 # TODO is there a way of pre-calculating some things to make this faster?
                 #  e.g., say "no condensation"
             )
+
+
+def _prepare_hashes(
+    m: SemanticMapping, mapping_hash: SemanticMappingHash, converter: curies.Converter
+) -> tuple[Reference, SemanticMapping]:
+    if m.record:
+        raise ValueError("SSSOM Curator doesn't yet support custom record_ids")
+    reference = mapping_hash(m, converter)
+    return reference, m.model_copy(update={"record": reference})
