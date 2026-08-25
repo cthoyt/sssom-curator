@@ -877,6 +877,7 @@ def get_predict_command(
         help="Consider identifiers as names. This is typical for data models/schemas",
     )
     @PIN_VERSION_OPTION
+    @click.option("--flip", is_flag=True)
     @click.pass_obj
     def lexical(
         obj: Repository,
@@ -891,6 +892,7 @@ def get_predict_command(
         force_process: bool,
         all_by_all: bool,
         identifiers_are_names: bool,
+        flip: bool,
     ) -> None:
         """Predict semantic mappings with lexical methods."""
         from .predict.lexical import append_lexical_predictions
@@ -909,6 +911,7 @@ def get_predict_command(
             force_process=force_process,
             all_by_all=all_by_all,
             identifiers_are_names=identifiers_are_names,
+            flip=flip,
         )
 
     return predict
