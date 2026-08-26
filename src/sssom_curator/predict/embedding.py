@@ -103,6 +103,8 @@ def predict_embedding_mappings(
                     object=_r(prefix=target, identifier=target_id),
                     object_source_version=versions.get(target),
                     justification=lexical_similarity_threshold_based_matching_process,
+                    # TODO change from `confidence` to `similarity_score`,
+                    #  see (https://w3id.org/sssom/similarity_score)
                     confidence=similarity,
                     mapping_tool=mapping_tool,
                     mapping_date=today,
