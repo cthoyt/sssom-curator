@@ -17,9 +17,11 @@ import curies
 import ssslm
 import sssom_pydantic
 from bioregistry import NormalizedNamableReference, NormalizedNamedReference
+from curies.triples.filters import keep_object_prefixes
 from curies.vocabulary import lexical_matching_process
 from more_click import verbose_option
 from sssom_pydantic import MappingTool, SemanticMapping
+from sssom_pydantic.contrib.graph import get_undirected_graph
 from tqdm.auto import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 from typing_extensions import TypedDict
@@ -476,28 +478,32 @@ def _get_mutual_mapping_filter(prefix: str, targets: str | Iterable[str]) -> Nes
 def _mutual_mapping_graph(prefixes: Iterable[str]) -> nx.Graph[curies.Reference]:
     """Get the undirected mapping graph between the given prefixes.
 
-    :param prefixes: A list of prefixes to use with :func:`pyobo.get_filtered_xrefs` to
-        get xrefs.
+    :param prefixes: Resources to get semantic mappings from
 
     :returns: The undirected mapping graph containing mappings between entries in the
         given namespaces.
     """
-    import networkx as nx
+    return get_undirected_graph(_mutual_mapping_graph_helper(prefixes))
+
+
+def _mutual_mapping_graph_helper(prefixes: Iterable[str]) -> Iterable[SemanticMapping]:
+    """Get the undirected mapping graph between the given prefixes.
+
+    :param prefixes: A list of prefixes to use with :func:`pyobo.get_semantic_mappings` to
+        get semantic mappings.
+
+    :yields: semantic mappings
+    """
     import pyobo
 
     prefixes = set(prefixes)
-    graph = nx.Graph()
     for prefix in sorted(prefixes):
         try:
             mappings = pyobo.get_semantic_mappings(prefix)
         except Exception:  # noqa:BLE001
             logger.warning("[%s] failed to get semantic mappings", prefix)
-            continue
-        for mapping in mappings:
-            if mapping.object.prefix not in prefixes:
-                continue
-            graph.add_edge(mapping.subject, mapping.object)
-    return graph
+        else:
+            yield from keep_object_prefixes(mappings, prefixes)
 
 
 def _upgrade_set(values: Iterable[str] | None = None) -> set[str]:
