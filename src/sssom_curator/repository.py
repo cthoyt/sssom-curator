@@ -327,6 +327,10 @@ class Repository(BaseModel):
             include_mappings=mappings,
         )
 
+    def declarative_prediction_workflow(self, conf: PredictionConfig) -> None:
+        """Run the declarative prediction workflow."""
+        raise NotImplementedError()
+
     def run_cli(self, *args: Any, **kwargs: Any) -> None:
         """Run the CLI."""
         _cli = self.get_cli()
@@ -930,11 +934,12 @@ def get_refresh_predict_command() -> click.Command:
     @click.command()
     @click.pass_obj
     def refresh_predict(obj: Repository) -> None:
+        """Refresh declared prediction workflows."""
         if obj.prediction_configs is None:
             click.secho("no prediction configurations specified", fg="red")
             sys.exit(0)
         for config in obj.prediction_configs:
-            pass
+            obj.declarative_prediction_workflow(config)
 
     return refresh_predict
 
