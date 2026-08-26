@@ -598,7 +598,6 @@ def append_lexical_predictions(
     :param batch_size: The batch size for embeddings
     :param custom_filter_function: A custom function that decides if semantic mappings
         should be kept, applied after all other logic.
-    :param progress: Should progress be shown?
     :param filter_mutual_mappings: Should mappings between entities in the given
         namespaces be filtered out?
     :param mapping_tool: The name of the mapping tool
