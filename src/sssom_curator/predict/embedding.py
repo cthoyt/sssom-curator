@@ -17,6 +17,7 @@ from tqdm.asyncio import tqdm
 from .utils import resolve_mapping_tool
 
 if TYPE_CHECKING:
+    import numpy as np
     import pandas as pd
     import sentence_transformers
     from bioregistry import NormalizedNamableReference
@@ -62,6 +63,7 @@ def predict_embedding_mappings(
     :return: A list of semantic mapping objects
     """
     import pyobo
+    from pyobo.constants import check_show_progress
 
     from ..constants import CC0_URL
 
@@ -92,8 +94,8 @@ def predict_embedding_mappings(
     today = datetime.date.today()
     for target in tqdm(targets, disable=len(targets) == 1):
         target_df = pyobo.get_text_embeddings_df(target, model=model, **kwargs)
-        for source_id, target_id, similarity in _calculate_similarities(
-            source_df, target_df, batch_size, cutoff, progress=kwargs.get("progress", True)
+        for source_id, target_id, similarity_score in _calculate_similarities(
+            source_df, target_df, batch_size, cutoff, progress=check_show_progress(kwargs)
         ):
             predictions.append(
                 SemanticMapping(
@@ -103,9 +105,7 @@ def predict_embedding_mappings(
                     object=_r(prefix=target, identifier=target_id),
                     object_source_version=versions.get(target),
                     justification=lexical_similarity_threshold_based_matching_process,
-                    # TODO change from `confidence` to `similarity_score`,
-                    #  see (https://w3id.org/sssom/similarity_score)
-                    confidence=similarity,
+                    similarity_score=similarity_score,
                     mapping_tool=mapping_tool,
                     mapping_date=today,
                     license=CC0_URL,
@@ -120,13 +120,15 @@ def _calculate_similarities(
     batch_size: int | None,
     cutoff: float,
     progress: bool = True,
-) -> list[tuple[str, str, float]]:
+) -> Iterable[tuple[str, str, float]]:
     if batch_size is not None:
-        return _calculate_similarities_batched(
+        yield from _calculate_similarities_batched(
             source_df, target_df, batch_size=batch_size, cutoff=cutoff, progress=progress
         )
     else:
-        return _calculate_similarities_unbatched(source_df, target_df, cutoff=cutoff)
+        yield from _calculate_similarities_unbatched(
+            source_df, source_df.to_numpy(), target_df, cutoff=cutoff
+        )
 
 
 def _calculate_similarities_batched(
@@ -136,55 +138,30 @@ def _calculate_similarities_batched(
     batch_size: int,
     cutoff: float,
     progress: bool = True,
-) -> list[tuple[str, str, float]]:
-    import torch
-    from sentence_transformers.util import cos_sim
-
-    similarities = []
+) -> Iterable[tuple[str, str, float]]:
     source_df_numpy = source_df.to_numpy()
     for target_start in tqdm(
         range(0, len(target_df), batch_size), unit="target batch", disable=not progress
     ):
         target_end = target_start + batch_size
-        target_batch_df = target_df.iloc[target_start:target_end]
-        similarity = cos_sim(
-            source_df_numpy,
-            target_batch_df.to_numpy(),
+        target_batched_df = target_df.iloc[target_start:target_end]
+        yield from _calculate_similarities_unbatched(
+            source_df, source_df_numpy, target_batched_df, cutoff=cutoff
         )
-        source_target_pairs = torch.nonzero(similarity >= cutoff, as_tuple=False)
-        for source_idx, target_idx in source_target_pairs:
-            source_id: str = source_df.index[source_idx.item()]
-            target_id: str = target_batch_df.index[target_idx.item()]
-            similarities.append(
-                (
-                    source_id,
-                    target_id,
-                    similarity[source_idx, target_idx].item(),
-                )
-            )
-    return similarities
 
 
 def _calculate_similarities_unbatched(
-    source_df: pd.DataFrame, target_df: pd.DataFrame, *, cutoff: float
-) -> list[tuple[str, str, float]]:
+    source_df: pd.DataFrame, source_df_numpy: np.ndarray, target_df: pd.DataFrame, *, cutoff: float
+) -> Iterable[tuple[str, str, float]]:
     import torch
     from sentence_transformers.util import cos_sim
 
-    similarities = []
-    similarity = cos_sim(source_df.to_numpy(), target_df.to_numpy())
+    similarity = cos_sim(source_df_numpy, target_df.to_numpy())
     source_target_pairs = torch.nonzero(similarity >= cutoff, as_tuple=False)
     for source_idx, target_idx in source_target_pairs:
         source_id: str = source_df.index[source_idx.item()]
         target_id: str = target_df.index[target_idx.item()]
-        similarities.append(
-            (
-                source_id,
-                target_id,
-                similarity[source_idx, target_idx].item(),
-            )
-        )
-    return similarities
+        yield source_id, target_id, similarity[source_idx, target_idx].item()
 
 
 def _r(prefix: str, identifier: str) -> NormalizedNamableReference:
