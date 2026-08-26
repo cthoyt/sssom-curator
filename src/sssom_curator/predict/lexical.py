@@ -10,7 +10,7 @@ import typing
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, NotRequired, TypeAlias, cast
+from typing import TYPE_CHECKING, NotRequired, TypeAlias, Unpack, cast
 
 import click
 import curies
@@ -32,6 +32,8 @@ if TYPE_CHECKING:
     import gilda
     import gilda.scorer
     import networkx as nx
+    from pyobo.constants import GetOntologyKwargs
+
 
 __all__ = [
     "LexicalPredictionCLIKwargs",
@@ -64,15 +66,12 @@ def get_predictions(
     cutoff: float | None = None,
     batch_size: int | None = None,
     custom_filter_function: Callable[[SemanticMapping], bool] | None = None,
-    progress: bool = True,
     filter_mutual_mappings: bool = False,
     mapping_tool: str | MappingTool | None = None,
-    force: bool = False,
-    cache: bool = True,
-    force_process: bool = False,
     all_by_all: bool = False,
     versions: dict[str, str] | None = None,
     flip: bool = False,
+    **kwargs: Unpack[GetOntologyKwargs],
 ) -> list[SemanticMapping]:
     """Add lexical matching-based predictions to the Biomappings predictions.tsv file.
 
@@ -87,18 +86,15 @@ def get_predictions(
     :param batch_size: The batch size for embeddings
     :param custom_filter_function: A custom function that decides if semantic mappings
         should be kept, applied after all other logic.
-    :param progress: Should progress be shown?
     :param filter_mutual_mappings: Should mappings between entities in the given
         namespaces be filtered out?
-    :param force: Should the ontologies be re-downloaded/processed?
-    :param force_process: Should the ontologies be re-processed? Subsumed by ``force``
-    :param cache: Should the results of processing the resources be cached?
     :param all_by_all: Enable all-by-all prediction mode, which doesn't just check
         between the given prefix and target_prefixes (1-n) but does all against all
     :param versions: Explicitly pass versions for resources
     :param flip: Should the subject and object be flipped on the mapping before output?
         Use this in the situation where you have a 1-vs.-all mapping generation, but
         want the "all" to be the subjects
+    :param kwargs: keyword arguments for getting resources
 
     :returns: A list of predicted semantic mappings
     """
@@ -122,11 +118,8 @@ def get_predictions(
                 grounder = pyobo.get_grounder(
                     [prefix, *targets],
                     raise_on_missing=False,
-                    force=force,
-                    force_process=force_process,
-                    cache=cache,
                     versions=versions,
-                    use_tqdm=progress,
+                    **kwargs,
                 )
             predictions = _predict_lexical_mappings_all_by_all(
                 grounder,
@@ -139,13 +132,7 @@ def get_predictions(
             # by default, PyOBO wraps a gilda grounder, but
             # can be configured to use other NER/NEN systems
             grounder = pyobo.get_grounder(
-                targets,
-                raise_on_missing=False,
-                force=force,
-                force_process=force_process,
-                cache=cache,
-                versions=versions,
-                use_tqdm=progress,
+                targets, raise_on_missing=False, versions=versions, **kwargs
             )
             predictions = predict_lexical_mappings(
                 prefix,
@@ -169,8 +156,8 @@ def get_predictions(
             relation=relation,
             cutoff=cutoff,
             batch_size=batch_size,
-            progress=progress,
             versions=versions,
+            **kwargs,
         )
     else:
         raise ValueError(f"invalid lexical prediction method: {method}")
@@ -589,17 +576,14 @@ def append_lexical_predictions(
     cutoff: float | None = None,
     batch_size: int | None = None,
     custom_filter_function: Callable[[SemanticMapping], bool] | None = None,
-    progress: bool = True,
     filter_mutual_mappings: bool = False,
     curated_paths: list[Path] | None = None,
     mapping_tool: str | MappingTool | None = None,
-    force: bool = False,
-    force_process: bool = False,
-    cache: bool = True,
     converter: curies.Converter | None = None,
     all_by_all: bool = False,
     versions: dict[str, str] | None = None,
     flip: bool = False,
+    **kwargs: Unpack[GetOntologyKwargs],
 ) -> None:
     """Add lexical matching-based predictions to the Biomappings predictions.tsv file.
 
@@ -631,14 +615,11 @@ def append_lexical_predictions(
         cutoff=cutoff,
         batch_size=batch_size,
         custom_filter_function=custom_filter_function,
-        progress=progress,
         filter_mutual_mappings=filter_mutual_mappings,
-        force=force,
-        force_process=force_process,
-        cache=cache,
         all_by_all=all_by_all,
         versions=versions,
         flip=flip,
+        **kwargs,
     )
 
     # since the function that constructs the predictions already
