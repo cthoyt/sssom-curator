@@ -10,7 +10,6 @@ import curies
 import pystow
 from curies import ReferenceTuple
 from curies.vocabulary import exact_match, lexical_similarity_threshold_based_matching_process
-from pyobo.constants import GetOntologyKwargs
 from sssom_pydantic import MappingTool, SemanticMapping
 from tqdm import tqdm, trange
 
@@ -21,6 +20,7 @@ if TYPE_CHECKING:
     import pandas as pd
     import sentence_transformers
     from bioregistry import NormalizedNamableReference
+    from pyobo.constants import GetOntologyKwargs
 
 __all__ = [
     "predict_embedding_mappings",

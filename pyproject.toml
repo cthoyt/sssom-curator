@@ -63,7 +63,6 @@ dependencies = [
     "sssom-pydantic>=0.6.3",
     "typing-extensions",
     "jinja2",
-    "pyobo>=0.14.1",
 ]
 
 # see https://peps.python.org/pep-0735/ and https://docs.astral.sh/uv/concepts/dependencies/#dependency-groups
