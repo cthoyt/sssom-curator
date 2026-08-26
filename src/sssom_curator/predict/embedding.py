@@ -12,7 +12,7 @@ from curies import ReferenceTuple
 from curies.vocabulary import exact_match, lexical_similarity_threshold_based_matching_process
 from pyobo.constants import GetOntologyKwargs
 from sssom_pydantic import MappingTool, SemanticMapping
-from tqdm.asyncio import tqdm
+from tqdm import tqdm, trange
 
 from .utils import resolve_mapping_tool
 
@@ -27,10 +27,10 @@ __all__ = [
 ]
 
 #: The default similarity cutoff
-DEFAULT_CUTOFF = 0.65
+DEFAULT_CUTOFF = 0.95
 
 #: The default batch size
-DEFAULT_BATCH_SIZE = 10_000
+DEFAULT_BATCH_SIZE = 1_000
 
 
 def predict_embedding_mappings(
@@ -85,15 +85,16 @@ def predict_embedding_mappings(
         batch_size = DEFAULT_BATCH_SIZE
 
     model = pystow.get_sentence_transformer(model)
-    # TODO what about injecting versions in here?
-    source_df = pyobo.get_text_embeddings_df(prefix, model=model, **kwargs)
+    source_kwargs: GetOntologyKwargs = {**kwargs, "version": versions.get(prefix)}
+    source_df = pyobo.get_text_embeddings_df(prefix, model=model, **source_kwargs)
 
     mapping_tool = resolve_mapping_tool(mapping_tool)
 
     predictions = []
     today = datetime.date.today()
-    for target in tqdm(targets, disable=len(targets) == 1):
-        target_df = pyobo.get_text_embeddings_df(target, model=model, **kwargs)
+    for target_prefix in tqdm(targets, disable=len(targets) == 1):
+        target_kwargs: GetOntologyKwargs = {**kwargs, "version": versions.get(prefix)}
+        target_df = pyobo.get_text_embeddings_df(target_prefix, model=model, **target_kwargs)
         for source_id, target_id, similarity_score in _calculate_similarities(
             source_df, target_df, batch_size, cutoff, progress=check_show_progress(kwargs)
         ):
@@ -102,10 +103,10 @@ def predict_embedding_mappings(
                     subject=_r(prefix=prefix, identifier=source_id),
                     subject_source_version=versions.get(prefix),
                     predicate=relation,
-                    object=_r(prefix=target, identifier=target_id),
-                    object_source_version=versions.get(target),
+                    object=_r(prefix=target_prefix, identifier=target_id),
+                    object_source_version=versions.get(target_prefix),
                     justification=lexical_similarity_threshold_based_matching_process,
-                    similarity_score=similarity_score,
+                    similarity_score=round(similarity_score, 5),
                     mapping_tool=mapping_tool,
                     mapping_date=today,
                     license=CC0_URL,
@@ -140,8 +141,13 @@ def _calculate_similarities_batched(
     progress: bool = True,
 ) -> Iterable[tuple[str, str, float]]:
     source_df_numpy = source_df.to_numpy()
-    for target_start in tqdm(
-        range(0, len(target_df), batch_size), unit="target batch", disable=not progress
+    for target_start in trange(
+        0,
+        len(target_df),
+        batch_size,
+        unit="batch",
+        disable=not progress,
+        desc="Calculating similarities",
     ):
         target_end = target_start + batch_size
         target_batched_df = target_df.iloc[target_start:target_end]
@@ -157,6 +163,7 @@ def _calculate_similarities_unbatched(
     from sentence_transformers.util import cos_sim
 
     similarity = cos_sim(source_df_numpy, target_df.to_numpy())
+    similarity = torch.clip(similarity, 0.0, 1.0)
     source_target_pairs = torch.nonzero(similarity >= cutoff, as_tuple=False)
     for source_idx, target_idx in source_target_pairs:
         source_id: str = source_df.index[source_idx.item()]

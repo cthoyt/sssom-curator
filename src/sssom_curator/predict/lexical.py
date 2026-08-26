@@ -174,6 +174,7 @@ def get_predictions(
         predictions = list(filter(custom_filter_function, predictions))
 
     predictions = sorted(predictions)
+    tqdm.write(f"produced {len(predictions):,} predictions")
     return predictions
 
 

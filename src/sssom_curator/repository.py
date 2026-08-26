@@ -825,10 +825,10 @@ def get_predict_command(
         source_prefix_argument = click.option("--source-prefix", default=source_prefix)
 
     if target_prefix is None:
-        target_prefix_argument = click.argument("target_prefix", nargs=-1)
+        target_prefix_argument = click.argument("target_prefixes", nargs=-1)
     else:
         target_prefix_argument = click.option(
-            "--target-prefix", multiple=True, default=[target_prefix]
+            "--target-prefix", "target_prefixes", multiple=True, default=[target_prefix]
         )
 
     @predict.command()
@@ -846,6 +846,8 @@ def get_predict_command(
         type=float,
         help="The cosine similarity cutoff to use for calling mappings when "
         "using embedding predictions",
+        show_default=True,
+        default=0.95,
     )
     @click.option(
         "--filter-mutual-mappings",
@@ -877,12 +879,16 @@ def get_predict_command(
         help="Consider identifiers as names. This is typical for data models/schemas",
     )
     @PIN_VERSION_OPTION
-    @click.option("--flip", is_flag=True)
+    @click.option(
+        "--flip",
+        is_flag=True,
+        help="If true, inverts the ordering of source/targets in predictions",
+    )
     @click.pass_obj
     def lexical(
         obj: Repository,
         source_prefix: str,
-        target_prefix: str,
+        target_prefixes: list[str],
         relation: str | None,
         method: PredictionMethod | None,
         cutoff: float | None,
@@ -899,7 +905,7 @@ def get_predict_command(
 
         append_lexical_predictions(
             source_prefix,
-            target_prefix,
+            target_prefixes,
             path=obj.predictions_path,
             curated_paths=obj.curated_paths,
             filter_mutual_mappings=filter_mutual_mappings,
