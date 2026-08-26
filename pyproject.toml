@@ -91,6 +91,7 @@ typing = [
     "types-flask",
     "sqlmodel",
     "ssslm[gilda-slim]",
+    "pyobo",
 ]
 docs-lint = [
     { include-group = "docs" },
