@@ -66,6 +66,10 @@ strategy_option = click.option(
 )
 
 
+class PredictionConfig(BaseModel):
+    pass
+
+
 class Repository(BaseModel):
     """A data structure containing information about a SSSOM repository.
 
@@ -184,6 +188,8 @@ class Repository(BaseModel):
         """
         ),
     ] = None
+
+    prediction_configs: Annotated[list[PredictionConfig] | None, Field()] = None
 
     def update_relative_paths(self, directory: Path) -> None:
         """Update paths relative to the directory."""
@@ -320,6 +326,10 @@ class Repository(BaseModel):
             converter=converter,
             include_mappings=mappings,
         )
+
+    def declarative_prediction_workflow(self, conf: PredictionConfig) -> None:
+        """Run the declarative prediction workflow."""
+        raise NotImplementedError()
 
     def run_cli(self, *args: Any, **kwargs: Any) -> None:
         """Run the CLI."""
@@ -471,6 +481,7 @@ def add_commands(
         )
     )
     main.add_command(get_predict_command())
+    main.add_command(get_refresh_predict_command())
     main.add_command(get_test_command())
     main.add_command(get_import_command())
 
@@ -921,6 +932,22 @@ def get_predict_command(
         )
 
     return predict
+
+
+def get_refresh_predict_command() -> click.Command:
+    """Get a command to refresh predictions."""
+
+    @click.command()
+    @click.pass_obj
+    def refresh_predict(obj: Repository) -> None:
+        """Refresh declared prediction workflows."""
+        if obj.prediction_configs is None:
+            click.secho("no prediction configurations specified", fg="red")
+            sys.exit(0)
+        for config in obj.prediction_configs:
+            obj.declarative_prediction_workflow(config)
+
+    return refresh_predict
 
 
 def get_test_command() -> click.Command:
